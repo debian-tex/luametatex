@@ -1,0 +1,22 @@
+Description: Do not strip binary after build.
+Author: Hilmar Preusse <hille42@web.de>
+Last-Update: 2023-04-17
+Forward: Patch is specific to Debian
+
+--- luametatex-2.10.07.orig/cmake/luametatex.cmake
++++ luametatex-2.10.07/cmake/luametatex.cmake
+@@ -75,14 +75,3 @@
+         resolv
+ )
+ endif()
+-
+-if (DEFINED LMT_OPTIMIZE)
+-    # we strip anyway
+-elseif (CMAKE_HOST_SOLARIS)
+-    # no strip
+-elseif (CMAKE_C_COMPILER_ID MATCHES "GNU")
+-    # -g -S -d : remove all debugging symbols & sections
+-    # -x       : remove all non-global symbols
+-    # -X       : remove any compiler-generated symbols
+-    add_custom_command(TARGET luametatex POST_BUILD COMMAND ${CMAKE_STRIP} -g -S -d -x luametatex${CMAKE_EXECUTABLE_SUFFIX})
+-endif()

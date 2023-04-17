@@ -1,0 +1,43 @@
+Source: luametatex
+Section: tex
+Priority: optional
+Maintainer: Debian TeX Task Force <debian-tex-maint@lists.debian.org>
+Uploaders: Hilmar Preusse <hille42@web.de>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ libmimalloc-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/contextgarden/luametatex
+Vcs-Browser: https://github.com/debian-tex/luametatex
+Vcs-Git: https://github.com/debian-tex/luametatex.git
+
+Package: luametatex
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Next generation ConTeXt processing engine
+ The LuaMetaTeX program is a light weight variant of LuaTeX. This
+ program finds its origin in parts of TeX (the original program, eTeX
+ (some extensions), pdfTeX (more extensions) Aleph (based on Omega,
+ directions) and of course LuaTeX (lots of things).
+ .
+ This is a follow up on the LuaTeX project. The source is considered
+ part of the ConTeXt distribution and managed by the ConTeXt development
+ team and the ConTeXt user group. That way it can be guaranteed that the
+ engine and this TeX macro package work together as expected. The idea
+ is that users can easily compile the source themselves and that way
+ have a guaranteed long term (minimal) TeX based installation. Because
+ the management scripts are in Lua, only one binary is needed to serve
+ the ConTeXt distribution.
+ .
+ In the source code it was tried to stay close to the ancestors, LuaTeX,
+ pdfTeX, eTeX and TeX, but in the meantime due to additions there is
+ quite some diverge. There are new primitives and submechanisms, there
+ is more control over the inner workings, font handling is mostly
+ delegated to Lua and there is no built-in backend. The code base is
+ all-inclusive and has no (nor will have) dependencies on external
+ libraries. Performance and memory consumption have been optimized and
+ the additions (compared to LuaTeX) don’t have a negative impact.
