@@ -1,4 +1,4 @@
-luametatex (2.10.07-1) UNRELEASED; urgency=medium
+luametatex (2.10.07-1) experimental; urgency=medium
 
   * Initial release. (Closes: #1034501)
 
