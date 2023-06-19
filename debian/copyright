@@ -2,6 +2,8 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: https://github.com/contextgarden/luametatex
 Upstream-Name: luametatex
 Upstream-Contact: Hans Hagen <pragma@wxs.nl>
+Files-Excluded:
+ source/libraries/softposit/build/Linux-x86_64-GCC/softposit_test.a
 
 Files:
  *

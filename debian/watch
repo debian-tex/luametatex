@@ -17,7 +17,10 @@ version=4
 #http://sf.net/luametatex/ luametatex-(.*)\.tar\.gz
 
 # GitHub hosted projects.
-opts="filenamemangle=s%(?:.*?)?v?(@ANY_VERSION@@ARCHIVE_EXT@)%@PACKAGE@-$1%" \
+#opts="filenamemangle=s%(?:.*?)?v?(@ANY_VERSION@@ARCHIVE_EXT@)%@PACKAGE@-$1%" \
+#    https://github.com/contextgarden/luametatex/tags \
+#    (?:.*?/)v?@ANY_VERSION@@ARCHIVE_EXT@
+opts=repack,repacksuffix=+ds,compression=gz,dversionmangle=s/\+ds// \
     https://github.com/contextgarden/luametatex/tags \
     (?:.*?/)v?@ANY_VERSION@@ARCHIVE_EXT@
 

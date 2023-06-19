@@ -1,4 +1,4 @@
-luametatex (2.10.08-1) unstable; urgency=medium
+luametatex (2.10.08+ds-1) unstable; urgency=medium
 
   * Initial release. (Closes: #1034501)
 
