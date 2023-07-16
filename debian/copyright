@@ -44,6 +44,12 @@ Copyright:
  2018 - 2021 Microsoft Corporation, Daan Leijen
 License: MIT
 
+Files: source/libraries/miniz/*
+Copyright:
+ 2013 - 2014 RAD Game Tools and Valve Software
+ 2010 - 2014 Rich Geldreich and Tenacious Software LLC
+License: MIT
+
 Files: source/libraries/pplib/*
 Copyright:
  2019 Paweł Jackowski <p.jackowski@gust.org.pl>
@@ -53,6 +59,26 @@ Files: source/libraries/softposit/*
 Copyright:
  2017 - 2018 A*STAR.
 License: BSD-3
+
+Files: source/lua/*
+Copyright:
+ Roberto Ierusalimschy, Waldemar Celes and Luiz Henrique de Figueiredo
+License: GPL-2+
+
+Files: source/lualuacore/lua54/*
+Copyright:
+ 2007 - 2019 Lua.org, PUC-Rio, Brazil (http://www.lua.org)
+License: MIT
+
+Files: source/lualuacore/luapeg/*
+Copyright:
+ 2007 - 2019 Lua.org, PUC-Rio, Brazil (http://www.lua.org)
+License: MIT
+
+Files: source/lualuacore/luasocket/*
+Copyright:
+ 2004 - 2013 Diego Nehab
+License: MIT
 
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
