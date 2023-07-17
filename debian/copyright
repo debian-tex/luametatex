@@ -8,6 +8,12 @@ Files-Excluded:
 Files:
  *
 Copyright:
+ 19xx - 2023 tex: Donald Knuth
+ 19xx - 20xx etex: Peter Breitenlohner, Phil Taylor and friends
+ 19xx - 20xx pdftex: Han The Thanh and friends
+ 1991 - 20xx omega: John Plaice and Yannis Haralambous
+ 19xx - 20xx aleph: Giuseppe Bilotta
+ 1994 - 20xx metapost: John Hobby, Taco Hoekwater, Luigi Scarso, Hans Hagen
  2018 - 2023 Hans Hagen <j.hagen@xs4all.nl>
  2018 - 2023 Wolfgang Schuster
  2018 - 2023 Mojca Miklavec
@@ -65,17 +71,18 @@ Copyright:
  Roberto Ierusalimschy, Waldemar Celes and Luiz Henrique de Figueiredo
 License: GPL-2+
 
-Files: source/lualuacore/lua54/*
+Files: source/luacore/lua54/*
 Copyright:
  2007 - 2019 Lua.org, PUC-Rio, Brazil (http://www.lua.org)
 License: MIT
 
-Files: source/lualuacore/luapeg/*
+Files: source/luacore/luapeg/*
 Copyright:
  2007 - 2019 Lua.org, PUC-Rio, Brazil (http://www.lua.org)
+ 2007 - 2019 Roberto Ierusalimschy
 License: MIT
 
-Files: source/lualuacore/luasocket/*
+Files: source/luacore/luasocket/*
 Copyright:
  2004 - 2013 Diego Nehab
 License: MIT
