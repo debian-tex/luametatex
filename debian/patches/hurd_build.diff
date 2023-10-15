@@ -1,0 +1,15 @@
+--- luametatex.orig/source/luarest/lmtfilelib.c
++++ luametatex/source/luarest/lmtfilelib.c
+@@ -100,7 +100,11 @@
+     # include <utime.h>
+     # include <sys/param.h>
+ 
+-    # define MY_MAXPATHLEN MAXPATHLEN
++    # ifdef MAXPATHLEN
++       # define MY_MAXPATHLEN MAXPATHLEN
++    # else
++       # define MY_MAXPATHLEN 255
++    # endif
+ 
+ # endif
+ 

@@ -3,9 +3,9 @@ Author: Hilmar Preusse <hille42@web.de>
 Last-Update: 2023-04-17
 Forward: Patch is specific to Debian
 
---- luametatex-2.10.07.orig/cmake/luametatex.cmake
-+++ luametatex-2.10.07/cmake/luametatex.cmake
-@@ -75,14 +75,3 @@
+--- luametatex.orig/cmake/luametatex.cmake
++++ luametatex/cmake/luametatex.cmake
+@@ -76,14 +76,3 @@
          resolv
  )
  endif()

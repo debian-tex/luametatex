@@ -1,3 +1,9 @@
+luametatex (2.10.08+ds-2) UNRELEASED; urgency=medium
+
+  * Hard code MY_MAXPATHLEN in case MAXPATHLEN is not defined (see HURD).
+
+ -- Hilmar Preusse <hille42@web.de>  Sun, 15 Oct 2023 22:48:22 +0200
+
 luametatex (2.10.08+ds-1) unstable; urgency=medium
 
   * Initial release. (Closes: #1034501)
