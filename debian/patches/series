@@ -1,3 +1,3 @@
 #dynamic_linking.diff
 no_strip.diff
-hurd_build.diff
+#hurd_build.diff

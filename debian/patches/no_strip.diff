@@ -5,7 +5,7 @@ Forward: Patch is specific to Debian
 
 --- luametatex.orig/cmake/luametatex.cmake
 +++ luametatex/cmake/luametatex.cmake
-@@ -76,14 +76,3 @@
+@@ -77,14 +77,3 @@
          resolv
  )
  endif()
