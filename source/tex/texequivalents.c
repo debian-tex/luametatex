@@ -182,6 +182,7 @@ void tex_initialize_levels(void)
 {
     cur_level = level_one;
     cur_group = bottom_level_group;
+    cur_boundary = 0;
     lmt_scanner_state.last_cs_name = null_cs;
 }
 
@@ -331,7 +332,6 @@ static int tex_room_on_save_stack(void)
             }
             if (top > lmt_save_state.save_stack_data.allocated) {
                 top = lmt_save_state.save_stack_data.allocated + lmt_save_state.save_stack_data.step;
-                lmt_save_state.save_stack_data.allocated = top;
                 tmp = aux_reallocate_array(lmt_save_state.save_stack, sizeof(save_record), top, reserved_save_stack_slots);
                 lmt_save_state.save_stack = tmp;
             }
@@ -340,15 +340,19 @@ static int tex_room_on_save_stack(void)
                 tex_overflow_error("save", top);
                 return 0;
             }
+         // memset((void *) (lmt_save_state.save_stack + lmt_save_state.save_stack_data.allocated + 1), 0, ((size_t) lmt_save_state.save_stack_data.step + reserved_save_stack_slots) * sizeof(save_record));
+            lmt_save_state.save_stack_data.allocated = top;
         }
     }
     return 1;
 }
 
-void tex_save_halfword_on_stack(quarterword t, halfword v)
+void tex_save_halfword_on_stack(quarterword t, halfword v) /* todo: also value_2 and value_3 */
 {
     if (tex_room_on_save_stack()) {
-        tex_set_saved_record(0, t, 0, v);
+        saved_type(0) = t;
+        saved_record(0) = 0;
+        saved_value_1(0) = v;
         ++lmt_save_state.save_stack_data.ptr;
     }
 }
@@ -400,18 +404,25 @@ static void tex_aux_group_trace(int g)
         \stopitem
     \stopitemize
 
+    Per end 2023 the decision was made to use the two halfwords in the memory word that is used for
+    saving eq values for other purposes too. It meant for instance that instead if every new group 
+    needing 3 stack entries, it now needs just one. Actually there are not that meny mechanism that 
+    need the stack. For instance alignments have their own stack, math needs it for multi argument 
+    mechanism and the most demanding one is box handling. In addition to the two extra |value_2| and 
+    |value_3| fields we also use |options| and |extra| as alias for |level| (these are quarterwords). 
+
 */
 
 static void tex_aux_group_warning(void)
 {
     /*tex do we need a warning? */
-    int w = 0;
+    bool warning = false;
     /*tex index into |grp_stack| */
-    int i = lmt_input_state.in_stack_data.ptr;
+    int index = lmt_input_state.in_stack_data.ptr;
     lmt_input_state.base_ptr = lmt_input_state.input_stack_data.ptr;
     /*tex store current state */
     lmt_input_state.input_stack[lmt_input_state.base_ptr] = lmt_input_state.cur_input;
-    while ((lmt_input_state.in_stack[i].group == cur_boundary) && (i > 0)) {
+    while ((lmt_input_state.in_stack[index].group == cur_boundary) && (index > 0)) {
         /*tex
 
             Set variable |w| to indicate if this case should be reported. This code scans the input
@@ -419,18 +430,18 @@ static void tex_aux_group_warning(void)
 
         */
         if (tracing_nesting_par > 0) {
-            while ((lmt_input_state.input_stack[lmt_input_state.base_ptr].state == token_list_state) || (lmt_input_state.input_stack[lmt_input_state.base_ptr].index > i)) {
+            while ((lmt_input_state.input_stack[lmt_input_state.base_ptr].state == token_list_state) || (lmt_input_state.input_stack[lmt_input_state.base_ptr].index > index)) {
                 --lmt_input_state.base_ptr;
             }
             if (lmt_input_state.input_stack[lmt_input_state.base_ptr].name > 17) {
                 /*tex |>  max_file_input_code| .. hm */
-                w = 1;
+                warning = true;
             }
         }
-        lmt_input_state.in_stack[i].group = save_value(lmt_save_state.save_stack_data.ptr);
-        --i;
+        lmt_input_state.in_stack[index].group = save_value(lmt_save_state.save_stack_data.ptr);
+        --index;
     }
-    if (w) {
+    if (warning) {
         tex_begin_diagnostic();
         tex_print_format("[warning: end of %G of a different file]", 1);
         tex_end_diagnostic();
@@ -443,37 +454,63 @@ static void tex_aux_group_warning(void)
     }
 }
 
-void tex_new_save_level(quarterword c)
+/*tex 
+    We store the line number and attribute state in the memory word part for the save entry and  
+    then we need only one slot instead of three. Each slot is 16 bytes so we're also a bit nicer to 
+    caching memory (if it happens at all). Because in practice we don't group that much (400.000 
+    times in the luametatex manual and a similar amount in the primitives manual) there is no real  
+    significant (positive) impact on performance. It's all about abstraction. 
+*/
+
+typedef enum saved_group_entries {
+    saved_group_group_entry           = 0,
+    saved_group_boundary_entry        = 0,
+    saved_group_attribute_state_entry = 0,
+    saved_group_input_line_entry      = 0,
+    saved_group_n_records             = 1,
+} saved_group_entries;
+
+# define saved_group_group           saved_group(saved_group_group_entry)
+# define saved_group_boundary        saved_value_1(saved_group_boundary_entry)
+# define saved_group_attribute_state saved_value_2(saved_group_attribute_state_entry)
+# define saved_group_input_line      saved_value_3(saved_group_input_line_entry)
+
+inline static void saved_group_initialize(void)
 {
-    /*tex We begin a new level of grouping. */
+    saved_type(0) = level_boundary_save_type;
+    /* here level is really level */
+}
+
+void tex_new_save_level(quarterword group)
+{
+    /*tex We begin a new level of grouping. This will cost us three entries. */
     if (tex_room_on_save_stack()) {
-        save_attribute_state_before();
-        tex_set_saved_record(saved_group_line_number, line_number_save_type, 0, lmt_input_state.input_line);
-        tex_set_saved_record(saved_group_level_boundary, level_boundary_save_type, cur_group, cur_boundary);
-        /*tex eventually we will have bumped |lmt_save_state.save_stack_data.ptr| by |saved_group_n_of_items|! */
-        ++lmt_save_state.save_stack_data.ptr;
+        add_attribute_reference(current_attribute_state); 
+        saved_group_initialize();
+        saved_group_group = cur_group;
+        saved_group_boundary = cur_boundary;
+        saved_group_attribute_state = current_attribute_state;
+        saved_group_input_line = lmt_input_state.input_line;
         if (cur_level == max_quarterword) {
+            /*tex We quit if |(cur_level+1)| is too big to be stored in |eqtb|. */
             tex_overflow_error("grouping levels", max_quarterword - min_quarterword);
         }
-        /*tex We quit if |(cur_level+1)| is too big to be stored in |eqtb|. */
         cur_boundary = lmt_save_state.save_stack_data.ptr;
-        cur_group = c;
+        cur_group = group;
         if (tracing_groups_par > 0) {
             tex_aux_group_trace(0);
         }
         ++cur_level;
-        ++lmt_save_state.save_stack_data.ptr;
-        save_attribute_state_after();
+        lmt_save_state.save_stack_data.ptr += saved_group_n_records;
         if (end_of_group_par) {
             update_tex_end_of_group(null);
         }
-        /* no_end_group_par = null; */
     }
 }
 
 int tex_saved_line_at_level(void)
 {
-    return lmt_save_state.save_stack_data.ptr > 0 ? (saved_value(-1) > 0 ? saved_value(-1) : 0) : 0;
+    return lmt_save_state.save_stack_data.ptr > 0 ? (saved_group_input_line > 0 ? saved_group_input_line : 0) : 0;
 }
 
 /*tex
@@ -491,47 +528,6 @@ int tex_saved_line_at_level(void)
     The output is not (entirely) downward compatible which is no big deal because we output some more
     details anyway.
 */
-
-static int tex_aux_found_save_type(int id)
-{
-    int i = -1;
-    while (saved_valid(i) && saved_type(i) != id) {
-        i--;
-    }
-    return i;
-}
-
-static int tex_aux_save_value(int id)
-{
-    int i = tex_aux_found_save_type(id);
-    return i ? saved_value(i) : 0;
-}
-
-static int tex_aux_save_level(int id)
-{
-    int i = tex_aux_found_save_type(id);
-    return i ? saved_level(i) : 0;
-}
-
-static int tex_aux_saved_box_spec(halfword *packing, halfword *amount)
-{
-    int i = tex_aux_found_save_type(box_spec_save_type);
-    if (i) {
-        *packing = saved_extra(i);
-        *amount = saved_value(i);
-    } else {
-        *packing = 0;
-        *amount = 0;
-    }
-    return (*amount != 0);
-}
-
-static void tex_aux_show_group_count(int n)
-{
-    for (int i = 1; i <= n; i++) {
-        tex_print_str("{}");
-    }
-}
 
 void tex_show_save_groups(void)
 {
@@ -620,37 +616,25 @@ void tex_show_save_groups(void)
                 tex_print_str_esc("mathstack");
                 goto FOUND2;
             case discretionary_group:
-                tex_print_str_esc("discretionary");
-                tex_aux_show_group_count(tex_aux_save_value(saved_discretionary_item_component));
+                tex_show_discretionary_group();
                 goto FOUND2;
             case math_fraction_group:
-                tex_print_str_esc("fraction");
-                tex_aux_show_group_count(tex_aux_save_value(saved_fraction_item_variant));
+                tex_show_math_fraction_group();
                 goto FOUND2;
             case math_radical_group:
-                tex_print_str_esc("radical");
-                tex_aux_show_group_count(tex_aux_save_value(radical_degree_done_save_type));
+                tex_show_math_radical_group();
                 goto FOUND2;
             case math_operator_group:
-                tex_print_str_esc("operator");
-                tex_aux_show_group_count(tex_aux_save_value(saved_operator_item_variant));
+                tex_show_math_operator_group();
                 goto FOUND2;
             case math_choice_group:
-                tex_print_str_esc("mathchoice");
-                tex_aux_show_group_count(tex_aux_save_value(saved_choice_item_count));
+                tex_show_math_choice_group();
                 goto FOUND2;
             case insert_group:
-                tex_print_str_esc("insert");
-                tex_print_int(tex_aux_save_value(saved_insert_item_index));
+                tex_show_insert_group();
                 goto FOUND2;
             case vadjust_group:
-                tex_print_str_esc("vadjust");
-                if (tex_aux_save_value(saved_adjust_item_location) == pre_adjust_code) {
-                    tex_print_str(" pre");
-                }
-                if (tex_aux_save_value(saved_adjust_item_options) & adjust_option_before) {
-                    tex_print_str(" before");
-                }
+                tex_show_adjust_group();
                 goto FOUND2;
             case vcenter_group:
                 package = "vcenter";
@@ -670,7 +654,7 @@ void tex_show_save_groups(void)
                 tex_print_char('$');
                 goto FOUND2;
             case math_number_group:
-                tex_print_cmd_chr(equation_number_cmd, tex_aux_save_value(saved_equation_number_item_location));
+                tex_show_math_number_group();
                 goto FOUND2;
             case math_fence_group:
                 /* kind of ugly ... maybe also save that one */ /* todo: operator */
@@ -685,10 +669,10 @@ void tex_show_save_groups(void)
             why it had such a large offset for the other context value. That somewhat dirty trick 
             was has stepwise been removed.
         */
-        switch (tex_aux_save_value(saved_full_spec_item_context)) {
+        switch (tex_get_packaging_context()) {
             case direct_box_flag:
                 {
-                    scaled shift = tex_aux_save_value(saved_full_spec_item_shift);
+                    scaled shift = tex_get_packaging_shift();
                     if (shift != null_flag) { 
                         /*tex We passed the safeguard. */
                         singleword cmd = is_v_mode(lmt_nest_state.nest[pointer].mode) ? hmove_cmd : vmove_cmd;
@@ -702,7 +686,7 @@ void tex_show_save_groups(void)
             case box_flag:
                 {
                     tex_print_str_esc("setbox");
-                    tex_print_int(tex_aux_save_level(saved_full_spec_item_context));
+                    tex_print_int(tex_get_packaging_context());
                     tex_print_char('=');
                 }
                 break;
@@ -723,25 +707,151 @@ void tex_show_save_groups(void)
                 break;
         }
       FOUND1:
-        {
-            /*tex Show the box packaging info. */
-            halfword packing, amount;
-            tex_print_str_esc(package);
-            if (tex_aux_saved_box_spec(&packing, &amount)) {
-                tex_print_str(packing == packing_exactly ? " to " : " spread ");
-                tex_print_dimension(amount, pt_unit);
-            }
-        }
+        tex_show_packaging_group(package);
       FOUND2:
         --cur_level;
-        cur_group = save_level(lmt_save_state.save_stack_data.ptr);
-        lmt_save_state.save_stack_data.ptr = save_value(lmt_save_state.save_stack_data.ptr);
+        cur_group = saved_group_group;
+        lmt_save_state.save_stack_data.ptr = saved_group_boundary;
     }
   DONE:
     lmt_save_state.save_stack_data.ptr = saved_pointer;
     cur_level = saved_level;
     cur_group = saved_group;
     tracing_levels_par = saved_tracing;
+}
+
+void tex_show_save_stack(void)
+{
+    halfword savedptr = lmt_save_state.save_stack_data.ptr;
+    tex_print_format("%l[savestack size %i]\n", lmt_save_state.save_stack_data.ptr);
+    while (lmt_save_state.save_stack_data.ptr) {
+        --lmt_save_state.save_stack_data.ptr;
+        tex_print_nlp();
+        tex_print_levels();
+        tex_print_format("[%i: ", lmt_save_state.save_stack_data.ptr);
+        if (save_type(lmt_save_state.save_stack_data.ptr) >= saved_record_0 && save_type(lmt_save_state.save_stack_data.ptr) <= saved_record_9) {
+            tex_print_format("save record %i, ", save_type(lmt_save_state.save_stack_data.ptr) - saved_record_0 + 1, save_record(lmt_save_state.save_stack_data.ptr));
+            /* these have to be provided in the modules */
+            switch (save_record(lmt_save_state.save_stack_data.ptr)) {
+                case unknown_save_type:
+                    break;
+                case box_save_type:
+                    if (tex_show_packaging_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case local_box_save_type:
+                    if (tex_show_localbox_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case alignment_save_type:
+                    if (tex_show_alignment_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case adjust_save_type:
+                    if (tex_show_adjust_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case math_save_type:
+                    if (tex_show_math_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case fraction_save_type:
+                    if (tex_show_math_fraction_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case radical_save_type:
+                    if (tex_show_math_radical_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case operator_save_type:
+                    if (tex_show_math_operator_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case math_group_save_type:
+                    if (tex_show_math_group_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case choice_save_type:
+                    if (tex_show_math_choice_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case number_save_type:
+                    if (tex_show_math_number_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case insert_save_type:
+                    if (tex_show_insert_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                case discretionary_save_type:
+                    if (tex_show_discretionary_record()) {
+                        break;
+                    } else { 
+                        goto INVALID_TYPE;
+                    }
+                default: 
+                    goto INVALID_RECORD;
+            }
+        } else {
+            switch (save_type(lmt_save_state.save_stack_data.ptr)) {
+                case level_boundary_save_type:
+                    tex_print_format("boundary, group '%s', boundary %i, attrlist %i, line %i", lmt_interface.group_code_values[saved_group_group].name, saved_group_boundary, saved_group_attribute_state, tex_saved_line_at_level());
+                    break;
+                case restore_old_value_save_type:
+                    tex_print_format("restore, level %i, cs ", save_level(lmt_save_state.save_stack_data.ptr));
+                    tex_aux_show_eqtb(save_value(lmt_save_state.save_stack_data.ptr));
+                    break;
+                case insert_tokens_save_type:
+                    tex_print_format("insert, pointer %i", save_value(lmt_save_state.save_stack_data.ptr));
+                    break;
+                case restore_lua_save_type:
+                    tex_print_format("restore lua, level %i, function %i", save_level(lmt_save_state.save_stack_data.ptr), save_value(lmt_save_state.save_stack_data.ptr));
+                    break;
+                case restore_zero_save_type:
+                    tex_print_format("restore zero, level %i, cs ", save_level(lmt_save_state.save_stack_data.ptr));
+                    tex_aux_show_eqtb(save_value(lmt_save_state.save_stack_data.ptr));
+                    break;
+                default:
+                    goto INVALID_TYPE;
+            }
+        }
+        goto DONE;
+      INVALID_RECORD:
+        tex_print_format("invalid record %i", save_record(lmt_save_state.save_stack_data.ptr));
+        goto DONE;
+      INVALID_TYPE:
+        tex_print_format("invalid type %i", save_type(lmt_save_state.save_stack_data.ptr));
+        goto DONE;
+      DONE:
+        tex_print_char(']');
+        tex_print_nlp();
+    }
+    tex_print_format("%l[savestack bottom]\n");
+    lmt_save_state.save_stack_data.ptr = savedptr;
 }
 
 /*tex
@@ -841,52 +951,42 @@ static int tex_aux_mutation_permitted(halfword cs)
     the other data structures properly. It is important to keep in mind that reference counts in
     |mem| include references from within |save_stack|, so these counts must be handled carefully.
 
-    We don't need to destroy when an assignment has the same node:
-
 */
 
 static void tex_aux_eq_destroy(memoryword w)
 {
-    switch (eq_type_field(w)) {
-        case call_cmd:
-        case protected_call_cmd:
-        case semi_protected_call_cmd:
-        case tolerant_call_cmd:
-        case tolerant_protected_call_cmd:
-        case tolerant_semi_protected_call_cmd:
-        case register_toks_reference_cmd:
-        case internal_toks_reference_cmd:
-            tex_delete_token_reference(eq_value_field(w));
-            break;
-        case internal_glue_reference_cmd:
-        case register_glue_reference_cmd:
-        case internal_mu_glue_reference_cmd:
-        case register_mu_glue_reference_cmd:
-        case gluespec_cmd:
-        case mugluespec_cmd:
-        case mathspec_cmd:
-        case fontspec_cmd:
-            tex_flush_node(eq_value_field(w));
-            break;
-        case internal_box_reference_cmd:
-        case register_box_reference_cmd:
-            tex_flush_node_list(eq_value_field(w));
-            break;
-        case specification_reference_cmd:
-            {
-                halfword q = eq_value_field(w);
-                if (q) {
-                    /*tex
-                        We need to free a |\parshape| block. Such a block is |2n + 1| words long,
-                        where |n = vinfo(q)|. It happens in the
-                        flush function.
-                    */
-                    tex_flush_node(q);
-                }
-            }
-            break;
-        default:
-            break;
+    halfword p = eq_value_field(w);
+    if (p) { 
+        switch (eq_type_field(w)) {
+            case call_cmd:
+            case protected_call_cmd:
+            case semi_protected_call_cmd:
+            case constant_call_cmd:
+            case tolerant_call_cmd:
+            case tolerant_protected_call_cmd:
+            case tolerant_semi_protected_call_cmd:
+            case register_toks_reference_cmd:
+            case internal_toks_reference_cmd:
+                tex_delete_token_reference(p);
+                break;
+            case internal_glue_reference_cmd:
+            case register_glue_reference_cmd:
+            case internal_muglue_reference_cmd:
+            case register_muglue_reference_cmd:
+            case gluespec_cmd:
+            case mugluespec_cmd:
+            case mathspec_cmd:
+            case fontspec_cmd:
+            case specification_reference_cmd:
+                tex_flush_node(p);
+                break;
+            case internal_box_reference_cmd:
+            case register_box_reference_cmd:
+                tex_flush_node_list(p);
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -939,8 +1039,8 @@ inline static int tex_aux_equal_eq(halfword p, singleword cmd, singleword flag, 
         switch (eq_type(p)) {
             case internal_glue_reference_cmd:
             case register_glue_reference_cmd:
-            case internal_mu_glue_reference_cmd:
-            case register_mu_glue_reference_cmd:
+            case internal_muglue_reference_cmd:
+            case register_muglue_reference_cmd:
             case gluespec_cmd:
             case mugluespec_cmd:
                 /*tex We compare the pointer as well as the record. */
@@ -975,6 +1075,7 @@ inline static int tex_aux_equal_eq(halfword p, singleword cmd, singleword flag, 
             case call_cmd:
             case protected_call_cmd:
             case semi_protected_call_cmd:
+            case constant_call_cmd:
             case tolerant_call_cmd:
             case tolerant_protected_call_cmd:
             case tolerant_semi_protected_call_cmd:
@@ -987,6 +1088,7 @@ inline static int tex_aux_equal_eq(halfword p, singleword cmd, singleword flag, 
                     return 0;
                 }
             case specification_reference_cmd:
+            case unit_reference_cmd:
             case internal_box_reference_cmd:
             case register_box_reference_cmd:
                 /*tex These are also references. */
@@ -1015,8 +1117,9 @@ inline static int tex_aux_equal_eq(halfword p, singleword cmd, singleword flag, 
                 } else {
                     return 0;
                 }
-            case dimension_cmd:
             case integer_cmd:
+            case index_cmd:
+            case dimension_cmd:
             case posit_cmd:
                 if (eq_type(p) == cmd && eq_value(p) == chr) {
              // if (eq_type(p) == cmd && eq_value(p) == chr && eq_level(p) == cur_level) {
@@ -1075,9 +1178,9 @@ void tex_eq_define(halfword p, singleword cmd, halfword chr)
 
 */
 
-void tex_eq_word_define(halfword p, int w)
+void tex_eq_word_define(halfword p, int w) /* not used */
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (eq_value(p) == w) {
         if (trace) {
             tex_aux_diagnostic_trace(p, "reassigning");
@@ -1105,9 +1208,9 @@ void tex_eq_word_define(halfword p, int w)
 
 */
 
-void tex_geq_define(halfword p, singleword cmd, halfword chr)
+void tex_geq_define(halfword p, singleword cmd, halfword chr) /* not used */
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (trace) {
         tex_aux_diagnostic_trace(p, "globally changing");
     }
@@ -1121,9 +1224,9 @@ void tex_geq_define(halfword p, singleword cmd, halfword chr)
     }
 }
 
-void tex_geq_word_define(halfword p, int w)
+void tex_geq_word_define(halfword p, int w) /* not used */
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (trace) {
         tex_aux_diagnostic_trace(p, "globally changing");
     }
@@ -1156,7 +1259,7 @@ inline static void tex_aux_set_eq_data(halfword p, singleword t, halfword e, sin
 
 void tex_define(int g, halfword p, singleword t, halfword e) /* int g -> singleword g */
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     singleword f = make_eq_flag_bits(g);
     if (is_global(g)) {
         /* what if already global */
@@ -1168,7 +1271,7 @@ void tex_define(int g, halfword p, singleword t, halfword e) /* int g -> singlew
      // }
         tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
         tex_aux_set_eq_data(p, t, e, f, level_one);
-    } else if (tex_aux_equal_eq(p, t, f, e)) {
+    } else if (! is_constrained(g) && tex_aux_equal_eq(p, t, f, e)) {
         /* hm, we tweak the ref ! */
         if (trace) {
             tex_aux_diagnostic_trace(p, "reassigning");
@@ -1180,6 +1283,8 @@ void tex_define(int g, halfword p, singleword t, halfword e) /* int g -> singlew
         }
         if (eq_level(p) == cur_level) {
             tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
+        } else if (is_retained(g)) {
+            /* nothing */
         } else if (cur_level > level_one) {
             tex_aux_eq_save(p, eq_level(p));
         }
@@ -1189,6 +1294,11 @@ void tex_define(int g, halfword p, singleword t, halfword e) /* int g -> singlew
         tex_aux_diagnostic_trace(p, "into");
     }
 }
+
+/*tex 
+    Used in |\dimendef| but also |\dimensiondef| and alike. Before it gets calles we already 
+    redefined to |\relax| so we might have saved. 
+*/
 
 void tex_define_again(int g, halfword p, singleword t, halfword e) /* int g -> singleword g */
 {
@@ -1202,13 +1312,15 @@ void tex_define_again(int g, halfword p, singleword t, halfword e) /* int g -> s
          // }
             tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
             tex_aux_set_eq_data(p, t, e, f, level_one);
-        } else if (tex_aux_equal_eq(p, t, f, e)) {
+        } else if (! is_constrained(g) && tex_aux_equal_eq(p, t, f, e)) {
             /* hm, we tweak the ref ! */
             tex_aux_diagnostic_trace(p, "reassigning");
         } else {
-            tex_aux_diagnostic_trace(p, "changing");
+            tex_aux_diagnostic_trace(p, is_retained(g) ? "retained changing": "changing");
             if (eq_level(p) == cur_level) {
                 tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
+            } else if (is_retained(g)) { 
+                /* nothing */
             } else if (cur_level > level_one) {
                 tex_aux_eq_save(p, eq_level(p));
             }
@@ -1221,9 +1333,13 @@ void tex_define_again(int g, halfword p, singleword t, halfword e) /* int g -> s
     }
 }
 
+/*tex
+    The next one is used when we let something. 
+*/
+
 void tex_define_inherit(int g, halfword p, singleword f, singleword t, halfword e)
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (is_global(g)) {
         /* what if already global */
         if (trace) {
@@ -1234,17 +1350,19 @@ void tex_define_inherit(int g, halfword p, singleword f, singleword t, halfword 
      // }
         tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
         tex_aux_set_eq_data(p, t, e, f, level_one);
-    } else if (tex_aux_equal_eq(p, t, f, e)) {
+    } else if (! is_constrained(g) && tex_aux_equal_eq(p, t, f, e)) {
         if (trace) {
             tex_aux_diagnostic_trace(p, "reassigning");
             return;
         }
     } else {
         if (trace) {
-            tex_aux_diagnostic_trace(p, "changing");
+            tex_aux_diagnostic_trace(p, is_retained(g) ? "retained changing" : "changing");
         }
         if (eq_level(p) == cur_level) {
             tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
+        } else if (is_retained(g)) {
+            /* nothing */
         } else if (cur_level > level_one) {
             tex_aux_eq_save(p, eq_level(p));
         }
@@ -1255,17 +1373,19 @@ void tex_define_inherit(int g, halfword p, singleword f, singleword t, halfword 
     }
 }
 
-/* beware: when we swap a global vsize with a local ... we can get side effect. */
+/*tex
+    Used in swapping but beware: when we swap a global vsize with a local ... we can get side 
+    effect. No retain here. 
+*/
 
 static void tex_aux_just_define(int g, halfword p, halfword e)
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (is_global(g)) {
         if (trace) {
             tex_aux_diagnostic_trace(p, "globally changing");
         }
         tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
-        set_eq_value(p, e);
     } else {
         if (trace) {
             tex_aux_diagnostic_trace(p, "changing");
@@ -1276,8 +1396,8 @@ static void tex_aux_just_define(int g, halfword p, halfword e)
             tex_aux_eq_save(p, eq_level(p));
         }
         set_eq_level(p, cur_level);
-        set_eq_value(p, e);
     }
+    set_eq_value(p, e);
     if (trace) {
         tex_aux_diagnostic_trace(p, "into");
     }
@@ -1309,13 +1429,14 @@ void tex_define_swapped(int g, halfword p1, halfword p2, int force)
         } else {
             switch (t1) {
                 case register_posit_cmd:
-                case register_int_cmd:
+                case register_integer_cmd:
                 case register_attribute_cmd:
-                case register_dimen_cmd:
+                case register_dimension_cmd:
                 case register_glue_cmd:    /* unchecked */
-                case register_mu_glue_cmd: /* unchecked */
-                case internal_mu_glue_cmd: /* unchecked */
+                case register_muglue_cmd: /* unchecked */
+                case internal_muglue_cmd: /* unchecked */
                 case integer_cmd:
+                case index_cmd:
                 case dimension_cmd:
                 case posit_cmd:
                     tex_aux_just_define(g, p1, v2);
@@ -1330,9 +1451,9 @@ void tex_define_swapped(int g, halfword p1, halfword p2, int force)
                     if (v1) tex_delete_token_reference(v1);
                     if (v2) tex_delete_token_reference(v2);
                     return;
-                case internal_int_cmd:
-                    tex_assign_internal_int_value(g, p1, v2);
-                    tex_assign_internal_int_value(g, p2, v1);
+                case internal_integer_cmd:
+                    tex_assign_internal_integer_value(g, p1, v2);
+                    tex_assign_internal_integer_value(g, p2, v1);
                     return;
                 case internal_attribute_cmd:
                     tex_assign_internal_attribute_value(g, p1, v2);
@@ -1342,9 +1463,9 @@ void tex_define_swapped(int g, halfword p1, halfword p2, int force)
                     tex_assign_internal_posit_value(g, p1, v2);
                     tex_assign_internal_posit_value(g, p2, v1);
                     return;
-                case internal_dimen_cmd:
-                    tex_assign_internal_dimen_value(g, p1, v2);
-                    tex_assign_internal_dimen_value(g, p2, v1);
+                case internal_dimension_cmd:
+                    tex_assign_internal_dimension_value(g, p1, v2);
+                    tex_assign_internal_dimension_value(g, p2, v1);
                     return;
                 case internal_glue_cmd:
                     /* todo */
@@ -1385,18 +1506,19 @@ void tex_define_swapped(int g, halfword p1, halfword p2, int force)
     );
 }
 
+/*tex 
+    Used in pushing and popping. No retain here. 
+*/
+
 void tex_forced_define(int g, halfword p, singleword f, singleword t, halfword e)
 {
-    int trace = tracing_assigns_par > 0;
+    bool trace = tracing_assigns_par > 0;
     if (is_global(g)) {
         if (trace) {
             tex_aux_diagnostic_trace(p, "globally changing");
         }
         tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
         set_eq_level(p, level_one);
-        set_eq_type(p, t);
-        set_eq_flag(p, f);
-        set_eq_value(p, e);
     } else {
         if (trace) {
             tex_aux_diagnostic_trace(p, "changing");
@@ -1407,30 +1529,40 @@ void tex_forced_define(int g, halfword p, singleword f, singleword t, halfword e
             tex_aux_eq_save(p, eq_level(p));
         }
         set_eq_level(p, cur_level);
-        set_eq_type(p, t);
-        set_eq_flag(p, f);
-        set_eq_value(p, e);
     }
+    set_eq_type(p, t);
+    set_eq_flag(p, f);
+    set_eq_value(p, e);
     if (trace) {
         tex_aux_diagnostic_trace(p, "into");
     }
 }
 
+/*tex 
+    Registers and other values that are stored directly without reference.
+*/
+
 void tex_word_define(int g, halfword p, halfword w)
 {
     if (tex_aux_mutation_permitted(p)) {
-        int trace = tracing_assigns_par > 0;
+        bool trace = tracing_assigns_par > 0;
         if (is_global(g)) {
             if (trace) {
                 tex_aux_diagnostic_trace(p, "globally changing");
             }
             eq_value(p) = w;
             set_eq_level(p, level_one);
-        } else if (eq_value(p) == w) {
+        } else if (! is_constrained(g) && eq_value(p) == w) {
             if (trace) {
                 tex_aux_diagnostic_trace(p, "reassigning");
                 return;
             }
+        } else if (is_retained(g)) {
+            if (trace) {
+                tex_aux_diagnostic_trace(p, "retained changing");
+                set_eq_level(p, cur_level);
+            }
+            eq_value(p) = w;
         } else {
             if (trace) {
                 tex_aux_diagnostic_trace(p, "changing");
@@ -1452,10 +1584,11 @@ void tex_word_define(int g, halfword p, halfword w)
     }
 }
 
+/*
 void tex_forced_word_define(int g, halfword p, singleword f, halfword w)
 {
     if (tex_aux_mutation_permitted(p)) {
-        int trace = tracing_assigns_par > 0;
+        bool trace = tracing_assigns_par > 0;
         if (is_global(g)) {
             if (trace) {
                 tex_aux_diagnostic_trace(p, "globally changing");
@@ -1467,6 +1600,11 @@ void tex_forced_word_define(int g, halfword p, singleword f, halfword w)
                 tex_aux_diagnostic_trace(p, "reassigning");
                 return;
             }
+        } else if (is_retained(g)) {
+            if (trace) {
+                tex_aux_diagnostic_trace(p, "retained changing");
+            }
+            eq_value(p) = w;
         } else {
             if (trace) {
                 tex_aux_diagnostic_trace(p, "changing");
@@ -1483,6 +1621,7 @@ void tex_forced_word_define(int g, halfword p, singleword f, halfword w)
         eq_flag(p) = f;
     }
 }
+*/
 
 /*tex
 
@@ -1535,6 +1674,10 @@ void tex_save_for_after_group(halfword t)
 void tex_unsave(void)
 {
     if (end_of_group_par) {
+        /*tex 
+            This is not yet always ok, and looks like we can get weird commands (in some group 
+            ending situations)! But I need a better example of a failure. (low priority) 
+        */
         tex_begin_inserted_list(tex_get_available_token(token_val(end_local_cmd, 0)));
         tex_begin_token_list(end_of_group_par, end_of_group_text);
         if (tracing_nesting_par > 2) {
@@ -1542,9 +1685,7 @@ void tex_unsave(void)
         }
         tex_local_control(1);
     }
-
-    unsave_attribute_state_before();
-
+    delete_attribute_reference(current_attribute_state); 
     tex_unsave_math_codes(cur_level);
     tex_unsave_cat_codes(cat_code_table_par, cur_level);
     tex_unsave_text_codes(cur_level);
@@ -1554,8 +1695,8 @@ void tex_unsave(void)
             Variable |a| registers if we already have processed an |\aftergroup|. We append when
             >= 1.
         */
-        int a = 0;
-        int trace = tracing_restores_par > 0;
+        bool append = false;
+        bool trace = tracing_restores_par > 0;
         --cur_level;
         /*tex Clear off top level from |save_stack|. */
         while (1) {
@@ -1573,7 +1714,7 @@ void tex_unsave(void)
                             carried out within the group that just ended, the last such definition will
                             therefore survive.
                         */
-                        if (p < internal_int_base || p > eqtb_size) {
+                        if (p < internal_integer_base || p > eqtb_size) {
                             if (eq_level(p) == level_one) {
                                 tex_aux_eq_destroy(save_word(lmt_save_state.save_stack_data.ptr));
                                 if (trace) {
@@ -1602,12 +1743,12 @@ void tex_unsave(void)
                     {
                         /*tex A list starts a new input level (for now). */
                         halfword p = save_value(lmt_save_state.save_stack_data.ptr);
-                        if (a) {
+                        if (append) {
                             /*tex We stay at the same input level (an \ETEX\ feature). */
                             tex_append_input(p);
                         } else {
                             tex_insert_input(p);
-                            a = 1;
+                            append = true;
                         }
                         break;
                     }
@@ -1626,7 +1767,7 @@ void tex_unsave(void)
                         } else {
                             tex_normal_error("lua restore", "invalid number");
                         }
-                        a = 1;
+                        append = true;
                         break;
                     }
                 case restore_zero_save_type:
@@ -1637,7 +1778,7 @@ void tex_unsave(void)
                                 tex_aux_diagnostic_trace(p, "retaining");
                             }
                         } else {
-                            if (p < internal_int_base || p > eqtb_size) {
+                            if (p < internal_integer_base || p > eqtb_size) {
                                 tex_aux_eq_destroy(lmt_hash_state.eqtb[p]);
                             }
                             lmt_hash_state.eqtb[p] = lmt_hash_state.eqtb[undefined_control_sequence];
@@ -1661,14 +1802,13 @@ void tex_unsave(void)
             /*tex Groups are possibly not properly nested with files. */
             tex_aux_group_warning();
         }
-        cur_group = save_level(lmt_save_state.save_stack_data.ptr);
-        cur_boundary = save_value(lmt_save_state.save_stack_data.ptr);
-        --lmt_save_state.save_stack_data.ptr;
+        cur_group = saved_group_group;
+        cur_boundary = saved_group_boundary;
+        set_current_attribute_state(saved_group_attribute_state); 
     } else {
         /*tex |unsave| is not used when |cur_group=bottom_level| */
         tex_confusion("current level");
     }
-    unsave_attribute_state_after();
 }
 
 /*tex
@@ -1874,12 +2014,12 @@ void tex_aux_show_eqtb(halfword n)
                 }
                 tex_print_spec(eq_value(n), pt_unit);
                 break;
-            case internal_mu_glue_reference_cmd:
-                tex_print_cmd_chr(internal_mu_glue_cmd, n);
+            case internal_muglue_reference_cmd:
+                tex_print_cmd_chr(internal_muglue_cmd, n);
                 goto MUSKIP;
-            case register_mu_glue_reference_cmd:
+            case register_muglue_reference_cmd:
                 tex_print_str_esc("muskip");
-                tex_print_int(register_mu_glue_number(n));
+                tex_print_int(register_muglue_number(n));
               MUSKIP:
                 if (tracing_nodes_par > 2) {
                     tex_print_format("<%i>", eq_value(n));
@@ -1887,12 +2027,12 @@ void tex_aux_show_eqtb(halfword n)
                 tex_print_char('=');
                 tex_print_spec(eq_value(n), mu_unit);
                 break;
-            case internal_int_reference_cmd:
-                tex_print_cmd_chr(internal_int_cmd, n);
+            case internal_integer_reference_cmd:
+                tex_print_cmd_chr(internal_integer_cmd, n);
                 goto COUNT;
-            case register_int_reference_cmd:
+            case register_integer_reference_cmd:
                 tex_print_str_esc("count");
-                tex_print_int(register_int_number(n));
+                tex_print_int(register_integer_number(n));
               COUNT:
                 tex_print_char('=');
                 tex_print_int(eq_value(n));
@@ -1917,24 +2057,33 @@ void tex_aux_show_eqtb(halfword n)
                 tex_print_char('=');
                 tex_print_posit(eq_value(n));
                 break;
-            case internal_dimen_reference_cmd:
-                tex_print_cmd_chr(internal_dimen_cmd, n);
+            case internal_dimension_reference_cmd:
+                tex_print_cmd_chr(internal_dimension_cmd, n);
                 goto DIMEN;
-            case register_dimen_reference_cmd:
+            case register_dimension_reference_cmd:
                 tex_print_str_esc("dimen");
-                tex_print_int(register_dimen_number(n));
+                tex_print_int(register_dimension_number(n));
               DIMEN:
                 tex_print_char('=');
                 tex_print_dimension(eq_value(n), pt_unit);
                 break;
             case specification_reference_cmd:
-                tex_print_cmd_chr(set_specification_cmd, n);
+                tex_print_cmd_chr(specification_cmd, n);
                 tex_print_char('=');
                 if (eq_value(n)) {
                  // if (tracing_nodes_par > 2) {
                  //     tex_print_format("<%i>", eq_value(n));
                  // }
                     tex_print_int(specification_count(eq_value(n)));
+                } else {
+                    tex_print_char('0');
+                }
+                break;
+            case unit_reference_cmd:
+                tex_print_cmd_chr(association_cmd, n);
+                tex_print_char('=');
+                if (eq_value(n)) {
+                    tex_print_str("todo");
                 } else {
                     tex_print_char('0');
                 }
@@ -1998,21 +2147,22 @@ void tex_initialize_equivalents(void)
     tex_aux_set_eq(null_cs,                     level_zero, undefined_cs_cmd,                 null,                   lmt_hash_state.hash_data.top - 1);
     tex_aux_set_eq(internal_glue_base,          level_one,  internal_glue_reference_cmd,      zero_glue,              number_glue_pars);
     tex_aux_set_eq(register_glue_base,          level_one,  register_glue_reference_cmd,      zero_glue,              max_glue_register_index);
-    tex_aux_set_eq(internal_mu_glue_base,       level_one,  internal_mu_glue_reference_cmd,   zero_glue,              number_mu_glue_pars);
-    tex_aux_set_eq(register_mu_glue_base,       level_one,  register_mu_glue_reference_cmd,   zero_glue,              max_mu_glue_register_index);
+    tex_aux_set_eq(internal_muglue_base,        level_one,  internal_muglue_reference_cmd,    zero_glue,              number_muglue_pars);
+    tex_aux_set_eq(register_muglue_base,        level_one,  register_muglue_reference_cmd,    zero_glue,              max_muglue_register_index);
     tex_aux_set_eq(internal_toks_base,          level_one,  internal_toks_reference_cmd,      null,                   number_tok_pars);
     tex_aux_set_eq(register_toks_base,          level_one,  register_toks_reference_cmd,      null,                   max_toks_register_index);
     tex_aux_set_eq(internal_box_base,           level_one,  internal_box_reference_cmd,       null,                   number_box_pars);
     tex_aux_set_eq(register_box_base,           level_one,  register_box_reference_cmd,       null,                   max_box_register_index);
-    tex_aux_set_eq(internal_int_base,           level_one,  internal_int_reference_cmd,       0,                      number_int_pars);
-    tex_aux_set_eq(register_int_base,           level_one,  register_int_reference_cmd,       0,                      max_int_register_index);
+    tex_aux_set_eq(internal_integer_base,       level_one,  internal_integer_reference_cmd,   0,                      number_integer_pars);
+    tex_aux_set_eq(register_integer_base,       level_one,  register_integer_reference_cmd,   0,                      max_integer_register_index);
     tex_aux_set_eq(internal_attribute_base,     level_one,  internal_attribute_reference_cmd, unused_attribute_value, number_attribute_pars);
     tex_aux_set_eq(register_attribute_base,     level_one,  register_attribute_reference_cmd, unused_attribute_value, max_attribute_register_index);
     tex_aux_set_eq(internal_posit_base,         level_one,  internal_posit_reference_cmd,     0,                      number_posit_pars);
     tex_aux_set_eq(register_posit_base,         level_one,  register_posit_reference_cmd,     0,                      max_posit_register_index);
-    tex_aux_set_eq(internal_dimen_base,         level_one,  internal_dimen_reference_cmd,     0,                      number_dimen_pars);
-    tex_aux_set_eq(register_dimen_base,         level_one,  register_dimen_reference_cmd,     0,                      max_dimen_register_index);
+    tex_aux_set_eq(internal_dimension_base,     level_one,  internal_dimension_reference_cmd, 0,                      number_dimension_pars);
+    tex_aux_set_eq(register_dimension_base,     level_one,  register_dimension_reference_cmd, 0,                      max_dimension_register_index);
     tex_aux_set_eq(internal_specification_base, level_one,  specification_reference_cmd,      null,                   number_specification_pars);
+    tex_aux_set_eq(internal_unit_base,          level_one,  unit_reference_cmd,               unset_unit_class,       max_unit_register_index);
     tex_aux_set_eq(undefined_control_sequence,  level_zero, undefined_cs_cmd,                 null,                   0);
     /*tex why here? */
     cat_code_table_par = 0;

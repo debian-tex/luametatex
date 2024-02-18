@@ -223,6 +223,8 @@ void tex_print_char(int s)
 
 */
 
+/* no_print terminal | logfile | terminal_and_logfile | pseudo | new_string | luabuffer */ 
+
 static void tex_aux_uprint(int s)
 {
     /*tex We're not sure about this so it's disabled for now! */
@@ -235,7 +237,6 @@ static void tex_aux_uprint(int s)
     */
     if (s == new_line_char_par && lmt_print_state.selector < pseudo_selector_code) {
         tex_print_ln();
-        return;
     } else if (s <= 0x7F) {
         tex_print_char(s);
     } else if (s <= 0x7FF) {
@@ -528,8 +529,8 @@ void tex_print_dimension(scaled s, int unit)
         s = 10 * (s % unity) + 5;
         do {
             if (delta > unity) {
-                /*tex Round the last digit. */
-                s = s + 0100000 - 50000;
+                /*tex Round the last digit, so: |s + 32768 - 50000| it is. */
+                s = s + 0x8000 - 50000;
             }
             buffer[i++] = (unsigned char) ('0' + (s / unity));
             s = 10 * (s % unity);
@@ -605,21 +606,31 @@ void tex_print_posit(halfword s)
 
 void tex_print_hex(long long sn)
 {
-    unsigned long long n = (unsigned long long) sn;
-    int k = 0;
-    unsigned char digits[24];
-    do {
-        unsigned char d = (unsigned char) (n % 16);
-        if (d < 10) {
-            digits[k] = '0' + d;
-        } else {
-            digits[k] = 'A' - 10 + d;
+    if (sn == 0) { 
+        tex_print_char('0');
+    } else { 
+        unsigned long long n = 0;
+        int k = 0;
+        unsigned char digits[24];
+        if (sn < 0) { 
+            tex_print_char('-');
+            n = (unsigned long long) -sn;
+        } else { 
+            n = (unsigned long long) sn;
         }
-        n = n / 16;
-        ++k;
-    } while (n != 0);
-    while (k-- > 0) {
-        tex_print_char(digits[k]);
+        do {
+            unsigned char d = (unsigned char) (n % 16);
+            if (d < 10) {
+                digits[k] = '0' + d;
+            } else {
+                digits[k] = 'A' - 10 + d;
+            }
+            n = n / 16;
+            ++k;
+        } while (n != 0);
+        while (k-- > 0) {
+            tex_print_char(digits[k]);
+        }
     }
 }
 
@@ -632,6 +643,7 @@ void tex_print_qhex(long long n)
 void tex_print_uhex(long long n)
 {
     tex_print_str("U+");
+    /* todo: loop */
     if (n < 16) {
         tex_print_char('0');
     }
@@ -639,6 +651,34 @@ void tex_print_uhex(long long n)
         tex_print_char('0');
     }
     if (n < 4096) {
+        tex_print_char('0');
+    }
+    tex_print_hex(n);
+}
+
+static void tex_print_xhex(long long n)
+{
+    tex_print_char('"');
+    /* todo: loop */
+    if (n < 0xF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFFF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFFFF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFFFFF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFFFFFF) {
+        tex_print_char('0');
+    }
+    if (n < 0xFFFFFFF) {
         tex_print_char('0');
     }
     tex_print_hex(n);
@@ -843,6 +883,14 @@ void tex_print_fontspec(int p)
         tex_print_str(" yscale ");
         tex_print_int(font_spec_y_scale(p));
     }
+    if (font_spec_slant(p)) {
+        tex_print_str(" slant ");
+        tex_print_int(font_spec_slant(p));
+    }
+    if (font_spec_weight(p)) {
+        tex_print_str(" weight ");
+        tex_print_int(font_spec_weight(p));
+    }
 }
 
 /*tex Math characters: */
@@ -944,7 +992,7 @@ void tex_print_font_identifier(halfword f)
      //        break;
      // /* case 6: */
      //    default:
-                tex_print_format("<%i: %s @ %D>", f, font_name(f), font_size(f), pt_unit);
+                tex_print_format("<%i: %s @ %p>", f, font_name(f), font_size(f));
      //         break;
      // }
     } else {
@@ -955,7 +1003,7 @@ void tex_print_font_identifier(halfword f)
 void tex_print_font_specifier(halfword e)
 {
     if (e && tex_is_valid_font(font_spec_identifier(e))) {
-        tex_print_format("<%i: %i %i %i>", font_spec_identifier(e), font_spec_scale(e), font_spec_x_scale(e), font_spec_y_scale(e));
+        tex_print_format("<%i: %i %i %i %i %i>", font_spec_identifier(e), font_spec_scale(e), font_spec_x_scale(e), font_spec_y_scale(e), font_spec_slant(e), font_spec_weight(e));
     } else {
         tex_print_str("<*>");
     }
@@ -972,7 +1020,7 @@ void tex_print_font(halfword f)
                 Nowadays this check for designsize is rather meaningless so we could as well
                 always enter this branch. We can even make this while blob a callback.
             */
-            tex_print_format(" at %D", font_size(f), pt_unit);
+            tex_print_format(" at %p", font_size(f));
      /* } */
     } else {
         tex_print_str("nofont");
@@ -1003,7 +1051,7 @@ void tex_print_token_list(const char *s, halfword p)
     }
     tex_print_char('{');
     if ((p >= 0) && (p <= (int) lmt_token_memory_state.tokens_data.top)) {
-        tex_show_token_list(p, 0);
+        tex_show_token_list(p, 0, 0);
     } else {
         tex_print_str(error_string_clobbered(21));
     }
@@ -1012,7 +1060,7 @@ void tex_print_token_list(const char *s, halfword p)
 
 /*tex This prints dimensions of a rule node. */
 
-void tex_print_rule_dimen(scaled d)
+void tex_print_rule_dimension(scaled d)
 {
     if (d == null_flag) {
         tex_print_char('*');
@@ -1101,9 +1149,9 @@ void tex_print_levels(void)
     int l0 = tracing_levels_par;
     tex_print_nlp();
     if (l0 > 0) {
-        int l1 = (l0 & 0x01) == tracing_levels_group;
-        int l2 = (l0 & 0x02) == tracing_levels_input;
-        int l4 = (l0 & 0x04) == tracing_levels_catcodes;
+        int l1 = (l0 & tracing_levels_group) == tracing_levels_group;
+        int l2 = (l0 & tracing_levels_input) == tracing_levels_input;
+        int l4 = (l0 & tracing_levels_catcodes) == tracing_levels_catcodes;
         if (l1) {
             tex_print_int(cur_level);
             tex_print_char(':');
@@ -1167,6 +1215,9 @@ const char *tex_print_format_args(const char *format, va_list args)
                         case 'c':
                             tex_print_char(va_arg(args, int));
                             break;
+                        case 'd': /* detail */
+                            tex_print_str(tex_aux_subtype_str(va_arg(args, int)));
+                            break;
                         case 'e':
                             tex_print_str_esc(NULL);
                             break;
@@ -1184,6 +1235,9 @@ const char *tex_print_format_args(const char *format, va_list args)
                             break;
                         case 's':
                             tex_print_str(va_arg(args, char *));
+                            break;
+                        case 'p':
+                            tex_print_dimension(va_arg(args, scaled), pt_unit);
                             break;
                         case 'q':
                             tex_print_char('\'');
@@ -1247,6 +1301,14 @@ const char *tex_print_format_args(const char *format, va_list args)
                                 }
                                 break;
                             }
+                        case 'N':
+                            {
+                                halfword node = va_arg(args, int);
+                                if (node) {
+                                    tex_print_str(lmt_interface.node_data[node_type(node)].name);
+                                }
+                                break;
+                            }
                         case 'M':
                             {
                                 halfword mode = va_arg(args, int);
@@ -1255,34 +1317,39 @@ const char *tex_print_format_args(const char *format, va_list args)
                             }
                         case 'P':
                             {
-                                scaled total = va_arg(args, int);
-                                scaled stretch = va_arg(args, int);
-                                scaled filstretch = va_arg(args, int);
-                                scaled fillstretch = va_arg(args, int);
-                                scaled filllstretch = va_arg(args, int);
-                                scaled shrink= va_arg(args, int);
-                                tex_print_dimension(total, pt_unit);
-                                if (stretch) {
-                                    tex_print_str(" plus ");
-                                    tex_print_dimension(stretch, pt_unit);
-                                } else if (filstretch) {
-                                    tex_print_str(" plus ");
-                                    tex_print_dimension(filstretch, no_unit);
-                                    tex_print_str(" fil");
-                                } else if (fillstretch) {
-                                    tex_print_str(" plus ");
-                                    tex_print_dimension(fillstretch, no_unit);
-                                    tex_print_str(" fill");
-                                } else if (filllstretch) {
-                                    tex_print_str(" plus ");
-                                    tex_print_dimension(fillstretch, no_unit);
-                                    tex_print_str(" filll");
-                                }
-                                if (shrink) {
-                                    tex_print_str(" minus ");
-                                    tex_print_dimension(shrink, pt_unit);
-                                }
-                                break;
+                                 scaled total = va_arg(args, int);
+                                 scaled stretch = va_arg(args, int);
+                                 scaled fistretch = va_arg(args, int);
+                                 scaled filstretch = va_arg(args, int);
+                                 scaled fillstretch = va_arg(args, int);
+                                 scaled filllstretch = va_arg(args, int);
+                                 scaled shrink = va_arg(args, int);
+                                 tex_print_dimension(total, pt_unit);
+                                 if (stretch) {
+                                     tex_print_str(" plus ");
+                                     tex_print_dimension(stretch, pt_unit);
+                                 } else if (fistretch) {
+                                     tex_print_str(" plus ");
+                                     tex_print_dimension(fistretch, no_unit);
+                                     tex_print_str(" fi");
+                                 } else if (filstretch) {
+                                     tex_print_str(" plus ");
+                                     tex_print_dimension(filstretch, no_unit);
+                                     tex_print_str(" fil");
+                                 } else if (fillstretch) {
+                                     tex_print_str(" plus ");
+                                     tex_print_dimension(fillstretch, no_unit);
+                                     tex_print_str(" fill");
+                                 } else if (filllstretch) {
+                                     tex_print_str(" plus ");
+                                     tex_print_dimension(fillstretch, no_unit);
+                                     tex_print_str(" filll");
+                                 }
+                                 if (shrink) {
+                                     tex_print_str(" minus ");
+                                     tex_print_dimension(shrink, pt_unit);
+                                 }
+                                 break;
                             }
                         case 'Q':
                             {
@@ -1294,7 +1361,7 @@ const char *tex_print_format_args(const char *format, va_list args)
                         case 'R':
                             {
                                 halfword d = va_arg(args, int);
-                                tex_print_rule_dimen(d);
+                                tex_print_rule_dimension(d);
                                 break;
                             }
                         case 'S':
@@ -1313,6 +1380,12 @@ const char *tex_print_format_args(const char *format, va_list args)
                             {
                                 halfword c = va_arg(args, int);
                                 tex_print_uhex(c);
+                                break;
+                            }
+                        case 'X':
+                            { 
+                                halfword x = va_arg(args, int);
+                                tex_print_xhex(x);
                                 break;
                             }
                         case '2':
@@ -1341,6 +1414,10 @@ const char *tex_print_format_args(const char *format, va_list args)
                             break;
                     }
                 }
+                break;
+            case '\n':
+            case '\r':
+                tex_print_nlp();
                 break;
             default:
                 tex_print_char(chr); /* todo: utf */

@@ -21,14 +21,18 @@ typedef struct list_state_record {
     halfword direction_stack;      
     int      math_dir;             // singleword 
     int      math_style;           // singleword 
-    int      math_scale;           
     int      math_main_style;      // singleword 
-    halfword delimiter;            // todo: get rid of these and use the stack 
-    halfword incomplete_noad;      // todo: get rid of these and use the stack 
+    int      math_parent_style;    // singleword 
+    int      math_scale;           
     halfword math_flatten;         // singleword 
     halfword math_begin;           // singleword 
     halfword math_end;             // singleword 
     halfword math_mode;            // singleword 
+    halfword delimiter;            // todo: get rid of these and use the stack 
+    halfword incomplete_noad;      // todo: get rid of these and use the stack 
+    halfword tolerance;
+    halfword pretolerance;
+    int      padding; 
 } list_state_record;
 
 typedef struct nest_state_info {
@@ -48,6 +52,7 @@ extern void        tex_initialize_nest_state (void);
 extern void        tex_initialize_nesting    (void);
 extern void        tex_push_nest             (void);
 extern void        tex_pop_nest              (void);
+extern void        tex_tail_prepend          (halfword p);
 extern void        tex_tail_append           (halfword p);
 extern void        tex_tail_append_list      (halfword p);
 extern halfword    tex_pop_tail              (void);

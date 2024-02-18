@@ -78,6 +78,11 @@
     2.10.00 : a few days before the ctx 2022 meeting (starting September 19)
     2.10.01 : mid October 2022 (some more upgrades of the math engine) 
     2.10.05 : late January 2023 
+    2.10.07 : around TeXLive 2023
+    2.10.08 : close to BachoTeX 2023 
+    2.10.09 : evolved in May/June 2023 (math & text linebreak experiments) 
+    2.10.10 : around the ctx 2023 meeting 
+    2.10.11 : till the end of 2024 
 
     At some point the \CONTEXT\ group will be responsible for guaranteeing that the official version
     is what comes with \CONTEXT\ and that long term support and stabilty is guaranteed and that no 
@@ -89,10 +94,11 @@
 
 # include "tex/textypes.h"
 
-# define luametatex_version          210
-# define luametatex_revision         8
-# define luametatex_version_string   "2.10.08"
-# define luametatex_development_id   20230426
+# define luametatex_version          211
+# define luametatex_revision         11
+# define luametatex_release          01
+# define luametatex_version_string   "2.11.01"
+# define luametatex_development_id   20240214
 
 # define luametatex_name_camelcase   "LuaMetaTeX"
 # define luametatex_name_lowercase   "luametatex"
@@ -106,18 +112,26 @@
     structures. This also has the advantage that we have more specific access (via a namespace) and
     don't use that many macros (that can conflict later on).
 
+    We deliberately don't rewrite everything, if only because the original documentation suit apply
+    where possible and also because \quotation {What works, works}. 
+
 */
 
 typedef struct version_state_info {
     int         version;
     int         revision;
+    int         release; 
+    int         developmentid;
     const char *verbose;
     const char *banner;
     const char *compiler;
- // const char *libc;
-    int         developmentid;
-    int         formatid;
     const char *copyright;
+    int         formatid;
+    int         luaversionmajor;
+    int         luaversionminor;
+    int         luaversionrelease;
+    double      luatexversion;
+    double      luaversion;
 } version_state_info;
 
 extern version_state_info lmt_version_state;
@@ -143,6 +157,7 @@ extern version_state_info lmt_version_state;
 # include <time.h>
 # include <signal.h>
 # include <sys/stat.h>
+# include <stdbool.h>
 
 # ifdef _WIN32
     # include <windows.h>

@@ -57,6 +57,7 @@ extern int lmt_linebreak_callback(
 extern void lmt_alignment_callback(
     halfword head,
     halfword context,
+    halfword callback, 
     halfword attrlist,
     halfword preamble
 );
@@ -109,6 +110,34 @@ extern void lmt_page_filter_callback(
 extern void lmt_append_line_filter_callback(
     halfword context,
     halfword index
+);
+
+extern int lmt_par_pass_callback(
+    halfword               head,
+    line_break_properties *properties, 
+    halfword               identifier, 
+    halfword               callback, 
+    halfword               features, 
+    scaled                 overfull, 
+    scaled                 underfull, 
+    halfword               verdict, 
+    halfword               classified,
+    scaled                 threshold, 
+    halfword               badness, 
+    halfword               classes,
+    int                   *repeat
+);
+
+extern halfword lmt_uleader_callback(
+    halfword head,
+    halfword index, 
+    int      context
+);
+
+extern scaled lmt_italic_correction_callback(
+    halfword glyph,
+    scaled   kern,
+    halfword subtype
 );
 
 # endif
