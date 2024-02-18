@@ -2,8 +2,8 @@ luametatex for Debian
 --------------------
 
 I've patched upstreams CMakeLists.txt file to link dynamically with
-libmimalloc in Debian. The libcerf in the source package is patched
-by the luametatex maintainers, hence I use that instead of the
+libmimalloc in Debian. The libcerf and the potrace in the source package
+is patched by the luametatex maintainers, hence I use that instead of the
 Debian package.
 
  -- Hilmar Preusse <hille42@web.de>  Mon, 17 Apr 2023 09:33:47 +0200
