@@ -170,6 +170,7 @@ static int tex_aux_room_in_hash(void)
     231--258.]
 
     https://en.wikipedia.org/wiki/Coalesced_hashing
+    https://programming.guide/coalesced-hashing.html
 
     Because we seldom use uppercase we get many misses, multiplying a chr j[k] by k actually gives
     a better spread.
@@ -206,13 +207,13 @@ halfword tex_prim_lookup(strnumber s)
     if (s >= cs_offset_value) {
         unsigned char *j = str_string(s);
      // unsigned l = (unsigned) str_length(s);
-        halfword l = str_length(s);
+        halfword l = (halfword) str_length(s);
         halfword h = tex_aux_compute_prim((char *) j, l);
         /*tex We start searching here; note that |0 <= h < hash_prime|. */
         halfword p = h + 1;
         while (1) {
-         /* When using |halfword text = prim_text(p)| no intelliugense warning for first test in: */
-            if (prim_text(p) > 0 && str_length(prim_text(p)) == l && tex_str_eq_str(prim_text(p), s)) {
+         /* When using |halfword text = prim_text(p)| no intellisense warning for first test in: */
+            if ((prim_text(p) > 0) && (str_length(prim_text(p)) == (size_t) l) && tex_str_eq_str(prim_text(p), s)) {
                 return p;
             } else if (prim_next(p)) {
                 p = prim_next(p);
@@ -506,15 +507,14 @@ static halfword tex_aux_insert_id(halfword p, const unsigned char *j, unsigned i
 halfword tex_id_locate(int j, int l, int create)
 {
     /*tex The index in |hash| array: */
-    halfword h = tex_aux_compute_hash((char *) (lmt_fileio_state.io_buffer + j), (unsigned) l);
+    halfword p = tex_aux_compute_hash((char *) (lmt_fileio_state.io_buffer + j), (unsigned) l) + hash_base;
     /*tex We start searching here. Note that |0 <= h < hash_prime|: */
-    halfword p = h + hash_base;
-    /*tex The next one in a list: */
     while (1) {
         strnumber s = cs_text(p);
         if ((s > 0) && (str_length(s) == (unsigned) l) && tex_str_eq_buf(s, j, l)) {
             return p;
         } else {
+            /*tex The next one in a chain: */
             halfword n = cs_next(p);
             if (n) {
                 p = n;
@@ -523,6 +523,21 @@ halfword tex_id_locate(int j, int l, int create)
             } else {
                 break;
             }
+        }
+    }
+    return undefined_control_sequence;
+}
+
+halfword tex_id_locate_only(int j, int l)
+{
+    halfword p = tex_aux_compute_hash((char *) (lmt_fileio_state.io_buffer + j), (unsigned) l) + hash_base;
+    while (p) {
+        strnumber s = cs_text(p);
+        if ((s > 0) && (str_length(s) == (unsigned) l) && tex_str_eq_buf(s, j, l)) {
+     // if ((s > 0) && (str_length(s) == (unsigned) l) && memcmp(str_string(s), &lmt_fileio_state.io_buffer[j], l) == 0) {
+            return p;
+        } else {
+            p = cs_next(p);
         }
     }
     return undefined_control_sequence;
@@ -558,10 +573,22 @@ halfword tex_string_locate(const char *s, size_t l, int create)
     return undefined_control_sequence;
 }
 
+halfword tex_string_locate_only(const char *s, size_t l)
+{
+    halfword p = tex_aux_compute_hash(s, (unsigned) l) + hash_base;
+    while (p) {
+        if (cs_text(p) > 0 && tex_str_eq_cstr(cs_text(p), s, (int) l)) {
+            return p;
+        } else {
+            p = cs_next(p);
+        }
+    }
+    return undefined_control_sequence;
+}
+
 halfword tex_located_string(const char *s)
 {
-    size_t l = strlen(s);
-    return tex_string_locate(s, l, 0);
+    return tex_string_locate_only(s, strlen(s));
 }
 
 /*tex
@@ -665,7 +692,7 @@ static void tex_aux_prim_cmd_chr(quarterword cmd, halfword chr)
             } else {
                 tex_print_format("[warning: cmd %i, chr %i, no name]", cmd, idx);
             }
-        } else if (cmd == internal_int_cmd && idx < number_int_pars) {
+        } else if (cmd == internal_integer_cmd && idx < number_integer_pars) {
             /* a special case */
             tex_print_format("[integer: chr %i, class specific]", cmd);
         } else {
@@ -703,6 +730,9 @@ void tex_print_cmd_flags(halfword cs, halfword cmd, int flags, int escaped)
         if (is_noaligned(flags)) { (escaped ? tex_print_str_esc : tex_print_str)("noaligned "); }
         if (is_instance (flags)) { (escaped ? tex_print_str_esc : tex_print_str)("instance " ); }
         if (is_untraced (flags)) { (escaped ? tex_print_str_esc : tex_print_str)("untraced " ); }
+    }
+    if (is_constant_cmd(cmd)) {
+        (escaped ? tex_print_str_esc : tex_print_str)("constant " );
     }
     if (is_tolerant_cmd(cmd)) {
         (escaped ? tex_print_str_esc : tex_print_str)("tolerant " );
@@ -778,6 +808,9 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
         case lua_protected_call_cmd:
             tex_aux_show_lua_call("protected luacall", chr);
             break;
+        case lua_semi_protected_call_cmd:
+            tex_aux_show_lua_call("semiprotected luacall", chr);
+            break;
         case lua_value_cmd:
             tex_aux_show_lua_call("luavalue", chr);
             break;
@@ -791,6 +824,7 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
         case call_cmd:
         case protected_call_cmd:
         case semi_protected_call_cmd:
+        case constant_call_cmd:
         case tolerant_call_cmd:
         case tolerant_protected_call_cmd:
         case tolerant_semi_protected_call_cmd:
@@ -804,12 +838,12 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_str_esc("toks");
             tex_print_int(register_toks_number(chr));
             break;
-        case internal_int_cmd:
+        case internal_integer_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
             break;
-        case register_int_cmd:
+        case register_integer_cmd:
             tex_print_str_esc("count");
-            tex_print_int(register_int_number(chr));
+            tex_print_int(register_integer_number(chr));
             break;
         case internal_attribute_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
@@ -825,12 +859,12 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
         case internal_posit_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
             break;
-        case internal_dimen_cmd:
+        case internal_dimension_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
             break;
-        case register_dimen_cmd:
+        case register_dimension_cmd:
             tex_print_str_esc("dimen");
-            tex_print_int(register_dimen_number(chr));
+            tex_print_int(register_dimension_number(chr));
             break;
         case internal_glue_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
@@ -839,12 +873,12 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_str_esc("skip");
             tex_print_int(register_glue_number(chr));
             break;
-        case internal_mu_glue_cmd:
+        case internal_muglue_cmd:
             tex_aux_prim_cmd_chr(cmd, chr);
             break;
-        case register_mu_glue_cmd:
+        case register_muglue_cmd:
             tex_print_str_esc("muskip");
-            tex_print_int(register_mu_glue_number(chr));
+            tex_print_int(register_muglue_number(chr));
             break;
         case node_cmd:
             tex_print_str(node_token_flagged(chr) ? "large" : "small");
@@ -852,6 +886,10 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             break;
         case integer_cmd:
             tex_print_str("integer ");
+            tex_print_int(chr);
+            break;
+        case index_cmd:
+            tex_print_str("parameter ");
             tex_print_int(chr);
             break;
         case dimension_cmd:
@@ -899,12 +937,10 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             /*tex Kind of special. */
             tex_print_str_esc("notexpanded");
             break;
-        /*
-        case string_cmd:
-            print_str("string:->");
-            print(cs_offset_value + chr);
+        case deep_frozen_keep_constant_cmd:
+            /*tex Kind of special. */
+            tex_print_str_esc("keepconstant");
             break;
-        */
         case internal_box_reference_cmd:
             tex_print_str_esc("hiddenlocalbox");
             break;

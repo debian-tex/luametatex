@@ -224,12 +224,14 @@ void tex_initialize_nesting(void)
     cur_list.delimiter = null;
     cur_list.prev_graf = 0;
     cur_list.mode_line = 0;
-    cur_list.prev_depth = ignore_depth; /*tex |ignore_depth_criterium_par| is not yet available! */
+    cur_list.prev_depth = ignore_depth; /*tex |ignore_depth_criterion_par| is not yet available! */
     cur_list.space_factor = default_space_factor;
     cur_list.incomplete_noad = null;
     cur_list.direction_stack = null;
     cur_list.math_dir = 0;
     cur_list.math_style = -1;
+    cur_list.math_main_style = -1;
+    cur_list.math_parent_style = -1;
     cur_list.math_flatten = 1;
     cur_list.math_begin = unset_noad_class;
     cur_list.math_end = unset_noad_class;
@@ -283,6 +285,8 @@ void tex_push_nest(void)
         cur_list.direction_stack = null;
         cur_list.math_dir = 0;
         cur_list.math_style = -1;
+        cur_list.math_main_style = top->math_main_style;
+        cur_list.math_parent_style = top->math_parent_style;
         cur_list.math_flatten = 1;
         cur_list.math_begin = unset_noad_class;
         cur_list.math_end = unset_noad_class;
@@ -329,15 +333,15 @@ void tex_show_activities(void)
                 tex_show_box(node_next(page_head));
                 if (lmt_page_builder_state.contents != contribute_nothing) {
                     halfword r;
-                    tex_print_format("%l[total height %P, goal height %D]",
+                    tex_print_format("%l[total height %P, goal height %p]",
                         page_total, page_stretch, page_filstretch, page_fillstretch, page_filllstretch, page_shrink,
-                        page_goal, pt_unit
+                        page_goal
                     );
                     r = node_next(page_insert_head);
                     while (r != page_insert_head) {
                         halfword index = insert_index(r);
                         halfword multiplier = tex_get_insert_multiplier(index);
-                        halfword size = multiplier == 1000 ? insert_total_height(r) : tex_x_over_n(insert_total_height(r), 1000) * multiplier;
+                        halfword size = multiplier == scaling_factor ? insert_total_height(r) : tex_x_over_n(insert_total_height(r), scaling_factor) * multiplier;
                         if (node_type(r) == split_node && node_subtype(r) == insert_split_subtype) {
                             halfword q = page_head;
                             halfword n = 0;
@@ -347,9 +351,9 @@ void tex_show_activities(void)
                                     ++n;
                                 }
                             } while (q != split_broken_insert(r));
-                            tex_print_format("%l[insert %i adds %D, might split to %i]", index, size, pt_unit, n);
+                            tex_print_format("%l[insert %i adds %p, might split to %i]", index, size, n);
                         } else {
-                            tex_print_format("%l[insert %i adds %D]", index, size, pt_unit);
+                            tex_print_format("%l[insert %i adds %p]", index, size);
                         }
                         r = node_next(r);
                     }
@@ -367,10 +371,10 @@ void tex_show_activities(void)
             case vmode:
             case internal_vmode:
                 {
-                    if (n.prev_depth <= ignore_depth_criterium_par) {
+                    if (n.prev_depth <= ignore_depth_criterion_par) {
                         tex_print_format("%l[prevdepth ignored");
                     } else {
-                        tex_print_format("%l[prevdepth %D", n.prev_depth, pt_unit);
+                        tex_print_format("%l[prevdepth %p", n.prev_depth);
                     }
                     if (n.prev_graf != 0) {
                         tex_print_format(", prevgraf %i line%s", n.prev_graf, n.prev_graf == 1 ? "" : "s");
@@ -402,6 +406,15 @@ int tex_vmode_nest_index(void)
     return p;
 }
 
+void tex_tail_prepend(halfword n) 
+{
+    tex_couple_nodes(node_prev(cur_list.tail), n);
+    tex_couple_nodes(n, cur_list.tail);
+    if (cur_list.tail == cur_list.head) {
+        cur_list.head = n;
+    }
+}
+
 void tex_tail_append(halfword p)
 {
     node_next(cur_list.tail) = p;
@@ -415,3 +428,4 @@ void tex_tail_append_list(halfword p)
     node_prev(p) = cur_list.tail;
     cur_list.tail = tex_tail_of_node_list(p);
 }
+

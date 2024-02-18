@@ -70,107 +70,122 @@ void *sa_free_array(void *p)
 
 */
 
-static void sa_aux_store_stack(sa_tree a, int n, sa_tree_item v1, sa_tree_item v2, int gl)
+static void sa_aux_store_stack(const sa_tree head, int n, sa_tree_item v1, sa_tree_item v2, int gl)
 {
-    sa_stack_item st;
-    st.code = n;
-    st.value_1 = v1;
-    st.value_2 = v2;
-    st.level = gl;
-    if (! a->stack) {
-        a->stack = sa_malloc_array(sizeof(sa_stack_item), a->sa_stack_size);
-    } else if (((a->sa_stack_ptr) + 1) >= a->sa_stack_size) {
-        a->stack = sa_realloc_array(a->stack, sizeof(sa_stack_item), a->sa_stack_size, a->sa_stack_step);
-        a->sa_stack_size += a->sa_stack_step;
+    sa_stack_item st = {
+        .code    = n,
+        .value_1 = v1,
+        .value_2 = v2,
+        .level   = gl
+    };
+ // if (head->sa_stack_ptr && 
+ //     head->stack[head->sa_stack_ptr].code == n && 
+ //     head->stack[head->sa_stack_ptr].value_1.int_value == v1.int_value &&
+ //     head->stack[head->sa_stack_ptr].value_2.int_value == v2.int_value &&
+ //     head->stack[head->sa_stack_ptr].level == gl 
+ //     ) {
+ //     return;
+ // }
+    if (! head->stack) {
+        head->stack = sa_malloc_array(sizeof(sa_stack_item), head->sa_stack_size);
+    } else if (((head->sa_stack_ptr) + 1) >= head->sa_stack_size) {
+        head->stack = sa_realloc_array(head->stack, sizeof(sa_stack_item), head->sa_stack_size, head->sa_stack_step);
+        head->sa_stack_size += head->sa_stack_step;
     }
-    (a->sa_stack_ptr)++;
-    a->stack[a->sa_stack_ptr] = st;
+ // printf("store %i: code %i, v1 %i, v2 %i, level %i\n",head->identifier,st.code,st.value_1.int_value,st.value_2.int_value,st.level);
+    (head->sa_stack_ptr)++;
+    head->stack[head->sa_stack_ptr] = st;
 }
 
-static void sa_aux_skip_in_stack(sa_tree a, int n)
+static void sa_aux_skip_in_stack(const sa_tree head, int n)
 {
-    if (a->stack) {
-        int p = a->sa_stack_ptr;
+    if (head->stack) {
+        int p = head->sa_stack_ptr;
         while (p > 0) {
-            if (a->stack[p].code == n && a->stack[p].level > 0) {
-                a->stack[p].level = -(a->stack[p].level);
+            if (head->stack[p].code == n && head->stack[p].level > 0) {
+                head->stack[p].level = -(head->stack[p].level);
             }
+         // printf("skip %i: code %i, v1 %i, v2 %i, level %i\n",head->identifier,head->stack[p].code,head->stack[p].value_1.int_value,head->stack[p].value_2.int_value,head->stack[p].level);
             p--;
         }
     }
 }
 
-int sa_get_item_1(const sa_tree head, int n)
-{
-    if (head->tree) {
-        int h = LMT_SA_H_PART(n);
-        if (head->tree[h]) {
-            int m = LMT_SA_M_PART(n);
-            if (head->tree[h][m]) {
-                return head->tree[h][m][LMT_SA_L_PART(n)/4].uchar_value[n%4];
-            }
-        }
-    }
-    return (int) head->dflt.uchar_value[0];
-}
+# if (1) 
 
-int sa_get_item_2(const sa_tree head, int n)
-{
-    if (head->tree) {
-        int h = LMT_SA_H_PART(n);
-        if (head->tree[h]) {
-            int m = LMT_SA_M_PART(n);
-            if (head->tree[h][m]) {
-                return head->tree[h][m][LMT_SA_L_PART(n)/2].ushort_value[n%2];
+    int sa_get_item_1(const sa_tree head, int n)
+    {
+     // if (head->tree) {
+            int h = LMT_SA_H_PART(n);
+            if (head->tree[h]) {
+                int m = LMT_SA_M_PART(n);
+                if (head->tree[h][m]) {
+                    return head->tree[h][m][LMT_SA_L_PART(n)/4].uchar_value[n%4];
+                }
             }
-        }
+     // }
+        return (int) head->dflt.uchar_value[0];
     }
-    return (int) head->dflt.ushort_value[0];
-}
 
-int sa_get_item_4(const sa_tree head, int n, sa_tree_item *v)
-{
-    if (head->tree) {
-        int h = LMT_SA_H_PART(n);
-        if (head->tree[h]) {
-            int m = LMT_SA_M_PART(n);
-            if (head->tree[h][m]) {
-                *v = head->tree[h][m][LMT_SA_L_PART(n)];
-                return 1;
+    int sa_get_item_2(const sa_tree head, int n)
+    {
+     // if (head->tree) {
+            int h = LMT_SA_H_PART(n);
+            if (head->tree[h]) {
+                int m = LMT_SA_M_PART(n);
+                if (head->tree[h][m]) {
+                    return head->tree[h][m][LMT_SA_L_PART(n)/2].ushort_value[n%2];
+                }
             }
-        }
+     // }
+        return (int) head->dflt.ushort_value[0];
     }
-    *v = head->dflt;
-    return 0;
-}
 
-int sa_get_item_8(const sa_tree head, int n, sa_tree_item *v1, sa_tree_item *v2)
-{
-    if (head->tree != NULL) {
-        int h = LMT_SA_H_PART(n);
-        if (head->tree[h]) {
-            int m = LMT_SA_M_PART(n);
-            if (head->tree[h][m]) {
-                int l = 2*LMT_SA_L_PART(n);
-                *v1 = head->tree[h][m][l];
-                *v2 = head->tree[h][m][l+1];
-                return 1;
+    int sa_get_item_4(const sa_tree head, int n, sa_tree_item *v)
+    {
+     // if (head->tree) {
+            int h = LMT_SA_H_PART(n);
+            if (head->tree[h]) {
+                int m = LMT_SA_M_PART(n);
+                if (head->tree[h][m]) {
+                    *v = head->tree[h][m][LMT_SA_L_PART(n)];
+                    return 1;
+                }
             }
-        }
+     // }
+        *v = head->dflt;
+        return 0;
     }
-    *v1 = head->dflt;
-    *v2 = head->dflt;
-    return 0;
-}
 
-void sa_set_item_1(sa_tree head, int n, int v, int gl)
+    int sa_get_item_8(const sa_tree head, int n, sa_tree_item *v1, sa_tree_item *v2)
+    {
+     // if (head->tree) {
+            int h = LMT_SA_H_PART(n);
+            if (head->tree[h]) {
+                int m = LMT_SA_M_PART(n);
+                if (head->tree[h][m]) {
+                    int l = 2*LMT_SA_L_PART(n);
+                    *v1 = head->tree[h][m][l];
+                    *v2 = head->tree[h][m][l+1];
+                    return 1;
+                }
+            }
+     // }
+        *v1 = head->dflt;
+        *v2 = head->dflt;
+        return 0;
+    }
+
+# endif 
+
+void sa_set_item_1(const sa_tree head, int n, int v, int gl)
 {
     int h = LMT_SA_H_PART(n);
     int m = LMT_SA_M_PART(n);
     int l = LMT_SA_L_PART(n);
-    if (! head->tree) {
-        head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
-    }
+ // if (! head->tree) {
+ //     head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // }
     if (! head->tree[h]) {
         head->tree[h] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     }
@@ -188,14 +203,14 @@ void sa_set_item_1(sa_tree head, int n, int v, int gl)
     head->tree[h][m][l/4].uchar_value[n%4] = (unsigned char) v;
 }
 
-void sa_set_item_2(sa_tree head, int n, int v, int gl)
+void sa_set_item_2(const sa_tree head, int n, int v, int gl)
 {
     int h = LMT_SA_H_PART(n);
     int m = LMT_SA_M_PART(n);
     int l = LMT_SA_L_PART(n);
-    if (! head->tree) {
-        head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
-    }
+ // if (! head->tree) {
+ //     head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // }
     if (! head->tree[h]) {
         head->tree[h] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     }
@@ -213,14 +228,14 @@ void sa_set_item_2(sa_tree head, int n, int v, int gl)
     head->tree[h][m][l/2].ushort_value[n%2] = (unsigned short) v;
 }
 
-void sa_set_item_4(sa_tree head, int n, sa_tree_item v, int gl)
+void sa_set_item_4(const sa_tree head, int n, sa_tree_item v, int gl)
 {
     int h = LMT_SA_H_PART(n);
     int m = LMT_SA_M_PART(n);
     int l = LMT_SA_L_PART(n);
-    if (! head->tree) {
-        head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
-    }
+ // if (! head->tree) {
+ //     head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // }
     if (! head->tree[h]) {
         head->tree[h] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     }
@@ -238,14 +253,14 @@ void sa_set_item_4(sa_tree head, int n, sa_tree_item v, int gl)
     head->tree[h][m][l] = v;
 }
 
-void sa_set_item_8(sa_tree head, int n, sa_tree_item v1, sa_tree_item v2, int gl)
+void sa_set_item_8(const sa_tree head, int n, sa_tree_item v1, sa_tree_item v2, int gl)
 {
     int h = LMT_SA_H_PART(n);
     int m = LMT_SA_M_PART(n);
     int l = 2*LMT_SA_L_PART(n);
-    if (! head->tree) {
-        head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
-    }
+ // if (! head->tree) {
+ //     head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // }
     if (! head->tree[h]) {
         head->tree[h] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     }
@@ -264,15 +279,15 @@ void sa_set_item_8(sa_tree head, int n, sa_tree_item v1, sa_tree_item v2, int gl
     head->tree[h][m][l+1] = v2;
 }
 
-void sa_set_item_n(sa_tree head, int n, int v, int gl)
+void sa_set_item_n(const sa_tree head, int n, int v, int gl)
 {
     int h = LMT_SA_H_PART(n);
     int m = LMT_SA_M_PART(n);
     int l = LMT_SA_L_PART(n);
     int d = head->bytes == 1 ? 4 : (head->bytes == 2 ? 2 : 1);
-    if (! head->tree) {
-        head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
-    }
+ // if (! head->tree) {
+ //     head->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // }
     if (! head->tree[h]) {
         head->tree[h] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     }
@@ -302,7 +317,7 @@ void sa_set_item_n(sa_tree head, int n, int v, int gl)
 
 int sa_get_item_n(const sa_tree head, int n)
 {
-    if (head->tree) {
+ // if (head->tree) {
         int h = LMT_SA_H_PART(n);
         if (head->tree[h]) {
             int m = LMT_SA_M_PART(n);
@@ -314,7 +329,7 @@ int sa_get_item_n(const sa_tree head, int n)
                 }
             }
         }
-    }
+ // }
     switch (head->bytes) {
         case 1 : return (int) head->dflt.uchar_value[n%4];
         case 2 : return (int) head->dflt.ushort_value[n%2];
@@ -323,7 +338,7 @@ int sa_get_item_n(const sa_tree head, int n)
     }
 }
 
-void sa_clear_stack(sa_tree a)
+void sa_clear_stack(const sa_tree a)
 {
     if (a) {
         a->stack = sa_free_array(a->stack);
@@ -335,7 +350,7 @@ void sa_clear_stack(sa_tree a)
 void sa_destroy_tree(sa_tree a)
 {
     if (a) {
-        if (a->tree) {
+  //   if (a->tree) {
             for (int h = 0; h < LMT_SA_HIGHPART; h++) {
                 if (a->tree[h]) {
                     for (int m = 0; m < LMT_SA_MIDPART; m++) {
@@ -344,25 +359,27 @@ void sa_destroy_tree(sa_tree a)
                     a->tree[h] = sa_free_array(a->tree[h]);
                 }
             }
-            a->tree = sa_free_array(a->tree);
-        }
+  //        a->tree = sa_free_array(a->tree);
+  //    }
         a->stack = sa_free_array(a->stack);
         a = sa_free_array(a);
     }
 }
 
-sa_tree sa_copy_tree(sa_tree b)
+sa_tree sa_copy_tree(const sa_tree b)
 {
     sa_tree a = (sa_tree) sa_malloc_array(sizeof(sa_tree_head), 1);
     a->sa_stack_step = b->sa_stack_step;
     a->sa_stack_size = b->sa_stack_size;
     a->bytes = b->bytes;
+    a->identifier = b->identifier;
     a->dflt = b->dflt;
     a->stack = NULL;
     a->sa_stack_ptr = 0;
-    a->tree = NULL;
-    if (b->tree) {
-        a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(void *), LMT_SA_HIGHPART);
+    sa_wipe_array(a->tree, sizeof(sa_tree_item *), LMT_SA_HIGHPART);
+ // a->tree = NULL;
+ // if (b->tree) {
+ //     a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(void *), LMT_SA_HIGHPART);
         for (int h = 0; h < LMT_SA_HIGHPART; h++) {
             if (b->tree[h]) {
                 int slide = LMT_SA_LOWPART;
@@ -381,7 +398,7 @@ sa_tree sa_copy_tree(sa_tree b)
                 }
             }
         }
-    }
+ // }
     return a;
 }
 
@@ -394,22 +411,23 @@ sa_tree sa_copy_tree(sa_tree b)
 
 */
 
-sa_tree sa_new_tree(int size, int bytes, sa_tree_item dflt)
+sa_tree sa_new_tree(int identifier, int size, int bytes, sa_tree_item dflt)
 {
-    sa_tree_head *a;
-    a = (sa_tree_head *) lmt_memory_malloc(sizeof(sa_tree_head));
+    sa_tree_head *a = (sa_tree_head *) lmt_memory_malloc(sizeof(sa_tree_head));
     a->dflt = dflt;
     a->stack = NULL;
-    a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+ // a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(sa_tree_item **), LMT_SA_HIGHPART);
+    sa_wipe_array(a->tree, sizeof(sa_tree_item *), LMT_SA_HIGHPART);
     a->tree[0] = (sa_tree_item **) sa_calloc_array(sizeof(sa_tree_item *), LMT_SA_MIDPART);
     a->sa_stack_size = size;
     a->sa_stack_step = size;
     a->bytes = bytes;
+    a->identifier = identifier;
     a->sa_stack_ptr = 0;
     return (sa_tree) a;
 }
 
-void sa_restore_stack(sa_tree head, int gl)
+void sa_restore_stack(const sa_tree head, int gl)
 {
     if (head->stack) {
         while (head->sa_stack_ptr > 0 && abs(head->stack[head->sa_stack_ptr].level) >= gl) {
@@ -448,13 +466,52 @@ void sa_restore_stack(sa_tree head, int gl)
         }
     }
 }
+void sa_reinit_stack(const sa_tree head, int level)
+{
+    if (head->stack) {
+        /*tex Stack slot 0 is a dummy. */
+        for(int i = head->sa_stack_ptr; i > 0 ; i--) {
+            sa_stack_item st = head->stack[i];
+            if (st.level > 0) {
+             // printf("reinit %i: code %i, v1 %i, v2 %i, level %i\n",head->identifier,st.code,st.value_1.int_value,st.value_2.int_value,st.level);
+                switch (head->bytes) {
+                    case 1 : sa_set_item_1(head, st.code, st.value_1.uchar_value[st.code%4], level); break;
+                    case 2 : sa_set_item_2(head, st.code, st.value_1.ushort_value[st.code%2], level); break;
+                    case 4 : sa_set_item_4(head, st.code, st.value_1, level); break;
+                }
+            }
+        }
+    }
+}
+
+void sa_show_stack(const sa_tree head)
+{
+    if (head->stack) {
+        /*tex Stack slot 0 is a dummy. */
+     // tex_print_format("%l[codestack %i, size %i]\n", head->identifier, head->sa_stack_ptr - 1);
+        tex_print_format("[codestack %i, size %i]\n", head->identifier, head->sa_stack_ptr - 1);
+        for (int i = 1; i <= head->sa_stack_ptr; i++) {
+            sa_stack_item st = head->stack[i];
+            int value = 0;
+            switch (head->bytes) {
+                case 1 : value = st.value_1.uchar_value[st.code%4]; break;
+                case 2 : value = st.value_1.ushort_value[st.code%2]; break;
+                case 4 : value = st.value_1.int_value; break;
+            }
+            tex_print_format("%l[%i: level %i, code %i, value %i]\n",i, st.level,st.code,value);
+        }
+        tex_print_format("%l[codestack %i bottom]\n", head->identifier);
+    }
+}
 
 void sa_dump_tree(dumpstream f, sa_tree a)
 {
+    int bytes = a->bytes;
+    dump_int(f, a->identifier);
     dump_int(f, a->sa_stack_step);
     dump_int(f, a->dflt.int_value);
-    if (a->tree) {
-        int bytes = a->bytes;
+ // if (a->tree) {
+ //     int bytes = a->bytes;
         /*tex A marker: */
         dump_via_int(f, 1);
         dump_int(f, bytes);
@@ -529,27 +586,29 @@ void sa_dump_tree(dumpstream f, sa_tree a)
                 dump_via_int(f, 0);
             }
         }
-    } else {
-        /*tex A marker: */
-        dump_via_int(f, 0);
-    }
+ // } else {
+ //     /*tex A marker: */
+ //     dump_via_int(f, 0);
+ // }
 }
 
 sa_tree sa_undump_tree(dumpstream f)
 {
     int x;
     sa_tree a = (sa_tree) sa_malloc_array(sizeof(sa_tree_head), 1);
-    undump_int(f,a->sa_stack_step);
-    undump_int(f,a->dflt.int_value);
+    undump_int(f, a->identifier);
+    undump_int(f, a->sa_stack_step);
+    undump_int(f, a->dflt.int_value);
     a->sa_stack_size = a->sa_stack_step;
     a->stack = sa_calloc_array(sizeof(sa_stack_item), a->sa_stack_size);
     a->sa_stack_ptr = 0;
-    a->tree = NULL;
+ // a->tree = NULL;
+    sa_wipe_array(a->tree, sizeof(sa_tree_item *), LMT_SA_HIGHPART);
     /*tex The marker: */
     undump_int(f, x);
     if (x != 0) {
         int bytes, mode;
-        a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(void *), LMT_SA_HIGHPART);
+  //    a->tree = (sa_tree_item ***) sa_calloc_array(sizeof(void *), LMT_SA_HIGHPART);
         undump_int(f, bytes);
         a->bytes = bytes;
         for (int h = 0; h < LMT_SA_HIGHPART; h++) {
