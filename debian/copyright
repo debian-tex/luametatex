@@ -56,6 +56,11 @@ Copyright:
  2010 - 2014 Rich Geldreich and Tenacious Software LLC
 License: MIT
 
+Files: source/libraries/potrace/*
+Copyright:
+ 2001 - 2019 Peter Selinger <selinger@users.sourceforge.net>
+License: GPL-2+
+
 Files: source/libraries/pplib/*
 Copyright:
  2019 Paweł Jackowski <p.jackowski@gust.org.pl>
