@@ -3,6 +3,8 @@ luametatex (2.11.01+ds-1) UNRELEASED; urgency=medium
   * New upstream release, refresh patches.
     - Should fix build failure on HURD.
     - Contains a local copy of potrace -> extend d/copyright.
+    - Redo d/patches/no_strip.diff, stripping is configured in a
+      different file.
   * Update d/gbp.conf.
 
  -- Hilmar Preusse <hille42@web.de>  Sun, 18 Feb 2024 12:28:49 +0100
