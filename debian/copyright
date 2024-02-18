@@ -21,7 +21,7 @@ Copyright:
 License: GPL-2+
 
 Files: debian/*
-Copyright: 2023 Hilmar Preusse <hille42@web.de>
+Copyright: 2023 - 2024 Hilmar Preusse <hille42@web.de>
 License: GPL-2+
 
 Files: source/libraries/avl/*
@@ -76,7 +76,7 @@ Copyright:
  Roberto Ierusalimschy, Waldemar Celes and Luiz Henrique de Figueiredo
 License: GPL-2+
 
-Files: source/luacore/lua54/*
+Files: source/luacore/lua55/*
 Copyright:
  2007 - 2019 Lua.org, PUC-Rio, Brazil (http://www.lua.org)
 License: MIT

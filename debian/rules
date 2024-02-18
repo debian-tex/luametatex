@@ -6,7 +6,7 @@
 
 
 # See FEATURE AREAS in dpkg-buildflags(1).
-#export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 # See ENVIRONMENT in dpkg-buildflags(1).
 # Package maintainers to append CFLAGS.
