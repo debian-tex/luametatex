@@ -19,7 +19,7 @@
  endif()
  
 +# Debian: link with atomic on specific arches.
-+if(${CMAKE_DEB_HOST_ARCH} MATCHES "m68k" OR ${CMAKE_DEB_HOST_ARCH} MATCHES "powerpc" OR ${CMAKE_DEB_HOST_ARCH} MATCHES "sh4")
++if(${CMAKE_DEB_HOST_ARCH} MATCHES "m68k" OR ${CMAKE_DEB_HOST_ARCH} MATCHES "powerpc" OR ${CMAKE_DEB_HOST_ARCH} MATCHES "sh4" OR ${CMAKE_DEB_HOST_ARCH} MATCHES "armel")
 +    target_link_libraries(luametatex
 +        atomic
 +)
