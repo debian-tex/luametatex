@@ -23,7 +23,7 @@ math_data *mp_initialize_double_math (MP mp);
 
 @* Math initialization.
 
-First, here are some very important constants. We can have some more (see velocity). 
+First, here are some very important constants.
 
 @d PI                      3.1415926535897932384626433832795028841971
 @d fraction_multiplier     4096.0

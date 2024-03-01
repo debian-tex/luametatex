@@ -48,7 +48,7 @@ void tex_initialize_fileio_state(void)
     }
 }
 
-bool tex_room_in_buffer(int top)
+int tex_room_in_buffer(int top)
 {
     /*tex Beware: |top| can exceed the old size plus the step. */
     if (top > lmt_fileio_state.io_buffer_data.top) {
@@ -71,11 +71,11 @@ bool tex_room_in_buffer(int top)
             lmt_run_memory_callback("buffer", tmp ? 1 : 0);
             if (! tmp) {
                 tex_overflow_error("buffer", top);
-                return false;
+                return 0;
             }
         }
     }
-    return true;
+    return 1;
 }
 
 static int tex_aux_open_outfile(FILE **f, const char *name, const char *mode)
@@ -729,7 +729,7 @@ void tex_close_log_file(void)
 
 */
 
-void tex_start_input(char *fn, halfword at_end_of_file)
+void tex_start_input(char *fn)
 {
     /*tex Set up |cur_file| and new level of input. */
     tex_begin_file_reading();
@@ -744,7 +744,6 @@ void tex_start_input(char *fn, halfword at_end_of_file)
     }
     lmt_input_state.in_stack[lmt_input_state.in_stack_data.ptr].full_source_filename = fn;
     lmt_input_state.cur_input.name = io_file_input_code;
-    lmt_input_state.in_stack[lmt_input_state.cur_input.index].at_end_of_file = at_end_of_file;
     /*tex
         |open_log_file| doesn't |show_context|, so |limit| and |loc| needn't be set to meaningful
         values yet.
@@ -821,6 +820,9 @@ void tex_start_input(char *fn, halfword at_end_of_file)
 
 char *tex_read_file_name(int optionalequal, const char * name, const char* ext)
 {
+    char *fn = NULL;
+    int l = 0;
+    char *s = NULL;
     halfword result;
     if (optionalequal) {
         tex_scan_optional_equals();
@@ -829,9 +831,9 @@ char *tex_read_file_name(int optionalequal, const char * name, const char* ext)
         tex_get_x_token();
     } while (cur_cmd == spacer_cmd || cur_cmd == relax_cmd);
     if (cur_cmd == left_brace_cmd) {
-        result = tex_scan_toks_expand(1, NULL, 0, 0);
+        result = tex_scan_toks_expand(1, NULL, 0);
     } else {
-        char quote = 0;
+        int quote = 0;
         halfword p = get_reference_token();
         result = p;
         while (1) {
@@ -846,23 +848,14 @@ char *tex_read_file_name(int optionalequal, const char * name, const char* ext)
                 case subscript_cmd:
                 case letter_cmd:
                 case other_char_cmd:
-                    switch (cur_chr) { 
-                        case double_quote:
-                            if (quote == double_quote) {
-                                goto DONE;
-                            } else {
-                                quote = double_quote;
-                            }
-                            break;
-                        case single_quote:
-                            if (quote == single_quote) {
-                                goto DONE;
-                            } else {
-                                quote = single_quote;
-                            }
-                            break;
-                        default:
-                            p = tex_store_new_token(p, cur_tok);
+                    if (cur_chr == '"') {
+                        if (quote) {
+                            goto DONE;
+                        } else {
+                            quote = 1;
+                        }
+                    } else {
+                         p = tex_store_new_token(p, cur_tok);
                     }
                     break;
                 case spacer_cmd:
@@ -882,12 +875,9 @@ char *tex_read_file_name(int optionalequal, const char * name, const char* ext)
         }
     }
   DONE:
-    {
-        int l = 0;
-        char *s = tex_tokenlist_to_tstring(result, 1, &l, 0, 0, 0, 1, 1); /* single hashes */
-        char *fn = s ? tex_aux_pack_file_name(s, l, name, ext) : NULL;
-        return fn;
-    }
+    s = tex_tokenlist_to_tstring(result, 1, &l, 0, 0, 0, 1);
+    fn = s ? tex_aux_pack_file_name(s, l, name, ext) : NULL;
+    return fn;
 }
 
 void tex_print_file_name(unsigned char *name)

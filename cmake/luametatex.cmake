@@ -9,7 +9,7 @@ add_executable(luametatex ${luametatex_sources})
 target_include_directories(luametatex PRIVATE
     .
     source/.
-    source/luacore/lua55/src
+    source/luacore/lua54/src
 )
 
 target_link_libraries(luametatex
@@ -24,7 +24,6 @@ target_link_libraries(luametatex
     pplib
     miniz
     softposit
-    potrace
 )
 
 if (LUAMETATEX_NOLDL) 

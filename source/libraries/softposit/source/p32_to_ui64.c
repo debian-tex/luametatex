@@ -54,8 +54,7 @@ uint_fast64_t p32_to_ui64( posit32_t pA ) {
     union ui32_p32 uA;
     uint_fast64_t mask, iZ, tmp;
     uint_fast32_t scale = 0, uiA;
- // bool bitLast, bitNPlusOne, bitsMore; // HH
-    bool bitLast, bitNPlusOne;
+    bool bitLast, bitNPlusOne, bitsMore;
 
     uA.p = pA;
     uiA = uA.ui;

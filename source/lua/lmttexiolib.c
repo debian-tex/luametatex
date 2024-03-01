@@ -292,7 +292,6 @@ static int texiolib_setlogfile(lua_State *L)
 
 static int texiolib_forceendoffile(lua_State *L)
 {
-    (void) L;
     lmt_token_state.force_eof = 1;
     return 0;
 }

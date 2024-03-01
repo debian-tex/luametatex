@@ -21,8 +21,4 @@ extern void     tex_finish_no_alignment_group  (void);
 extern void     tex_alignment_interwoven_error (int n);
 extern halfword tex_alignment_hold_token_head  (void);
 
-extern int      tex_in_alignment               (void);
-
-extern int      tex_show_alignment_record      (void);
-
 # endif

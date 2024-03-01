@@ -38,7 +38,7 @@ static TString **tmname = NULL;
 
 static void luaclib_aux_print_string(const TString* ts)
 {
-    const char * s = getstr(ts);
+    const char* s = getstr(ts);
     size_t n = tsslen(ts);
     printf("\"");
     for (size_t i = 0; i < n; i++) {
@@ -132,7 +132,11 @@ static void PrintConstant(const Proto* f, int i)
                 break;
             }
         case LUA_VNUMINT:
-            printf("%lli", ivalue(o)); /* LUA_INTEGER_FMT */
+# if defined(__MINGW64__) || defined(__MINGW32__)
+            printf("%I64i", ivalue(o)); /* LUA_INTEGER_FMT */
+# else
+            printf("%lli", ivalue(o));  /* LUA_INTEGER_FMT */
+# endif
             break;
         case LUA_VSHRSTR:
         case LUA_VLNGSTR:
@@ -526,10 +530,10 @@ static void luaclib_aux_print_code(const Proto* f)
             case OP_EXTRAARG:
                 printf("%d", ax);
                 break;
-         // default:
-         //     printf("%d %d %d", a, b, c);
-         //     printf(COMMENT "not handled");
-         //     break;
+            default:
+                printf("%d %d %d", a, b, c);
+                printf(COMMENT "not handled");
+                break;
         }
         printf("\n");
     }
@@ -556,7 +560,7 @@ static void luaclib_aux_print_header(const Proto* f)
     );
     printf("%d%s param%s, %d slot%s, %d upvalue%s, ",
         (int)(f->numparams),
-     /* f->is_vararg?"+":"", */ "",
+        f->is_vararg?"+":"",
         SS(f->numparams),
         S(f->maxstacksize),
         S(f->sizeupvalues)

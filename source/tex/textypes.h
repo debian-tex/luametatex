@@ -121,18 +121,8 @@ typedef struct scaledwhd {
     scaled wd;
     scaled ht;
     scaled dp;
-    union { 
-        scaled ic; /* padding anyway */
-        scaled ns; /* natural size */
-    };
+    scaled ic; /* padding anyway */
 } scaledwhd;
-
-typedef struct scaledkrn {
-    scaled bl;
-    scaled br;
-    scaled tl;
-    scaled tr;
-} scaledkrn;
 
 extern halfword tex_badness(
     scaled t,
@@ -159,10 +149,8 @@ extern halfword tex_badness(
 # define min_integer                      -0x7FFFFFFF /*tex aka |min_infinity| */
 # define max_posit                       max_cardinal 
 # define min_posit                       min_cardinal 
-# define max_dimension                     0x3FFFFFFF
-# define min_dimension                    -0x3FFFFFFF
-# define max_dimen                      max_dimension
-# define min_dimen                      min_dimension
+# define max_dimen                         0x3FFFFFFF
+# define min_dimen                        -0x3FFFFFFF
 # define min_data_value                             0
 # define max_data_value                 cs_offset_max
 # define max_half_value                         32767 /*tex For instance sf codes.*/
@@ -171,20 +159,17 @@ extern halfword tex_badness(
 
 # define max_infinity                      0x7FFFFFFF /*tex the largest positive value that \TEX\ knows */
 # define min_infinity                     -0x7FFFFFFF
-# define awful_bad                         0x3FFFFFFF /*tex more than a billion demerits |07777777777| */ 
+# define awful_bad                        07777777777 /*tex more than a billion demerits |0x3FFFFFFF| */ 
 # define infinite_bad                           10000 /*tex infinitely bad value */
 # define infinite_penalty                infinite_bad /*tex infinite penalty value */
 # define eject_penalty              -infinite_penalty /*tex negatively infinite penalty value */
-# define final_penalty                    -0x40000000 /*tex in the output routine */
 # define deplorable                            100000 /*tex more than |inf_bad|, but less than |awful_bad| */
-# define extremely_deplorable               100000000
 # define large_width_excess                   7230584
 # define small_stretchability                 1663497
-# define loose_criterion                           99 
-# define semi_loose_criterion                      12 /* same as |decent_criterion| */
-# define decent_criterion                          12 
-# define semi_tight_criterion                      12 /* same as |decent_criterion| */
-# define max_calculated_badness                  8189
+# define loose_criterium                           99 
+# define semi_loose_criterium                      12 /* same as |decent_criterium| */
+# define decent_criterium                          12 
+# define semi_tight_criterium                      12 /* same as |decent_criterium| */
 
 # define default_rule                           26214 /*tex 0.4pt */
 # define ignore_depth                       -65536000 /*tex The magic dimension value to mean \quote {ignore me}: -1000pt */
@@ -197,8 +182,8 @@ extern halfword tex_badness(
 
 # define null_flag                        -0x40000000
 # define zero_glue                                  0
-# define unity                                0x10000 /*tex |0200000| or $2^{16}$, represents 1.00000 */
-# define two                                  0x20000 /*tex |0400000| or $2^{17}$, represents 2.00000 */
+# define unity                                0200000 /*tex $2^{16}$, represents 1.00000 */
+# define two                                  0400000 /*tex $2^{17}$, represents 2.00000 */
 # define null                                       0
 # define null_font                                  0
 
@@ -210,14 +195,12 @@ extern halfword tex_badness(
 # define unused_math_style                       0xFF
 # define unused_math_family                      0xFF
 
-# define preset_rule_thickness             0x40000000 /*tex denotes |unset_rule_thickness|: |010000000000|. */
+# define preset_rule_thickness           010000000000 /*tex denotes |unset_rule_thickness|: |0x40000000|. */
 
+# define max_char_code                             15 /*tex largest catcode for individual characters */
 # define min_space_factor                           0 /*tex watch out: |\spacefactor| cannot be zero but the sf code can!*/
-# define max_space_factor                      0x7FFF /*tex |077777| */
-# define min_scale_factor                           0 
-# define max_scale_factor                      100000 /*tex for now */
+# define max_space_factor                      077777
 # define default_space_factor                    1000
-# define space_factor_threshold                  2000
 # define default_tolerance                      10000
 # define default_hangafter                          1
 # define default_deadcycles                        25
@@ -225,23 +208,6 @@ extern halfword tex_badness(
 # define default_eqno_gap_step                   1000
 
 # define default_output_box                       255
-
-# define scaling_factor                          1000
-# define scaling_factor_squared               1000000
-# define scaling_factor_double                   1000.0
-//define scaling_multiplier_double               0.001
-
-# define max_math_scaling_factor                 5000
-
-# define max_font_adjust_step                     100
-# define max_font_adjust_stretch_factor          1000
-# define max_font_adjust_shrink_factor            500
-
-# define math_default_penalty    (infinite_penalty+1)
-
-# define initial_alignment_state             -1000000
-# define busy_alignment_state                 1000000
-# define interwoven_alignment_threshold        500000
 
 /*tex
 
@@ -268,40 +234,36 @@ extern halfword tex_badness(
 */
 
 # if 1
-
     # define max_toks_register_index      0xFFFF /* 0xFFFF 0xFFFF 0x7FFF */ /* 64 64 32 */
     # define max_box_register_index       0xFFFF /* 0xFFFF 0xFFFF 0x7FFF */ /* 64 64 32 */
-    # define max_integer_register_index   0xFFFF /* 0xFFFF 0xFFFF 0x3FFF */ /* 64 64 16 */
-    # define max_dimension_register_index 0xFFFF /* 0xFFFF 0xFFFF 0x3FFF */ /* 64 64 16 */
+    # define max_int_register_index       0xFFFF /* 0xFFFF 0xFFFF 0x3FFF */ /* 64 64 16 */
+    # define max_dimen_register_index     0xFFFF /* 0xFFFF 0xFFFF 0x3FFF */ /* 64 64 16 */
     # define max_posit_register_index     0xFFFF /* 0xFFFF 0x7FFF 0x1FFF */ /* 64 32  8 */
     # define max_attribute_register_index 0xFFFF /* 0xFFFF 0x7FFF 0x1FFF */ /* 64 32  8 */
     # define max_glue_register_index      0xFFFF /* 0xFFFF 0x7FFF 0x1FFF */ /* 64 32  8 */
-    # define max_muglue_register_index    0xFFFF /* 0xFFFF 0x3FFF 0x1FFF */ /* 64 16  8 */
+    # define max_mu_glue_register_index   0xFFFF /* 0xFFFF 0x3FFF 0x1FFF */ /* 64 16  8 */
 
 # else
 
-    # define max_toks_register_index      0x1FFF //  8K
-    # define max_box_register_index       0x7FFF // 32K
-    # define max_integer_register_index   0x1FFF //  8k
-    # define max_dimension_register_index 0x1FFF //  8k  
-    # define max_posit_register_index     0x1FFF //  8k 
-    # define max_attribute_register_index 0x1FFF //  8k 
-    # define max_glue_register_index      0x0FFF //  4k 
-    # define max_muglue_register_index    0x0FFF //  4k 
+    # define max_toks_register_index      0x3FFF
+    # define max_box_register_index       0x7FFF
+    # define max_int_register_index       0x1FFF
+    # define max_dimen_register_index     0x1FFF
+    # define max_posit_register_index     0x1FFF
+    # define max_attribute_register_index 0x1FFF
+    # define max_glue_register_index      0x1FFF
+    # define max_mu_glue_register_index   0x1FFF
 
 # endif
 
-# define max_unit_register_index       26*26
-
 # define max_n_of_toks_registers      (max_toks_register_index      + 1)
 # define max_n_of_box_registers       (max_box_register_index       + 1)
-# define max_n_of_integer_registers   (max_integer_register_index   + 1)
-# define max_n_of_dimension_registers (max_dimension_register_index + 1)
+# define max_n_of_int_registers       (max_int_register_index       + 1)
+# define max_n_of_dimen_registers     (max_dimen_register_index     + 1)
 # define max_n_of_attribute_registers (max_attribute_register_index + 1)
 # define max_n_of_posit_registers     (max_posit_register_index     + 1)
 # define max_n_of_glue_registers      (max_glue_register_index      + 1)
-# define max_n_of_muglue_registers    (max_muglue_register_index    + 1)
-# define max_n_of_unit_registers      (max_unit_register_index      + 1)
+# define max_n_of_mu_glue_registers   (max_mu_glue_register_index   + 1)
 
 # define max_n_of_bytecodes                   65536 /* dynamic */
 # define max_n_of_math_families                  64
@@ -316,15 +278,11 @@ extern halfword tex_badness(
 # define min_iterator_value                -0xFFFFF /* When we decide to generalize it might become 0xFFFF0 with */
 # define max_iterator_value                 0xFFFFF /* 0x0000F being a classifier so that we save cmd's          */
 # define max_category_code                       15
-# define max_newline_character                  127 /*tex This is an old constraint but there is no reason to change it. */
-# define max_endline_character                  127 /*tex To keep it simple we stick to the maximum single UTF character. */
+# define max_newline_character                  127  /*tex Th is is an old constraint but there is no reason to change it. */
 # define max_box_axis                           255
-# define max_size_of_word                      1024 /*tex More than enough (esp. since this can end up on the stack. */
-# define min_limited_scale                        0 /*tex Zero is a signal too. */
+# define max_size_of_word                      1024  /*tex More than enough (esp. since this can end up on the stack. */
+# define min_limited_scale                        0  /*tex Zero is a signal too. */
 # define max_limited_scale                     1000
-# define min_math_style_scale                     0 /*tex Zero is a signal too. */
-# define max_math_style_scale                  2000
-# define max_parameter_index                     15
 
 # define max_mark_index         (max_n_of_marks         - 1)
 # define max_insert_index       (max_n_of_inserts       - 1)
@@ -566,6 +524,7 @@ typedef union tokenword {
 # define stp_body_size         1000000
 
 # define max_node_size       100000000    /* Currently these are the memory words! */
+//define siz_node_size         5000000
 # define siz_node_size        25000000
 # define min_node_size         2000000    /* Currently these are the memory words! */
 # define stp_node_size          500000    /* Currently these are the memory words! */
@@ -755,17 +714,15 @@ typedef struct line_break_properties {
     halfword parfill_right_skip;
     halfword parinit_left_skip;
     halfword parinit_right_skip;
-    halfword emergency_left_skip;
-    halfword emergency_right_skip;
+    halfword par_left_skip;
+    halfword par_right_skip;
     halfword pretolerance;
     halfword tolerance;
     halfword emergency_stretch;
-    halfword emergency_extra_stretch;
     halfword looseness;
     halfword adjust_spacing;
     halfword protrude_chars;
     halfword adj_demerits;
-    halfword double_adj_demerits;
     halfword line_penalty;
     halfword last_line_fit;
     halfword double_hyphen_demerits;
@@ -796,32 +753,8 @@ typedef struct line_break_properties {
     halfword hyphenation_mode;
     halfword shaping_penalties_mode;
     halfword shaping_penalty;
-    halfword par_passes;
-    halfword tracing_passes;
-    halfword line_break_criterion;
-    halfword extra_hyphen_penalty; 
-    halfword line_break_optional;
-    halfword optional_found;
-    halfword single_line_penalty;
+    halfword padding;
 } line_break_properties;
-
-typedef enum sparse_identifiers {
-    unknown_sparse_identifier,
-    catcode_sparse_identifier,
-    lccode_sparse_identifier,
-    uccode_sparse_identifier,
-    sfcode_sparse_identifier,
-    hjcode_sparse_identifier,
-    hmcode_sparse_identifier,
-    hccode_sparse_identifier,
-    amcode_sparse_identifier,
-    fontchar_sparse_identifier,
-    mathcode_sparse_identifier,
-    delcode_sparse_identifier,
-    mathfont_sparse_identifier, 
-    mathparam_sparse_identifier, 
-    user_sparse_identifier,
-} sparse_identifiers;
 
 # endif
 

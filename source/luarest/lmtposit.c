@@ -100,7 +100,11 @@ static posit_t *positlib_get(lua_State *L, int i)
         case LUA_TNUMBER:
             {
                 posit p = positlib_push(L);
-                *p = lua_isinteger(L, i) ? integer_to_posit(lua_tointeger(L, i)) : double_to_posit(lua_tonumber(L, i));
+                if (lua_isinteger(L, i)) {
+                    *p = i64_to_posit(lua_tointeger(L, 1));
+                } else {
+                    *p = double_to_posit(lua_tonumber(L, i));
+                }
                 lua_replace(L, i);
                 return p;
             }
@@ -553,7 +557,7 @@ static const luaL_Reg positlib_function_list[] =
     { "__shr",        positlib_right     },
     /* */                                
     { "NaN",          positlib_NaN       },
-    { "NaR",          positlib_NaR       },
+    { "NaN",          positlib_NaR       },
     /* */                                
     { "bor",          positlib_or        },
     { "bxor",         positlib_xor       },

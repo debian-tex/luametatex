@@ -62,59 +62,31 @@ typedef struct pdfe_reference {
 
 */
 
-static void pdfe_invalid_object_warning(const char *detail, int where)
+static void pdfe_invalid_object_warning(const char *detail)
 {
-    tex_formatted_warning("pdfe lib", "lua <pdfe %s> expected, case %i", detail, where);
+    tex_formatted_warning("pdfe lib", "lua <pdfe %s> expected",detail);
 }
 
 /* todo: use luaL_checkudata */
 
-typedef enum pdfelib_errors { 
-    no_error,
-    to_string_error,
-    to_table_error,
-    get_catalog_error,
-    get_trailer_error,
-    get_info_error,
-    get_page_error,
-    get_pages_error,
-    get_size_error,
-    get_status_error,
-    get_version_error,
-    get_n_of_pages_error,
-    get_n_of_objects_error,
-    get_memory_usage_error,
-    get_from_error,
-    get_box_error,
-    open_error,
-    close_error,
-    read_error,
-    free_error,
-    unencrypt_error,
-} pdfelib_errors;
-
-static pdfe_document *pdfelib_aux_check_isdocument(lua_State *L, int n, int where)
+static pdfe_document *pdfelib_aux_check_isdocument(lua_State *L, int n)
 {
     pdfe_document *p = (pdfe_document *) lua_touserdata(L, n);
     if (p && lua_getmetatable(L, n)) {
         lua_get_metatablelua(pdfe_instance);
-        if (! p->document) { 
-            p = NULL; // todo: invalid document
-        } else if (! lua_rawequal(L, -1, -2)) {
-            p = NULL; // todo: no document 
+        if (! lua_rawequal(L, -1, -2)) {
+            p = NULL;
         }
         lua_pop(L, 2);
         if (p) {
             return p;
         }
     }
-    if (where != free_error) {
-        pdfe_invalid_object_warning("document", where);
-    }
+    pdfe_invalid_object_warning("document");
     return NULL;
 }
 
-static pdfe_dictionary *pdfelib_aux_check_isdictionary(lua_State *L, int n, int where)
+static pdfe_dictionary *pdfelib_aux_check_isdictionary(lua_State *L, int n)
 {
     pdfe_dictionary *p = (pdfe_dictionary *) lua_touserdata(L, n);
     if (p && lua_getmetatable(L, n)) {
@@ -127,11 +99,11 @@ static pdfe_dictionary *pdfelib_aux_check_isdictionary(lua_State *L, int n, int 
             return p;
         }
     }
-    pdfe_invalid_object_warning("dictionary",  where);
+    pdfe_invalid_object_warning("dictionary");
     return NULL;
 }
 
-static pdfe_array *pdfelib_aux_check_isarray(lua_State *L, int n, int where)
+static pdfe_array *pdfelib_aux_check_isarray(lua_State *L, int n)
 {
     pdfe_array *p = (pdfe_array *) lua_touserdata(L, n);
     if (p && lua_getmetatable(L, n)) {
@@ -144,11 +116,11 @@ static pdfe_array *pdfelib_aux_check_isarray(lua_State *L, int n, int where)
             return p;
         }
     }
-    pdfe_invalid_object_warning("array", where);
+    pdfe_invalid_object_warning("array");
     return NULL;
 }
 
-static pdfe_stream *pdfelib_aux_check_isstream(lua_State *L, int n, int where)
+static pdfe_stream *pdfelib_aux_check_isstream(lua_State *L, int n)
 {
     pdfe_stream *p = (pdfe_stream *) lua_touserdata(L, n);
     if (p && lua_getmetatable(L, n)) {
@@ -161,11 +133,11 @@ static pdfe_stream *pdfelib_aux_check_isstream(lua_State *L, int n, int where)
             return p;
         }
     }
-    pdfe_invalid_object_warning("stream", where);
+    pdfe_invalid_object_warning("stream");
     return NULL;
 }
 
-static pdfe_reference *pdfelib_aux_check_isreference(lua_State *L, int n, int where)
+static pdfe_reference *pdfelib_aux_check_isreference(lua_State *L, int n)
 {
     pdfe_reference *p = (pdfe_reference *) lua_touserdata(L, n);
     if (p && lua_getmetatable(L, n)) {
@@ -178,7 +150,7 @@ static pdfe_reference *pdfelib_aux_check_isreference(lua_State *L, int n, int wh
             return p;
         }
     }
-    pdfe_invalid_object_warning("reference", where);
+    pdfe_invalid_object_warning("reference");
     return NULL;
 }
 
@@ -247,7 +219,7 @@ static int pdfelib_type(lua_State *L)
 */
 
 static int pdfelib_document_tostring(lua_State *L) {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, to_string_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         lua_pushfstring(L, "<pdfe.document %p>", p->document);
         return 1;
@@ -257,7 +229,7 @@ static int pdfelib_document_tostring(lua_State *L) {
 }
 
 static int pdfelib_dictionary_tostring(lua_State *L) {
-    pdfe_dictionary *p = pdfelib_aux_check_isdictionary(L, 1, to_string_error);
+    pdfe_dictionary *p = pdfelib_aux_check_isdictionary(L, 1);
     if (p) {
         lua_pushfstring(L, "<pdfe.dictionary %p>", p->dictionary);
         return 1;
@@ -267,7 +239,7 @@ static int pdfelib_dictionary_tostring(lua_State *L) {
 }
 
 static int pdfelib_array_tostring(lua_State *L) {
-    pdfe_array *p = pdfelib_aux_check_isarray(L, 1, to_string_error);
+    pdfe_array *p = pdfelib_aux_check_isarray(L, 1);
     if (p) {
         lua_pushfstring(L, "<pdfe.array %p>", p->array);
         return 1;
@@ -277,7 +249,7 @@ static int pdfelib_array_tostring(lua_State *L) {
 }
 
 static int pdfelib_stream_tostring(lua_State *L) {
-    pdfe_stream *p = pdfelib_aux_check_isstream(L, 1, to_string_error);
+    pdfe_stream *p = pdfelib_aux_check_isstream(L, 1);
     if (p) {
         lua_pushfstring(L, "<pdfe.stream %p>", p->stream);
         return 1;
@@ -287,7 +259,7 @@ static int pdfelib_stream_tostring(lua_State *L) {
 }
 
 static int pdfelib_reference_tostring(lua_State *L) {
-    pdfe_reference *p = pdfelib_aux_check_isreference(L, 1, to_string_error);
+    pdfe_reference *p = pdfelib_aux_check_isreference(L, 1);
     if (p) {
         lua_pushfstring(L, "<pdfe.reference %d>", p->onum);
         return 1;
@@ -499,7 +471,7 @@ static int pdfelib_aux_pushvalue(lua_State *L, ppobj *object)
 
 static int pdfelib_getcatalog(lua_State *L)
 {
-    pdfe_document* p = pdfelib_aux_check_isdocument (L, 1, get_catalog_error);
+    pdfe_document* p = pdfelib_aux_check_isdocument (L, 1);
     if (p) {
         return pdfelib_aux_pushdictionaryonly (L, ppdoc_catalog (p->document));
     } else {
@@ -509,7 +481,7 @@ static int pdfelib_getcatalog(lua_State *L)
 
 static int pdfelib_gettrailer(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_trailer_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         return pdfelib_aux_pushdictionaryonly (L, ppdoc_trailer (p->document));
     } else {
@@ -519,7 +491,7 @@ static int pdfelib_gettrailer(lua_State *L)
 
 static int pdfelib_getinfo(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_info_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         return pdfelib_aux_pushdictionaryonly (L, ppdoc_info (p->document));
     } else {
@@ -541,7 +513,7 @@ static int pdfelib_getinfo(lua_State *L)
 
 static int pdfelib_getfromarray(lua_State *L)
 {
-    pdfe_array *a = pdfelib_aux_check_isarray(L, 1, get_from_error);
+    pdfe_array *a = pdfelib_aux_check_isarray(L, 1);
     if (a) {
         unsigned int index = lmt_checkinteger(L, 2) - 1;
         if (index < a->array->size) {
@@ -557,7 +529,7 @@ static int pdfelib_getfromarray(lua_State *L)
 
 static int pdfelib_getfromdictionary(lua_State *L)
 {
-    pdfe_dictionary *d = pdfelib_aux_check_isdictionary(L, 1, get_from_error);
+    pdfe_dictionary *d = pdfelib_aux_check_isdictionary(L, 1);
     if (d) {
         if (lua_type(L, 2) == LUA_TSTRING) {
             const char *name = luaL_checkstring(L, 2);
@@ -584,7 +556,7 @@ static int pdfelib_getfromdictionary(lua_State *L)
 
 static int pdfelib_getfromstream(lua_State *L)
 {
-    pdfe_stream *s = (pdfe_stream *) lua_touserdata(L, get_from_error);
+    pdfe_stream *s = (pdfe_stream *) lua_touserdata(L, 1);
  // pdfe_stream *s = check_isstream(L, 1);
     if (s) {
         ppdict *d = s->stream->dict;
@@ -669,7 +641,7 @@ static void pdfelib_totable(lua_State *L, ppobj *object, int flat)
 
 static int pdfelib_arraytotable(lua_State *L)
 {
-    pdfe_array *a = pdfelib_aux_check_isarray(L, 1, to_table_error);
+    pdfe_array *a = pdfelib_aux_check_isarray(L, 1);
     if (a) {
         int flat = lua_isboolean(L, 2);
         int j = 0;
@@ -678,7 +650,7 @@ static int pdfelib_arraytotable(lua_State *L)
         for (unsigned int i = 0; i < a->array->size; i++) {
             ppobj *object = pparray_at(a->array,i);
             if (object) {
-                pdfelib_totable(L, object, flat);
+                pdfelib_totable(L, object,flat);
                 /* table { type, [value], [extra], [more] } */
                 lua_rawseti(L, -2, ++j);
                 /* table[i] = { type, [value], [extra], [more] } */
@@ -692,7 +664,7 @@ static int pdfelib_arraytotable(lua_State *L)
 
 static int pdfelib_dictionarytotable(lua_State *L)
 {
-    pdfe_dictionary *d = pdfelib_aux_check_isdictionary(L, 1, to_table_error);
+    pdfe_dictionary *d = pdfelib_aux_check_isdictionary(L, 1);
     if (d) {
         int flat = lua_isboolean(L, 2);
         lua_createtable(L, 0, (int) d->dictionary->size);
@@ -727,7 +699,7 @@ static int pdfelib_dictionarytotable(lua_State *L)
 
 static int pdfelib_pagestotable(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, to_table_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         ppdoc *d = p->document;
         int i = 1;
@@ -769,7 +741,7 @@ static int pdfelib_pagestotable(lua_State *L)
 
 static int pdfelib_stream_readwhole(lua_State *L)
 {
-    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1, read_error);
+    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1);
     if (s) {
         uint8_t *b = NULL;
         int decode = 0;
@@ -806,7 +778,7 @@ static int pdfelib_stream_readwhole(lua_State *L)
 
 static int pdfelib_stream_open(lua_State *L)
 {
-    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1, open_error);
+    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1);
     if (s) {
         if (s->open == 0) {
             if (lua_gettop(L) > 1) {
@@ -823,7 +795,7 @@ static int pdfelib_stream_open(lua_State *L)
 
 static int pdfelib_stream_close(lua_State *L)
 {
-    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1, close_error);
+    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1);
     if (s && s->open > 0) {
         ppstream_done(s->stream);
         s->open = 0;
@@ -834,7 +806,7 @@ static int pdfelib_stream_close(lua_State *L)
 
 static int pdfelib_stream_read(lua_State *L)
 {
-    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1, read_error);
+    pdfe_stream *s = pdfelib_aux_check_isstream(L, 1);
     if (s) {
         size_t n = 0;
         uint8_t *d = NULL;
@@ -889,32 +861,28 @@ static int pdfelib_test(lua_State *L)
 }
 */
 
-static int aux_pdfelib_open(lua_State *L, FILE *f)
+static void aux_pdfelib_open(lua_State *L, FILE *f)
 {
+    pdfe_document *p = (pdfe_document *) lua_newuserdatauv(L, sizeof(pdfe_document), 0);
     ppdoc *d = ppdoc_filehandle(f, 1);
-    if (d) {
-        pdfe_document *p = (pdfe_document *) lua_newuserdatauv(L, sizeof(pdfe_document), 0);
-     // luaL_getmetatable(L, PDFE_METATABLE_INSTANCE);
-        lua_get_metatablelua(pdfe_instance);
-        lua_setmetatable(L, -2);
-        p->document = d;
-        p->open = 1;
-        p->isfile = 1;
-        p->memstream = NULL;
-        return 1;
-    } else { 
-        return 0;
-    }
+ // luaL_getmetatable(L, PDFE_METATABLE_INSTANCE);
+    lua_get_metatablelua(pdfe_instance);
+    lua_setmetatable(L, -2);
+    p->document = d;
+    p->open = 1;
+    p->isfile = 1;
+    p->memstream = NULL;
 }
 
 static int pdfelib_open(lua_State *L)
 {
     const char *filename = luaL_checkstring(L, 1);
     FILE *f = aux_utf8_fopen(filename, "rb");
-    if (f && aux_pdfelib_open(L, f)) {
+    if (f) {
+        aux_pdfelib_open(L, f);
         return 1;
     } else {
-     /* tex_normal_warning("pdfe lib", "no valid file handle"); */ /* the caller should handle it */
+        tex_formatted_warning("pdfe lib", "no valid pdf file '%s'", filename);
         return 0;
     }
 }
@@ -923,12 +891,13 @@ static int pdfelib_openfile(lua_State *L)
 {
     luaL_Stream *fs = ((luaL_Stream *) luaL_checkudata(L, 1, LUA_FILEHANDLE));
     FILE *f = (fs->closef) ? fs->f : NULL;
-    if (f && aux_pdfelib_open(L, f)) {
+    if (f) {
+        aux_pdfelib_open(L, f);
         /*tex We trick \LUA\ in believing the file is closed. */
         fs->closef = NULL;
         return 1;
     } else {
-     /* tex_normal_warning("pdfe lib", "no valid file handle"); */ /* the caller should handle it */
+        tex_formatted_warning("pdfe lib", "no valid file handle");
         return 0;
     }
 }
@@ -1002,7 +971,7 @@ static int pdfelib_new(lua_State *L)
 
 static int pdfelib_document_free(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, free_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p && p->open) {
         if (p->document) {
             ppdoc_free(p->document);
@@ -1019,19 +988,7 @@ static int pdfelib_document_free(lua_State *L)
 
 static int pdfelib_close(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, close_error);
-    if (p && p->open) {
-        if (p->document) {
-            ppdoc_free(p->document);
-            p->document = NULL;
-        }
-        if (p->memstream) {
-         /* pplib does this: xfree(p->memstream); */
-            p->memstream = NULL;
-        }
-        p->open = 0;
-    }
-    return 0;
+    return pdfelib_document_free(L);
 }
 
 /*tex
@@ -1048,7 +1005,7 @@ static int pdfelib_close(lua_State *L)
 
 static int pdfelib_unencrypt(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, unencrypt_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         size_t u = 0;
         size_t o = 0;
@@ -1093,7 +1050,7 @@ static int pdfelib_unencrypt(lua_State *L)
 
 static int pdfelib_getsize(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_size_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         lua_pushinteger(L, (lua_Integer) ppdoc_file_size(p->document));
         return 1;
@@ -1105,7 +1062,7 @@ static int pdfelib_getsize(lua_State *L)
 
 static int pdfelib_getversion(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_version_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         int minor;
         int major = ppdoc_version_number(p->document, &minor);
@@ -1119,7 +1076,7 @@ static int pdfelib_getversion(lua_State *L)
 
 static int pdfelib_getstatus(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_status_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         lua_pushinteger(L, (lua_Integer) ppdoc_crypt_status(p->document));
         return 1;
@@ -1130,7 +1087,7 @@ static int pdfelib_getstatus(lua_State *L)
 
 static int pdfelib_getnofobjects(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_n_of_objects_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         lua_pushinteger(L, (lua_Integer) ppdoc_objects(p->document));
         return 1;
@@ -1141,7 +1098,7 @@ static int pdfelib_getnofobjects(lua_State *L)
 
 static int pdfelib_getnofpages(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_n_of_pages_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         lua_pushinteger(L, (lua_Integer) ppdoc_page_count(p->document));
         return 1;
@@ -1152,7 +1109,7 @@ static int pdfelib_getnofpages(lua_State *L)
 
 static int pdfelib_getmemoryusage(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_memory_usage_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         size_t w = 0;
         size_t m = ppdoc_memory(p->document, &w);
@@ -1186,7 +1143,7 @@ static int pdfelib_aux_pushpage(lua_State *L, ppdoc *d, int page)
 
 static int pdfelib_getpage(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_page_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         return pdfelib_aux_pushpage(L, p->document, lmt_checkinteger(L, 2));
     } else {
@@ -1208,7 +1165,7 @@ static int pdfelib_aux_pushpages(lua_State *L, ppdoc *d)
 
 static int pdfelib_getpages(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_pages_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         return pdfelib_aux_pushpages(L, p->document);
     } else {
@@ -1230,7 +1187,7 @@ static int pdfelib_getpages(lua_State *L)
 static int pdfelib_getbox(lua_State *L)
 {
     if (lua_gettop(L) > 1 && lua_type(L,2) == LUA_TSTRING) {
-        pdfe_dictionary *p = pdfelib_aux_check_isdictionary(L, 1, get_box_error);
+        pdfe_dictionary *p = pdfelib_aux_check_isdictionary(L, 1);
         if (p) {
             const char *key = lua_tostring(L, 2);
             pprect box = { 0, 0, 0, 0 };
@@ -1265,7 +1222,7 @@ static int pdfelib_getbox(lua_State *L)
 
 static int pdfelib_getfromreference(lua_State *L)
 {
-    pdfe_reference *r = pdfelib_aux_check_isreference(L, 1, get_from_error);
+    pdfe_reference *r = pdfelib_aux_check_isreference(L, 1);
     if (r && r->xref) {
         ppref *rr = ppxref_find(r->xref, (ppuint) r->onum);
         if (rr) {
@@ -1281,7 +1238,7 @@ static int pdfelib_getfromreference(lua_State *L)
 
 static int pdfelib_getfromobject(lua_State *L)
 {
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_from_error);
+    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1);
     if (p) {
         ppref *rr = ppxref_find(p->document->xref, lua_tointeger(L, 2));
         if (rr) {
@@ -1290,20 +1247,6 @@ static int pdfelib_getfromobject(lua_State *L)
                  lua_pushinteger(L, (lua_Integer) o->type);
                  return 1 + pdfelib_aux_pushvalue(L, o);
              }
-        }
-    }
-    return 0;
-}
-
-static int pdfelib_getobjectrange(lua_State *L)
-{
-    pdfe_document *p = pdfelib_aux_check_isdocument(L, 1, get_from_error);
-    if (p) {
-        ppref *rr = ppxref_find(p->document->xref, lua_tointeger(L, 2));
-        if (rr) {
-             lua_pushinteger(L, (lua_Integer) rr->offset);
-             lua_pushinteger(L, (lua_Integer) rr->length);
-             return 2;
         }
     }
     return 0;
@@ -1654,20 +1597,16 @@ static int pdfelib_pushvalue(lua_State *L, ppobj *object)
 static int pdfelib_document_access(lua_State *L)
 {
     if (lua_type(L, 2) == LUA_TSTRING) {
-     // pdfe_document *p = (pdfe_document *) lua_touserdata(L, 1);
+        pdfe_document *p = (pdfe_document *) lua_touserdata(L, 1);
         const char *s = lua_tostring(L, 2);
         if (lua_key_eq(s, catalog) || lua_key_eq(s, Catalog)) {
-         // return pdfelib_aux_pushdictionaryonly(L, ppdoc_catalog(p->document));
-            return pdfelib_getcatalog(L);
+            return pdfelib_aux_pushdictionaryonly(L, ppdoc_catalog(p->document));
         } else if (lua_key_eq(s, info) || lua_key_eq(s, Info)) {
-         // return pdfelib_aux_pushdictionaryonly(L, ppdoc_info(p->document));
-            return pdfelib_getinfo(L);
+            return pdfelib_aux_pushdictionaryonly(L, ppdoc_info(p->document));
         } else if (lua_key_eq(s, trailer) || lua_key_eq(s, Trailer)) {
-         // return pdfelib_aux_pushdictionaryonly(L, ppdoc_trailer(p->document));
-            return pdfelib_getcatalog(L);
+            return pdfelib_aux_pushdictionaryonly(L, ppdoc_trailer(p->document));
         } else if (lua_key_eq(s, pages) || lua_key_eq(s, Pages)) {
-         // return pdfelib_aux_pushpages(L, p->document);
-            return pdfelib_getpages(L);
+            return pdfelib_aux_pushpages(L, p->document);
         }
     }
     return 0;
@@ -1800,7 +1739,6 @@ static const struct luaL_Reg pdfelib_function_list[] = {
     { "getfromstream",      pdfelib_getfromstream     },
     /* handy too */
     { "getfromobject",      pdfelib_getfromobject     },
-    { "getobjectrange",     pdfelib_getobjectrange    },
     /* collectors */
     { "dictionarytotable",  pdfelib_dictionarytotable },
     { "arraytotable",       pdfelib_arraytotable      },

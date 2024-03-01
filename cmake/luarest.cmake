@@ -18,7 +18,7 @@ add_library(luarest STATIC ${luarest_sources})
 
 target_include_directories(luarest PRIVATE
     source/libraries/libcerf
-    source/luacore/lua55/src
+    source/luacore/lua54/src
 )
 
 # only when all ok, to avoid messages

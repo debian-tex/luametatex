@@ -4,8 +4,6 @@
 
 # include "luametatex.h"
 
-/*tex TODO: update field specifications for added node entries */
-
 /*tex
 
     This module started out using DEBUG to trigger checking invalid node usage, something that is
@@ -75,7 +73,7 @@ static halfword tex_aux_allocated_node  (int size);
     brings many node properties together. Not all nodes are visible for users. Most of the
     properties can be provided as lists.
 
-    not all math noad fields are mentioned here yet ... some are still experimental
+    not all math noad fields ar ementioned here yet ... some are still experimental
 
 */
 
@@ -114,7 +112,7 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_par, vmode_par_par_subtype, vmodepar)
     set_value_entry_key(subtypes_par, local_box_par_subtype, localbox)
     set_value_entry_key(subtypes_par, hmode_par_par_subtype, hmodepar)
-    set_value_entry_key(subtypes_par, parameter_par_subtype, parameter)
+    set_value_entry_key(subtypes_par, penalty_par_subtype,   penalty)
     set_value_entry_key(subtypes_par, math_par_subtype,      math)
 
     subtypes_glue = lmt_aux_allocate_value_info(u_leaders);
@@ -159,15 +157,12 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_glue, g_leaders,                     gleaders)
     set_value_entry_key(subtypes_glue, u_leaders,                     uleaders)
 
-    subtypes_boundary = lmt_aux_allocate_value_info(math_boundary);
+    subtypes_boundary = lmt_aux_allocate_value_info(word_boundary);
 
     set_value_entry_key(subtypes_boundary, cancel_boundary,     cancel)
     set_value_entry_key(subtypes_boundary, user_boundary,       user)
     set_value_entry_key(subtypes_boundary, protrusion_boundary, protrusion)
     set_value_entry_key(subtypes_boundary, word_boundary,       word)
-    set_value_entry_key(subtypes_boundary, page_boundary,       page)
-    set_value_entry_key(subtypes_boundary, math_boundary,       math)
- /* set_value_entry_key(subtypes_boundary, par_boundary,        par) */
 
     subtypes_penalty = lmt_aux_allocate_value_info(equation_number_penalty_subtype);
 
@@ -177,7 +172,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_penalty, word_penalty_subtype,            wordpenalty)
     set_value_entry_key(subtypes_penalty, final_penalty_subtype,           finalpenalty)
     set_value_entry_key(subtypes_penalty, orphan_penalty_subtype,          orphanpenalty)
-    set_value_entry_key(subtypes_penalty, single_line_penalty_subtype,     singlelinepenalty)
     set_value_entry_key(subtypes_penalty, math_pre_penalty_subtype,        mathprepenalty)
     set_value_entry_key(subtypes_penalty, math_post_penalty_subtype,       mathpostpenalty)
     set_value_entry_key(subtypes_penalty, before_display_penalty_subtype,  beforedisplaypenalty)
@@ -190,15 +184,10 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_kern, explicit_kern_subtype,        userkern)
     set_value_entry_key(subtypes_kern, accent_kern_subtype,          accentkern)
     set_value_entry_key(subtypes_kern, italic_kern_subtype,          italiccorrection)
-    set_value_entry_key(subtypes_kern, left_correction_kern_subtype, leftcorrectionkern)
-    set_value_entry_key(subtypes_kern, right_correction_kern_subtype,rightcorrectionkern)
-    set_value_entry_key(subtypes_kern, space_font_kern_subtype,      spacefontkern)
     set_value_entry_key(subtypes_kern, left_margin_kern_subtype,     leftmarginkern)
     set_value_entry_key(subtypes_kern, right_margin_kern_subtype,    rightmarginkern)
     set_value_entry_key(subtypes_kern, explicit_math_kern_subtype,   mathkern)
     set_value_entry_key(subtypes_kern, math_shape_kern_subtype,      mathshapekern)
-    set_value_entry_key(subtypes_kern, left_math_slack_kern_subtype, leftmathslackkern);
-    set_value_entry_key(subtypes_kern, right_math_slack_kern_subtype,rightmathslackkern);
     set_value_entry_key(subtypes_kern, horizontal_math_kern_subtype, horizontalmathkern)
     set_value_entry_key(subtypes_kern, vertical_math_kern_subtype,   verticalmathkern)
 
@@ -239,7 +228,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_glyph, glyph_math_fraction_subtype,    fraction);
     set_value_entry_key(subtypes_glyph, glyph_math_radical_subtype,     radical);
     set_value_entry_key(subtypes_glyph, glyph_math_middle_subtype,      middle);
-    set_value_entry_key(subtypes_glyph, glyph_math_prime_subtype,       prime);
     set_value_entry_key(subtypes_glyph, glyph_math_accent_subtype,      accent);
 
     subtypes_disc = lmt_aux_allocate_value_info(syllable_discretionary_code);
@@ -286,7 +274,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_list, math_nucleus_list,         nucleus)
     set_value_entry_key(subtypes_list, math_sup_list,             sup)
     set_value_entry_key(subtypes_list, math_sub_list,             sub)
-    set_value_entry_key(subtypes_list, math_prime_list,           prime)
     set_value_entry_key(subtypes_list, math_pre_post_list,        prepost)
     set_value_entry_key(subtypes_list, math_degree_list,          degree)
     set_value_entry_key(subtypes_list, math_scripts_list,         scripts)
@@ -297,7 +284,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_list, math_fence_list,           fence)
     set_value_entry_key(subtypes_list, math_rule_list,            rule)
     set_value_entry_key(subtypes_list, math_ghost_list,           ghost)
-    set_value_entry_key(subtypes_list, math_text_list,            mathtext)
     set_value_entry_key(subtypes_list, insert_result_list,        insert)
     set_value_entry_key(subtypes_list, local_list,                local)
     set_value_entry_key(subtypes_list, local_left_list,           left)
@@ -337,7 +323,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_noad, fraction_noad_subtype,    fraction)
     set_value_entry_key(subtypes_noad, radical_noad_subtype,     radical)
     set_value_entry_key(subtypes_noad, middle_noad_subtype,      middle)
-    set_value_entry_key(subtypes_noad, prime_noad_subtype,       prime)
     set_value_entry_key(subtypes_noad, accent_noad_subtype,      accent)
     set_value_entry_key(subtypes_noad, fenced_noad_subtype,      fenced)
     set_value_entry_key(subtypes_noad, ghost_noad_subtype,       ghost)
@@ -373,7 +358,7 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_key(subtypes_attribute, attribute_list_subtype,  list)
     set_value_entry_key(subtypes_attribute, attribute_value_subtype, value)
 
-    /*tex The fields of nodes. I need to update these! */
+    /*tex The fields of nodes. */
 
     lmt_node_fields_accent = lmt_aux_allocate_value_info(9);
 
@@ -428,7 +413,7 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_dir, 1, integer_field,   dir);
     set_value_entry_val(lmt_node_fields_dir, 2, integer_field,   level);
 
-    lmt_node_fields_disc = lmt_aux_allocate_value_info(7);
+    lmt_node_fields_disc = lmt_aux_allocate_value_info( 6);
 
     set_value_entry_val(lmt_node_fields_disc, 0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_disc, 1, node_list_field, pre);
@@ -436,21 +421,19 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_disc, 3, node_list_field, replace);
     set_value_entry_val(lmt_node_fields_disc, 4, integer_field,   penalty);
     set_value_entry_val(lmt_node_fields_disc, 5, integer_field,   options);
-    set_value_entry_val(lmt_node_fields_disc, 6, integer_field,   class);
 
-    lmt_node_fields_fence = lmt_aux_allocate_value_info(11);
+    lmt_node_fields_fence = lmt_aux_allocate_value_info(10);
 
-    set_value_entry_val(lmt_node_fields_fence,  0, attribute_field, attr);
-    set_value_entry_val(lmt_node_fields_fence,  1, node_list_field, delimiter);
-    set_value_entry_val(lmt_node_fields_fence,  2, dimension_field, italic);
-    set_value_entry_val(lmt_node_fields_fence,  3, dimension_field, height);
-    set_value_entry_val(lmt_node_fields_fence,  4, dimension_field, depth);
-    set_value_entry_val(lmt_node_fields_fence,  5, integer_field,   options);
-    set_value_entry_val(lmt_node_fields_fence,  6, integer_field,   class);
-    set_value_entry_val(lmt_node_fields_fence,  7, integer_field,   source);
-    set_value_entry_val(lmt_node_fields_fence,  8, node_list_field, top);
-    set_value_entry_val(lmt_node_fields_fence,  9, node_list_field, bottom);
-    set_value_entry_val(lmt_node_fields_fence, 10, node_list_field, variant);
+    set_value_entry_val(lmt_node_fields_fence, 0, attribute_field, attr);
+    set_value_entry_val(lmt_node_fields_fence, 1, node_list_field, delimiter);
+    set_value_entry_val(lmt_node_fields_fence, 2, dimension_field, italic);
+    set_value_entry_val(lmt_node_fields_fence, 3, dimension_field, height);
+    set_value_entry_val(lmt_node_fields_fence, 4, dimension_field, depth);
+    set_value_entry_val(lmt_node_fields_fence, 5, integer_field,   options);
+    set_value_entry_val(lmt_node_fields_fence, 6, integer_field,   class);
+    set_value_entry_val(lmt_node_fields_fence, 7, integer_field,   source);
+    set_value_entry_val(lmt_node_fields_fence, 8, node_list_field, top);
+    set_value_entry_val(lmt_node_fields_fence, 9, node_list_field, bottom);
 
     lmt_node_fields_fraction = lmt_aux_allocate_value_info(9);
 
@@ -464,7 +447,7 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_fraction, 7, integer_field,   fam);
     set_value_entry_val(lmt_node_fields_fraction, 8, integer_field,   options);
 
-    lmt_node_fields_glue = lmt_aux_allocate_value_info(9);
+    lmt_node_fields_glue = lmt_aux_allocate_value_info(8);
 
     set_value_entry_val(lmt_node_fields_glue, 0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_glue, 1, node_list_field, leader);
@@ -474,51 +457,44 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_glue, 5, integer_field,   stretchorder);
     set_value_entry_val(lmt_node_fields_glue, 6, integer_field,   shrinkorder);
     set_value_entry_val(lmt_node_fields_glue, 7, integer_field,   font);
-    set_value_entry_val(lmt_node_fields_glue, 8, integer_field,   options);
 
-    lmt_node_fields_glue_spec = lmt_aux_allocate_value_info(8);
+    lmt_node_fields_glue_spec = lmt_aux_allocate_value_info(5);
 
     set_value_entry_val(lmt_node_fields_glue_spec, 0, dimension_field, width);
     set_value_entry_val(lmt_node_fields_glue_spec, 1, dimension_field, stretch);
     set_value_entry_val(lmt_node_fields_glue_spec, 2, dimension_field, shrink);
     set_value_entry_val(lmt_node_fields_glue_spec, 3, integer_field,   stretchorder);
     set_value_entry_val(lmt_node_fields_glue_spec, 4, integer_field,   shrinkorder);
-    set_value_entry_val(lmt_node_fields_glue_spec, 5, integer_field,   font);
-    set_value_entry_val(lmt_node_fields_glue_spec, 6, integer_field,   data);
-    set_value_entry_val(lmt_node_fields_glue_spec, 7, integer_field,   options);
 
-    lmt_node_fields_glyph = lmt_aux_allocate_value_info(30);
+    lmt_node_fields_glyph = lmt_aux_allocate_value_info(27);
 
     set_value_entry_val(lmt_node_fields_glyph,  0, attribute_field, attr);
-    set_value_entry_val(lmt_node_fields_glyph,  1, integer_field,   font);
-    set_value_entry_val(lmt_node_fields_glyph,  2, integer_field,   char);
-    set_value_entry_val(lmt_node_fields_glyph,  3, dimension_field, xoffset);
-    set_value_entry_val(lmt_node_fields_glyph,  4, dimension_field, yoffset);
-    set_value_entry_val(lmt_node_fields_glyph,  5, integer_field,   data);
-    set_value_entry_val(lmt_node_fields_glyph,  6, dimension_field, width);
-    set_value_entry_val(lmt_node_fields_glyph,  7, dimension_field, height);
-    set_value_entry_val(lmt_node_fields_glyph,  8, dimension_field, depth);
-    set_value_entry_val(lmt_node_fields_glyph,  9, dimension_field, total);
-    set_value_entry_val(lmt_node_fields_glyph, 10, dimension_field, scale);
-    set_value_entry_val(lmt_node_fields_glyph, 11, dimension_field, xscale);
-    set_value_entry_val(lmt_node_fields_glyph, 12, dimension_field, yscale);
-    set_value_entry_val(lmt_node_fields_glyph, 13, integer_field,   expansion);
-    set_value_entry_val(lmt_node_fields_glyph, 14, integer_field,   state);
-    set_value_entry_val(lmt_node_fields_glyph, 15, integer_field,   script);
-    set_value_entry_val(lmt_node_fields_glyph, 16, integer_field,   language);
-    set_value_entry_val(lmt_node_fields_glyph, 17, integer_field,   lhmin);
-    set_value_entry_val(lmt_node_fields_glyph, 18, integer_field,   rhmin);
-    set_value_entry_val(lmt_node_fields_glyph, 19, dimension_field, left);
-    set_value_entry_val(lmt_node_fields_glyph, 20, dimension_field, right);
-    set_value_entry_val(lmt_node_fields_glyph, 21, integer_field,   uchyph);
-    set_value_entry_val(lmt_node_fields_glyph, 22, integer_field,   script);
-    set_value_entry_val(lmt_node_fields_glyph, 23, integer_field,   hyphenate);
-    set_value_entry_val(lmt_node_fields_glyph, 24, integer_field,   options);
-    set_value_entry_val(lmt_node_fields_glyph, 25, integer_field,   discpart);
-    set_value_entry_val(lmt_node_fields_glyph, 26, integer_field,   protected);
-    set_value_entry_val(lmt_node_fields_glyph, 27, integer_field,   properties);
-    set_value_entry_val(lmt_node_fields_glyph, 28, integer_field,   group);
-    set_value_entry_val(lmt_node_fields_glyph, 29, integer_field,   index);
+    set_value_entry_val(lmt_node_fields_glyph,  1, integer_field,   char);
+    set_value_entry_val(lmt_node_fields_glyph,  2, integer_field,   font);
+    set_value_entry_val(lmt_node_fields_glyph,  3, integer_field,   language);
+    set_value_entry_val(lmt_node_fields_glyph,  4, integer_field,   lhmin);
+    set_value_entry_val(lmt_node_fields_glyph,  5, integer_field,   rhmin);
+    set_value_entry_val(lmt_node_fields_glyph,  6, integer_field,   uchyph);
+    set_value_entry_val(lmt_node_fields_glyph,  7, integer_field,   state);
+    set_value_entry_val(lmt_node_fields_glyph,  8, dimension_field, left);
+    set_value_entry_val(lmt_node_fields_glyph,  9, dimension_field, right);
+    set_value_entry_val(lmt_node_fields_glyph, 10, dimension_field, xoffset);
+    set_value_entry_val(lmt_node_fields_glyph, 11, dimension_field, yoffset);
+    set_value_entry_val(lmt_node_fields_glyph, 12, dimension_field, xscale);
+    set_value_entry_val(lmt_node_fields_glyph, 13, dimension_field, yscale);
+    set_value_entry_val(lmt_node_fields_glyph, 14, dimension_field, width);
+    set_value_entry_val(lmt_node_fields_glyph, 15, dimension_field, height);
+    set_value_entry_val(lmt_node_fields_glyph, 16, dimension_field, depth);
+    set_value_entry_val(lmt_node_fields_glyph, 17, dimension_field, total);
+    set_value_entry_val(lmt_node_fields_glyph, 18, integer_field,   expansion);
+    set_value_entry_val(lmt_node_fields_glyph, 19, integer_field,   data);
+    set_value_entry_val(lmt_node_fields_glyph, 20, integer_field,   script);
+    set_value_entry_val(lmt_node_fields_glyph, 21, integer_field,   hyphenate);
+    set_value_entry_val(lmt_node_fields_glyph, 22, integer_field,   options);
+    set_value_entry_val(lmt_node_fields_glyph, 23, integer_field,   protected);
+    set_value_entry_val(lmt_node_fields_glyph, 24, integer_field,   properties);
+    set_value_entry_val(lmt_node_fields_glyph, 25, integer_field,   group);
+    set_value_entry_val(lmt_node_fields_glyph, 26, integer_field,   index);
 
     lmt_node_fields_insert = lmt_aux_allocate_value_info(6);
 
@@ -544,33 +520,28 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_kern, 1, dimension_field, kern);
     set_value_entry_val(lmt_node_fields_kern, 2, integer_field,   expansion);
 
-    lmt_node_fields_list = lmt_aux_allocate_value_info(24);
+    lmt_node_fields_list = lmt_aux_allocate_value_info(20);
 
     set_value_entry_val(lmt_node_fields_list,  0, attribute_field, attr);
-    set_value_entry_val(lmt_node_fields_list,  1, node_list_field, list);
-    set_value_entry_val(lmt_node_fields_list,  2, dimension_field, width);
-    set_value_entry_val(lmt_node_fields_list,  3, dimension_field, depth);
-    set_value_entry_val(lmt_node_fields_list,  4, dimension_field, height);
-    set_value_entry_val(lmt_node_fields_list,  5, integer_field,   direction);
-    set_value_entry_val(lmt_node_fields_list,  6, dimension_field, shift);
-    set_value_entry_val(lmt_node_fields_list,  7, integer_field,   glueorder);
-    set_value_entry_val(lmt_node_fields_list,  8, integer_field,   gluesign);
-    set_value_entry_val(lmt_node_fields_list,  9, integer_field,   glueset);
-    set_value_entry_val(lmt_node_fields_list, 10, integer_field,   geometry);
-    set_value_entry_val(lmt_node_fields_list, 11, integer_field,   orientation);
-    set_value_entry_val(lmt_node_fields_list, 12, integer_field,   anchor);
-    set_value_entry_val(lmt_node_fields_list, 13, integer_field,   source);
-    set_value_entry_val(lmt_node_fields_list, 14, integer_field,   target);
-    set_value_entry_val(lmt_node_fields_list, 15, dimension_field, xoffset);
-    set_value_entry_val(lmt_node_fields_list, 16, dimension_field, yoffset);
-    set_value_entry_val(lmt_node_fields_list, 17, dimension_field, woffset);
-    set_value_entry_val(lmt_node_fields_list, 18, dimension_field, hoffset);
-    set_value_entry_val(lmt_node_fields_list, 19, dimension_field, doffset);
-    set_value_entry_val(lmt_node_fields_list, 20, integer_field,   pre);
-    set_value_entry_val(lmt_node_fields_list, 21, integer_field,   post);
-    set_value_entry_val(lmt_node_fields_list, 22, integer_field,   state);
-    set_value_entry_val(lmt_node_fields_list, 23, integer_field,   index);
- // set_value_entry_val(lmt_node_fields_list, 24, integer_field,   class);
+    set_value_entry_val(lmt_node_fields_list,  1, dimension_field, width);
+    set_value_entry_val(lmt_node_fields_list,  2, dimension_field, depth);
+    set_value_entry_val(lmt_node_fields_list,  3, dimension_field, height);
+    set_value_entry_val(lmt_node_fields_list,  4, integer_field,   direction);
+    set_value_entry_val(lmt_node_fields_list,  5, dimension_field, shift);
+    set_value_entry_val(lmt_node_fields_list,  6, integer_field,   glueorder);
+    set_value_entry_val(lmt_node_fields_list,  7, integer_field,   gluesign);
+    set_value_entry_val(lmt_node_fields_list,  8, integer_field,   glueset);
+    set_value_entry_val(lmt_node_fields_list,  9, node_list_field, list);
+    set_value_entry_val(lmt_node_fields_list, 10, integer_field,   orientation);
+    set_value_entry_val(lmt_node_fields_list, 11, integer_field,   source);
+    set_value_entry_val(lmt_node_fields_list, 12, integer_field,   target);
+    set_value_entry_val(lmt_node_fields_list, 13, dimension_field, woffset);
+    set_value_entry_val(lmt_node_fields_list, 14, dimension_field, hoffset);
+    set_value_entry_val(lmt_node_fields_list, 15, dimension_field, doffset);
+    set_value_entry_val(lmt_node_fields_list, 16, dimension_field, xoffset);
+    set_value_entry_val(lmt_node_fields_list, 17, dimension_field, yoffset);
+    set_value_entry_val(lmt_node_fields_list, 18, integer_field,   state);
+    set_value_entry_val(lmt_node_fields_list, 19, integer_field,   class);
 
     lmt_node_fields_par = lmt_aux_allocate_value_info(9);
     set_value_entry_val(lmt_node_fields_par, 0, attribute_field, attr);
@@ -589,7 +560,7 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_mark, 1, integer_field,    class);
     set_value_entry_val(lmt_node_fields_mark, 2, token_list_field, mark);
 
-    lmt_node_fields_math = lmt_aux_allocate_value_info(9);
+    lmt_node_fields_math = lmt_aux_allocate_value_info(8);
 
     set_value_entry_val(lmt_node_fields_math, 0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_math, 1, integer_field,   surround);
@@ -599,7 +570,6 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_math, 5, integer_field,   stretchorder);
     set_value_entry_val(lmt_node_fields_math, 6, integer_field,   shrinkorder);
     set_value_entry_val(lmt_node_fields_math, 7, integer_field,   penalty);
-    set_value_entry_val(lmt_node_fields_glue, 8, integer_field,   options);
 
     lmt_node_fields_math_char = lmt_aux_allocate_value_info(7);
 
@@ -611,15 +581,12 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_math_char, 5, integer_field,   group);
     set_value_entry_val(lmt_node_fields_math_char, 6, integer_field,   index);
 
-    lmt_node_fields_math_text_char = lmt_aux_allocate_value_info(7);
+    lmt_node_fields_math_text_char = lmt_aux_allocate_value_info(4);
 
     set_value_entry_val(lmt_node_fields_math_text_char, 0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_math_text_char, 1, integer_field,   fam);
     set_value_entry_val(lmt_node_fields_math_text_char, 2, integer_field,   char);
     set_value_entry_val(lmt_node_fields_math_text_char, 3, integer_field,   options);
-    set_value_entry_val(lmt_node_fields_math_text_char, 4, integer_field,   properties);
-    set_value_entry_val(lmt_node_fields_math_text_char, 5, integer_field,   group);
-    set_value_entry_val(lmt_node_fields_math_text_char, 6, integer_field,   index);
 
     lmt_node_fields_noad = lmt_aux_allocate_value_info(8);
 
@@ -632,11 +599,10 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_noad, 6, node_list_field, prime);
     set_value_entry_val(lmt_node_fields_noad, 7, integer_field,   options);
 
-    lmt_node_fields_penalty = lmt_aux_allocate_value_info(3);
+    lmt_node_fields_penalty = lmt_aux_allocate_value_info(2);
 
     set_value_entry_val(lmt_node_fields_penalty, 0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_penalty, 1, integer_field,   penalty);
-    set_value_entry_val(lmt_node_fields_penalty, 2, integer_field,   options);
 
     lmt_node_fields_radical = lmt_aux_allocate_value_info(11);
 
@@ -652,21 +618,19 @@ void lmt_nodelib_initialize(void) {
     set_value_entry_val(lmt_node_fields_radical,  9, dimension_field, width);
     set_value_entry_val(lmt_node_fields_radical, 10, integer_field,   options);
 
-    lmt_node_fields_rule = lmt_aux_allocate_value_info(12);
+    lmt_node_fields_rule = lmt_aux_allocate_value_info(11);
 
     set_value_entry_val(lmt_node_fields_rule,  0, attribute_field, attr);
     set_value_entry_val(lmt_node_fields_rule,  1, dimension_field, width);
     set_value_entry_val(lmt_node_fields_rule,  2, dimension_field, depth);
     set_value_entry_val(lmt_node_fields_rule,  3, dimension_field, height);
-    set_value_entry_val(lmt_node_fields_rule,  3, dimension_field, total);
     set_value_entry_val(lmt_node_fields_rule,  4, dimension_field, xoffset);
     set_value_entry_val(lmt_node_fields_rule,  5, dimension_field, yoffset);
     set_value_entry_val(lmt_node_fields_rule,  6, dimension_field, left);
     set_value_entry_val(lmt_node_fields_rule,  7, dimension_field, right);
     set_value_entry_val(lmt_node_fields_rule,  8, integer_field,   data);
-    set_value_entry_val(lmt_node_fields_rule,  9, integer_field,   font);
-    set_value_entry_val(lmt_node_fields_rule, 10, integer_field,   fam);
-    set_value_entry_val(lmt_node_fields_rule, 11, integer_field,   char);
+    set_value_entry_val(lmt_node_fields_rule,  9, integer_field,   char);
+    set_value_entry_val(lmt_node_fields_rule, 10, integer_field,   font);
 
     lmt_node_fields_style = lmt_aux_allocate_value_info(2);
 
@@ -793,7 +757,6 @@ void lmt_nodelib_initialize(void) {
     */
 
     lmt_interface.node_data[expression_node]     = (node_info) { .id = expression_node,     .size = expression_node_size,     .first = 0, .last = 0,                         .subtypes = NULL,              .fields = NULL,                           .name = lua_key(expression),     .lua = lua_key_index(expression),      .visible = 0 };
-    lmt_interface.node_data[loop_state_node]     = (node_info) { .id = loop_state_node,     .size = loop_state_node_size,     .first = 0, .last = 0,                         .subtypes = NULL,              .fields = NULL,                           .name = lua_key(loopstate),      .lua = lua_key_index(loopstate),       .visible = 0 };
     lmt_interface.node_data[math_spec_node]      = (node_info) { .id = math_spec_node,      .size = math_spec_node_size,      .first = 0, .last = 0,                         .subtypes = NULL,              .fields = NULL,                           .name = lua_key(mathspec),       .lua = lua_key_index(mathspec),        .visible = 0 };
     lmt_interface.node_data[font_spec_node]      = (node_info) { .id = font_spec_node,      .size = font_spec_node_size,      .first = 0, .last = 0,                         .subtypes = NULL,              .fields = NULL,                           .name = lua_key(fontspec),       .lua = lua_key_index(fontspec),        .visible = 0 };
     lmt_interface.node_data[nesting_node]        = (node_info) { .id = nesting_node,        .size = nesting_node_size,        .first = 0, .last = 0,                         .subtypes = NULL,              .fields = NULL,                           .name = lua_key(nestedlist),     .lua = lua_key_index(nestedlist),      .visible = 0 };
@@ -867,7 +830,7 @@ void lmt_nodelib_initialize(void) {
 
 inline static void lmt_properties_push(lua_State * L)
 {
-    lmt_node_memory_state.lua_properties_level++;
+    lmt_node_memory_state.lua_properties_level++ ;
     if (lmt_node_memory_state.lua_properties_level == 1) {
         lua_rawgeti(L, LUA_REGISTRYINDEX, lmt_node_memory_state.node_properties_id);
     }
@@ -878,7 +841,7 @@ inline static void lmt_properties_pop(lua_State * L)
     if (lmt_node_memory_state.lua_properties_level == 1) {
         lua_pop(L, 1);
     }
-    lmt_node_memory_state.lua_properties_level--;
+    lmt_node_memory_state.lua_properties_level-- ;
 }
 
 /*tex Resetting boils down to nilling. */
@@ -981,9 +944,9 @@ inline static void tex_aux_preset_disc_node(halfword n)
     node_subtype(disc_no_break(n)) = no_break_code;
 }
 
-inline static void tex_aux_preset_node(halfword n, quarterword type) 
+inline static void tex_aux_preset_node(halfword n, quarterword t) 
 {
-    switch (type) { 
+    switch (t) { 
         case glyph_node:
             break;
         case hlist_node:
@@ -1017,10 +980,10 @@ inline static void tex_aux_preset_node(halfword n, quarterword type)
     }
 }
 
-halfword tex_new_node(quarterword type, quarterword subtype)
+halfword tex_new_node(quarterword i, quarterword j)
 {
-    halfword size = get_node_size(type);
-    halfword node = tex_get_node(size);
+    halfword s = get_node_size(i);
+    halfword n = tex_get_node(s);
 
     /*tex
 
@@ -1029,35 +992,35 @@ halfword tex_new_node(quarterword type, quarterword subtype)
 
     */
 
-    memset((void *) (lmt_node_memory_state.nodes + node + 1), 0, (sizeof(memoryword) * ((size_t) size - 1)));
+    memset((void *) (lmt_node_memory_state.nodes + n + 1), 0, (sizeof(memoryword) * ((size_t) s - 1)));
 
-    if (tex_nodetype_is_complex(type)) {
-        tex_aux_preset_node(node, type);
+    if (tex_nodetype_is_complex(i)) {
+        tex_aux_preset_node(n, i);
         if (input_file_state.mode > 0) {
             /*tex See table above. */
-            switch (type) {
+            switch (i) {
                 case glyph_node:
                     if (input_file_state.mode > 1) {
-                        glyph_input_file(node) = input_file_value();
-                        glyph_input_line(node) = input_line_value();
+                        glyph_input_file(n) = input_file_value();
+                        glyph_input_line(n) = input_line_value();
                     }
                     break;
                 case hlist_node:
                 case vlist_node:
                 case unset_node:
-                    box_input_file(node) = input_file_value();
-                    box_input_line(node) = input_line_value();
+                    box_input_file(n) = input_file_value();
+                    box_input_line(n) = input_line_value();
                     break;
             }
         }
-        if (tex_nodetype_has_attributes(type)) {
-            attach_current_attribute_list(node);
+        if (tex_nodetype_has_attributes(i)) {
+            attach_current_attribute_list(n);
         }
     }
     /* last */
-    node_type(node) = type;
-    node_subtype(node) = subtype;
-    return node;
+    node_type(n) = i;
+    node_subtype(n) = j;
+    return n;
 }
 
 halfword tex_new_temp_node(void)
@@ -1148,186 +1111,177 @@ halfword tex_copy_node_only(halfword p)
 # define copy_sub_node(target,source) do { \
     if (source) { \
         halfword copy_stub = tex_copy_node(source); \
-        target = copy_stub; \
+        target = copy_stub ; \
     } else { \
         target = null; \
     } \
 } while (0)
 
-/*tex 
-    Checking for |null| doesnot happen here but in the calling routine because zero also means zero 
-    glue (so that we don't need to have many glue nodes hanging around). In traditional \TEX\ these 
-    were static shared (ref counted) gluenodes. 
-*/
-
-halfword tex_copy_node(halfword original)
+halfword tex_copy_node(halfword p) /* how about null */
 {
     /*tex
         We really need a stub for copying because mem might move in the meantime due to resizing!
     */
-    if (original < 0 || original >= lmt_node_memory_state.nodes_data.allocated) {
-        return tex_formatted_error("nodes", "attempt to copy an impossible node %d", (int) original);
-    } else if (original > lmt_node_memory_state.reserved && lmt_node_memory_state.nodesizes[original] == 0) {
-        return tex_formatted_error("nodes", "attempt to copy a free %s node %d", get_node_name(node_type(original)), (int) original);
+    if (p < 0 || p >= lmt_node_memory_state.nodes_data.allocated) {
+        return tex_formatted_error("nodes", "attempt to copy an impossible node %d", (int) p);
+    } else if (p > lmt_node_memory_state.reserved && lmt_node_memory_state.nodesizes[p] == 0) {
+        return tex_formatted_error("nodes", "attempt to copy a free %s node %d", get_node_name(node_type(p)), (int) p);
     } else {
         /*tex type of node */
-        halfword type = node_type(original);
-        int size = get_node_size(type);
+        halfword t = node_type(p);
+        int i = get_node_size(t);
         /*tex current node being fabricated for new list */
-        halfword copy = tex_get_node(size);
+        halfword r = tex_get_node(i);
         /*tex this saves work */
-        memcpy((void *) (lmt_node_memory_state.nodes + copy), (void *) (lmt_node_memory_state.nodes + original), (sizeof(memoryword) * (unsigned) size));
-        if (tex_nodetype_is_complex(size)) {
-            if (tex_nodetype_has_attributes(type)) {
-                add_attribute_reference(node_attr(original));
-                node_prev(copy) = null;
-                lmt_properties_copy(lmt_lua_state.lua_instance, copy, original);
+        memcpy((void *) (lmt_node_memory_state.nodes + r), (void *) (lmt_node_memory_state.nodes + p), (sizeof(memoryword) * (unsigned) i));
+        if (tex_nodetype_is_complex(i)) {
+         // halfword copy_stub;
+            if (tex_nodetype_has_attributes(t)) {
+                add_attribute_reference(node_attr(p));
+                node_prev(r) = null;
+                lmt_properties_copy(lmt_lua_state.lua_instance, r, p);
             }
-            node_next(copy) = null;
-            switch (type) {
+            node_next(r) = null;
+            switch (t) {
                 case glue_node:
-                    copy_sub_list(glue_leader_ptr(copy), glue_leader_ptr(original));
+                    copy_sub_list(glue_leader_ptr(r), glue_leader_ptr(p));
                     break;
                 case hlist_node:
-                    copy_sub_list(box_pre_adjusted(copy), box_pre_adjusted(original));
-                    copy_sub_list(box_post_adjusted(copy), box_post_adjusted(original));
+                    copy_sub_list(box_pre_adjusted(r), box_pre_adjusted(p));
+                    copy_sub_list(box_post_adjusted(r), box_post_adjusted(p));
                     // fall through
                 case vlist_node:
-                    copy_sub_list(box_pre_migrated(copy), box_pre_migrated(original));
-                    copy_sub_list(box_post_migrated(copy), box_post_migrated(original));
+                    copy_sub_list(box_pre_migrated(r), box_pre_migrated(p));
+                    copy_sub_list(box_post_migrated(r), box_post_migrated(p));
                     // fall through
                 case unset_node:
-                    copy_sub_list(box_list(copy), box_list(original));
+                    copy_sub_list(box_list(r), box_list(p));
                     break;
                 case disc_node:
-                    disc_pre_break(copy) = disc_pre_break_node(copy);
-                    if (disc_pre_break_head(original)) {
-                        tex_set_disc_field(copy, pre_break_code, tex_copy_node_list(disc_pre_break_head(original), null));
+                    disc_pre_break(r) = disc_pre_break_node(r);
+                    if (disc_pre_break_head(p)) {
+                        tex_set_disc_field(r, pre_break_code, tex_copy_node_list(disc_pre_break_head(p), null));
                     } else {
-                        tex_set_disc_field(copy, pre_break_code, null);
+                        tex_set_disc_field(r, pre_break_code, null);
                     }
-                    disc_post_break(copy) = disc_post_break_node(copy);
-                    if (disc_post_break_head(original)) {
-                        tex_set_disc_field(copy, post_break_code, tex_copy_node_list(disc_post_break_head(original), null));
+                    disc_post_break(r) = disc_post_break_node(r);
+                    if (disc_post_break_head(p)) {
+                        tex_set_disc_field(r, post_break_code, tex_copy_node_list(disc_post_break_head(p), null));
                     } else {
-                        tex_set_disc_field(copy, post_break_code, null);
+                        tex_set_disc_field(r, post_break_code, null);
                     }
-                    disc_no_break(copy) = disc_no_break_node(copy);
-                    if (disc_no_break_head(original)) {
-                        tex_set_disc_field(copy, no_break_code, tex_copy_node_list(disc_no_break_head(original), null));
+                    disc_no_break(r) = disc_no_break_node(r);
+                    if (disc_no_break_head(p)) {
+                        tex_set_disc_field(r, no_break_code, tex_copy_node_list(disc_no_break_head(p), null));
                     } else {
-                        tex_set_disc_field(copy, no_break_code, null);
+                        tex_set_disc_field(r, no_break_code, null);
                     }
                     break;
                 case insert_node:
-                    copy_sub_list(insert_list(copy), insert_list(original));
+                    copy_sub_list(insert_list(r), insert_list(p)) ;
                     break;
                 case mark_node:
-                    tex_add_token_reference(mark_ptr(original));
+                    tex_add_token_reference(mark_ptr(p));
                     break;
                 case adjust_node:
-                    copy_sub_list(adjust_list(copy), adjust_list(original));
+                    copy_sub_list(adjust_list(r), adjust_list(p));
                     break;
                 case choice_node:
-                    copy_sub_list(choice_display_mlist(copy), choice_display_mlist(original));
-                    copy_sub_list(choice_text_mlist(copy), choice_text_mlist(original));
-                    copy_sub_list(choice_script_mlist(copy), choice_script_mlist(original));
-                    copy_sub_list(choice_script_script_mlist(copy), choice_script_script_mlist(original));
+                    copy_sub_list(choice_display_mlist(r), choice_display_mlist(p)) ;
+                    copy_sub_list(choice_text_mlist(r), choice_text_mlist(p)) ;
+                    copy_sub_list(choice_script_mlist(r), choice_script_mlist(p)) ;
+                    copy_sub_list(choice_script_script_mlist(r), choice_script_script_mlist(p)) ;
                     break;
                 case simple_noad:
                 case radical_noad:
                 case fraction_noad:
                 case accent_noad:
-                    copy_sub_list(noad_nucleus(copy), noad_nucleus(original));
-                    copy_sub_list(noad_subscr(copy), noad_subscr(original));
-                    copy_sub_list(noad_supscr(copy), noad_supscr(original));
-                    copy_sub_list(noad_subprescr(copy), noad_subprescr(original));
-                    copy_sub_list(noad_supprescr(copy), noad_supprescr(original));
-                    copy_sub_list(noad_prime(copy), noad_prime(original));
-                 // copy_sub_list(noad_state(copy), noad_state(original));
-                    switch (type) {
+                    copy_sub_list(noad_nucleus(r), noad_nucleus(p)) ;
+                    copy_sub_list(noad_subscr(r), noad_subscr(p)) ;
+                    copy_sub_list(noad_supscr(r), noad_supscr(p)) ;
+                    copy_sub_list(noad_subprescr(r), noad_subprescr(p)) ;
+                    copy_sub_list(noad_supprescr(r), noad_supprescr(p)) ;
+                    copy_sub_list(noad_prime(r), noad_prime(p)) ;
+                 // copy_sub_list(noad_state(r), noad_state(p)) ;
+                    switch (t) {
                         case radical_noad:
-                            copy_sub_node(radical_left_delimiter(copy), radical_left_delimiter(original));
-                            copy_sub_node(radical_right_delimiter(copy), radical_right_delimiter(original));
-                            copy_sub_node(radical_top_delimiter(copy), radical_top_delimiter(original));
-                            copy_sub_node(radical_bottom_delimiter(copy), radical_bottom_delimiter(original));
-                            copy_sub_list(radical_degree(copy), radical_degree(original));
+                            copy_sub_node(radical_left_delimiter(r), radical_left_delimiter(p)) ;
+                            copy_sub_node(radical_right_delimiter(r), radical_right_delimiter(p)) ;
+                            copy_sub_node(radical_top_delimiter(r), radical_top_delimiter(p)) ;
+                            copy_sub_node(radical_bottom_delimiter(r), radical_bottom_delimiter(p)) ;
+                            copy_sub_list(radical_degree(r), radical_degree(p)) ;
                             break;
                         case fraction_noad:
-                         // copy_sub_list(fraction_numerator(copy), fraction_numerator(p));
-                         // copy_sub_list(fraction_denominator(copy), fraction_denominator(p);
-                            copy_sub_node(fraction_left_delimiter(copy), fraction_left_delimiter(original));
-                            copy_sub_node(fraction_right_delimiter(copy), fraction_right_delimiter(original));
-                            copy_sub_node(fraction_middle_delimiter(copy), fraction_middle_delimiter(original));
+                         // copy_sub_list(fraction_numerator(r), fraction_numerator(p)) ;
+                         // copy_sub_list(fraction_denominator(r), fraction_denominator(p)) ;
+                            copy_sub_node(fraction_left_delimiter(r), fraction_left_delimiter(p)) ;
+                            copy_sub_node(fraction_right_delimiter(r), fraction_right_delimiter(p)) ;
+                            copy_sub_node(fraction_middle_delimiter(r), fraction_middle_delimiter(p)) ;
                             break;
                         case accent_noad:
-                            copy_sub_list(accent_top_character(copy), accent_top_character(original));
-                            copy_sub_list(accent_bottom_character(copy), accent_bottom_character(original));
-                            copy_sub_list(accent_middle_character(copy), accent_middle_character(original));
+                            copy_sub_list(accent_top_character(r), accent_top_character(p)) ;
+                            copy_sub_list(accent_bottom_character(r), accent_bottom_character(p)) ;
+                            copy_sub_list(accent_middle_character(r), accent_middle_character(p)) ;
                             break;
                     }
                     break;
                 case fence_noad:
                     /* in principle also scripts */
-                    copy_sub_node(fence_delimiter(copy), fence_delimiter(original));
-                    copy_sub_node(fence_delimiter_top(copy), fence_delimiter_top(original));
-                    copy_sub_node(fence_delimiter_bottom(copy), fence_delimiter_bottom(original));
+                    copy_sub_node(fence_delimiter_list(r), fence_delimiter_list(p)) ;
+                    copy_sub_node(fence_delimiter_top(r), fence_delimiter_top(p)) ;
+                    copy_sub_node(fence_delimiter_bottom(r), fence_delimiter_bottom(p)) ;
                     break;
                 case sub_box_node:
                 case sub_mlist_node:
-                    copy_sub_list(kernel_math_list(copy), kernel_math_list(original));
+                    copy_sub_list(kernel_math_list(r), kernel_math_list(p)) ;
                     break;
                 case par_node:
                     /* can also be copy_sub_node */
-                    copy_sub_list(par_box_left(copy), par_box_left(original));
-                    copy_sub_list(par_box_right(copy), par_box_right(original));
-                    copy_sub_list(par_box_middle(copy), par_box_middle(original));
+                    copy_sub_list(par_box_left(r), par_box_left(p));
+                    copy_sub_list(par_box_right(r), par_box_right(p));
+                    copy_sub_list(par_box_middle(r), par_box_middle(p));
                     /* wipe copied fields */
-                    par_left_skip(copy) = null;
-                    par_right_skip(copy) = null;
-                    par_par_fill_left_skip(copy) = null;
-                    par_par_fill_right_skip(copy) = null;
-                    par_par_init_left_skip(copy) = null;
-                    par_par_init_right_skip(copy) = null;
-                    par_emergency_left_skip(copy) = null;
-                    par_emergency_right_skip(copy) = null;
-                    par_baseline_skip(copy) = null;
-                    par_line_skip(copy) = null;
-                    par_par_shape(copy) = null;
-                    par_inter_line_penalties(copy) = null;
-                    par_club_penalties(copy) = null;
-                    par_widow_penalties(copy) = null;
-                    par_display_widow_penalties(copy) = null;
-                    par_orphan_penalties(copy) = null;
-                    par_par_passes(copy) = null;
+                    par_left_skip(r) = null;
+                    par_right_skip(r) = null;
+                    par_par_fill_left_skip(r) = null;
+                    par_par_fill_right_skip(r) = null;
+                    par_par_init_left_skip(r) = null;
+                    par_par_init_right_skip(r) = null;
+                    par_baseline_skip(r) = null;
+                    par_line_skip(r) = null;
+                    par_par_shape(r) = null;
+                    par_inter_line_penalties(r) = null;
+                    par_club_penalties(r) = null;
+                    par_widow_penalties(r) = null;
+                    par_display_widow_penalties(r) = null;
+                    par_orphan_penalties(r) = null;
                     /* really copy fields */
-                    tex_set_par_par(copy, par_left_skip_code, tex_get_par_par(original, par_left_skip_code), 1);
-                    tex_set_par_par(copy, par_right_skip_code, tex_get_par_par(original, par_right_skip_code), 1);
-                    tex_set_par_par(copy, par_par_fill_left_skip_code, tex_get_par_par(original, par_par_fill_left_skip_code), 1);
-                    tex_set_par_par(copy, par_par_fill_right_skip_code, tex_get_par_par(original, par_par_fill_right_skip_code), 1);
-                    tex_set_par_par(copy, par_par_init_left_skip_code, tex_get_par_par(original, par_par_init_left_skip_code), 1);
-                    tex_set_par_par(copy, par_par_init_right_skip_code, tex_get_par_par(original, par_par_init_right_skip_code), 1);
-                    tex_set_par_par(copy, par_baseline_skip_code, tex_get_par_par(original, par_baseline_skip_code), 1);
-                    tex_set_par_par(copy, par_line_skip_code, tex_get_par_par(original, par_line_skip_code), 1);
-                    tex_set_par_par(copy, par_par_shape_code, tex_get_par_par(original, par_par_shape_code), 1);
-                    tex_set_par_par(copy, par_inter_line_penalties_code, tex_get_par_par(original, par_inter_line_penalties_code), 1);
-                    tex_set_par_par(copy, par_club_penalties_code, tex_get_par_par(original, par_club_penalties_code), 1);
-                    tex_set_par_par(copy, par_widow_penalties_code, tex_get_par_par(original, par_widow_penalties_code), 1);
-                    tex_set_par_par(copy, par_display_widow_penalties_code, tex_get_par_par(original, par_display_widow_penalties_code), 1);
-                    tex_set_par_par(copy, par_orphan_penalties_code, tex_get_par_par(original, par_orphan_penalties_code), 1);
-                    tex_set_par_par(copy, par_par_passes_code, tex_get_par_par(original, par_par_passes_code), 1);
+                    tex_set_par_par(r, par_left_skip_code, tex_get_par_par(p, par_left_skip_code), 1);
+                    tex_set_par_par(r, par_right_skip_code, tex_get_par_par(p, par_right_skip_code), 1);
+                    tex_set_par_par(r, par_par_fill_left_skip_code, tex_get_par_par(p, par_par_fill_left_skip_code), 1);
+                    tex_set_par_par(r, par_par_fill_right_skip_code, tex_get_par_par(p, par_par_fill_right_skip_code), 1);
+                    tex_set_par_par(r, par_par_init_left_skip_code, tex_get_par_par(p, par_par_init_left_skip_code), 1);
+                    tex_set_par_par(r, par_par_init_right_skip_code, tex_get_par_par(p, par_par_init_right_skip_code), 1);
+                    tex_set_par_par(r, par_baseline_skip_code, tex_get_par_par(p, par_baseline_skip_code), 1);
+                    tex_set_par_par(r, par_line_skip_code, tex_get_par_par(p, par_line_skip_code), 1);
+                    tex_set_par_par(r, par_par_shape_code, tex_get_par_par(p, par_par_shape_code), 1);
+                    tex_set_par_par(r, par_inter_line_penalties_code, tex_get_par_par(p, par_inter_line_penalties_code), 1);
+                    tex_set_par_par(r, par_club_penalties_code, tex_get_par_par(p, par_club_penalties_code), 1);
+                    tex_set_par_par(r, par_widow_penalties_code, tex_get_par_par(p, par_widow_penalties_code), 1);
+                    tex_set_par_par(r, par_display_widow_penalties_code, tex_get_par_par(p, par_display_widow_penalties_code), 1);
+                    tex_set_par_par(r, par_orphan_penalties_code, tex_get_par_par(p, par_orphan_penalties_code), 1);
                     /* tokens, we could mess with a ref count instead */
-                    par_end_par_tokens(copy) = par_end_par_tokens(original);
-                    tex_add_token_reference(par_end_par_tokens(original));
+                    par_end_par_tokens(r) = par_end_par_tokens(p);
+                    tex_add_token_reference(par_end_par_tokens(p));
                     break;
                 case specification_node:
-                    tex_copy_specification_list(copy, original);
+                    tex_copy_specification_list(r, p);
                     break;
                 default:
                     break;
             }
         }
-        return copy;
+        return r;
     }
 }
 
@@ -1396,8 +1350,6 @@ void tex_flush_node(halfword p)
                     tex_flush_node(par_par_fill_right_skip(p));
                     tex_flush_node(par_par_init_left_skip(p));
                     tex_flush_node(par_par_init_right_skip(p));
-                    tex_flush_node(par_emergency_left_skip(p));
-                    tex_flush_node(par_emergency_right_skip(p));
                     tex_flush_node(par_baseline_skip(p));
                     tex_flush_node(par_line_skip(p));
                     tex_flush_node(par_par_shape(p));
@@ -1406,7 +1358,6 @@ void tex_flush_node(halfword p)
                     tex_flush_node(par_widow_penalties(p));
                     tex_flush_node(par_display_widow_penalties(p));
                     tex_flush_node(par_orphan_penalties(p));
-                    tex_flush_node(par_par_passes(p));
                     /* tokens */
                     tex_flush_token_list(par_end_par_tokens(p));
                     break;
@@ -1459,7 +1410,7 @@ void tex_flush_node(halfword p)
                     }
                     break;
                 case fence_noad:
-                    tex_aux_free_sub_node_list(fence_delimiter(p));
+                    tex_aux_free_sub_node_list(fence_delimiter_list(p));
                     tex_aux_free_sub_node_list(fence_delimiter_top(p));
                     tex_aux_free_sub_node_list(fence_delimiter_bottom(p));
                     break;
@@ -1515,8 +1466,8 @@ void tex_flush_node_list(halfword l)
 
 static void tex_aux_check_node(halfword p)
 {
-    halfword type = node_type(p);
-    switch (type) {
+    halfword t = node_type(p);
+    switch (t) {
         case glue_node:
             tex_aux_node_range_test(p, glue_leader_ptr(p));
             break;
@@ -1560,7 +1511,7 @@ static void tex_aux_check_node(halfword p)
             tex_aux_node_range_test(p, noad_supprescr(p));
             tex_aux_node_range_test(p, noad_prime(p));
          // tex_aux_node_range_test(p, noad_state(p));
-            switch (type) {
+            switch (t) {
                 case radical_noad:
                     tex_aux_node_range_test(p, radical_degree(p));
                     tex_aux_node_range_test(p, radical_left_delimiter(p));
@@ -1583,7 +1534,7 @@ static void tex_aux_check_node(halfword p)
             }
             break;
         case fence_noad:
-            tex_aux_node_range_test(p, fence_delimiter(p));
+            tex_aux_node_range_test(p, fence_delimiter_list(p));
             tex_aux_node_range_test(p, fence_delimiter_top(p));
             tex_aux_node_range_test(p, fence_delimiter_bottom(p));
             break;
@@ -1605,9 +1556,6 @@ static void tex_aux_check_node(halfword p)
             tex_aux_node_range_test(p, par_par_fill_right_skip(p));
             tex_aux_node_range_test(p, par_par_init_left_skip(p));
             tex_aux_node_range_test(p, par_par_init_right_skip(p));
-            tex_aux_node_range_test(p, par_emergency_left_skip(p));
-            tex_aux_node_range_test(p, par_emergency_right_skip(p));
-            tex_aux_node_range_test(p, par_par_passes(p));
             break;
         default:
             break;
@@ -1634,7 +1582,7 @@ halfword fix_node_list(halfword head)
 
 halfword tex_get_node(int size)
 {
-    if (size < max_chain_size) { /*tex This test should not be needed! */
+    if (size < max_chain_size) {
         halfword p = lmt_node_memory_state.free_chain[size];
         if (p) {
             lmt_node_memory_state.free_chain[size] = node_next(p);
@@ -1650,7 +1598,7 @@ halfword tex_get_node(int size)
     }
 }
 
-void tex_free_node(halfword p, int size) /* no need to pass size, we can get it here */
+void tex_free_node(halfword p, int size) /* no need to pass size, we can get is here */
 {
     if (p > lmt_node_memory_state.reserved && size < max_chain_size) {
         lmt_node_memory_state.nodesizes[p] = 0;
@@ -1662,12 +1610,6 @@ void tex_free_node(halfword p, int size) /* no need to pass size, we can get it 
     }
 }
 
-/*tex 
-    Although it is tempting to have dedicated get and free helpers for if and expression nodes it 
-    gives no gain (at least not in the third decimal on millions of tests). So I didn't even bother 
-    to keep the code here. A real dedicated stack might actually be faster. 
-*/
-
 /*tex
 
     At the start of the node memory area we reserve some special nodes, for instance frequently
@@ -1676,21 +1618,21 @@ void tex_free_node(halfword p, int size) /* no need to pass size, we can get it 
 
 */
 
-static void tex_aux_initialize_glue(halfword n, scaled amount, scaled stretch, scaled shrink, halfword stretchorder, halfword shrinkorder)
+static void tex_aux_initialize_glue(halfword n, scaled wi, scaled st, scaled sh, halfword sto, halfword sho)
 {
  // memset((void *) (node_memory_state.nodes + n), 0, (sizeof(memoryword) * node_memory_state.nodesizes[glue_spec_node]));
     node_type(n) = glue_spec_node;
-    glue_amount(n) = amount;
-    glue_stretch(n) = stretch;
-    glue_shrink(n) = shrink;
-    glue_stretch_order(n) = stretchorder;
-    glue_shrink_order(n) = shrinkorder;
+    glue_amount(n) = wi;
+    glue_stretch(n) = st;
+    glue_shrink(n) = sh;
+    glue_stretch_order(n) = sto;
+    glue_shrink_order(n) = sho;
 }
 
-static void tex_aux_initialize_whatever_node(halfword n, quarterword type)
+static void tex_aux_initialize_whatever_node(halfword n, quarterword t)
 {
  // memset((void *) (node_memory_state.nodes + n), 0, (sizeof(memoryword) * node_memory_state.nodesizes[t]));
-    node_type(n) = type;
+    node_type(n) = t;
 }
 
 static void tex_aux_initialize_character(halfword n, halfword chr)
@@ -1733,12 +1675,12 @@ void tex_initialize_nodes(void)
     if (lmt_main_state.run_state == initializing_state) {
         /*tex Initialize static glue specs. */
 
-        tex_aux_initialize_glue(zero_glue,     0,      0,     0,               0,              0);
-        tex_aux_initialize_glue(fi_glue,       0,      0,     0,   fi_glue_order,              0); /* why not |unity| here */
-        tex_aux_initialize_glue(fi_l_glue,     0,  unity,     0,  fil_glue_order,              0); /* |\[vh]fil|    */
-        tex_aux_initialize_glue(fi_ll_glue,    0,  unity,     0, fill_glue_order,              0); /* |\[vh]fill|   */
-        tex_aux_initialize_glue(fi_ss_glue,    0,  unity, unity,  fil_glue_order, fil_glue_order); /* |\[vh]ss|     */
-        tex_aux_initialize_glue(fi_l_neg_glue, 0, -unity,     0,  fil_glue_order,              0); /* |\[vh]filneg| */
+        tex_aux_initialize_glue(zero_glue,    0,      0,     0,               0,              0);
+        tex_aux_initialize_glue(fi_glue,      0,      0,     0,   fi_glue_order,              0);
+        tex_aux_initialize_glue(fil_glue,     0,  unity,     0,  fil_glue_order,              0);
+        tex_aux_initialize_glue(fill_glue,    0,  unity,     0, fill_glue_order,              0);
+        tex_aux_initialize_glue(filll_glue,   0,  unity, unity,  fil_glue_order, fil_glue_order);
+        tex_aux_initialize_glue(fil_neg_glue, 0, -unity,     0,  fil_glue_order,              0);
 
         /*tex Initialize node list heads. */
 
@@ -1758,29 +1700,6 @@ void tex_initialize_nodes(void)
         tex_aux_initialize_character(begin_period, '.');
         tex_aux_initialize_character(end_period,   '.');
     }
-}
-
-int tex_used_node_count(void)
-{
-    int used = 0;
-    for  (int i = lmt_node_memory_state.nodes_data.top; i > lmt_node_memory_state.reserved; i--) {
-        if (lmt_node_memory_state.nodesizes[i] > 0 && (node_type(i) <= max_node_type)) {
-            ++used;
-        }
-    }
-    return used;
-}
-int tex_free_node_count(void)
-{
-    int free = 0;
-    for (int i = 1; i < max_chain_size; i++) {
-        halfword p = lmt_node_memory_state.free_chain[i];
-        while (p) {
-            ++free;
-            p = node_next(p);
-        }
-    }
-    return free;
 }
 
 void tex_dump_node_mem(dumpstream f)
@@ -1852,7 +1771,6 @@ int tex_n_of_used_nodes(int counts[])
     for (int i = lmt_node_memory_state.nodes_data.top; i > lmt_node_memory_state.reserved; i--) {
         if (lmt_node_memory_state.nodesizes[i] > 0 && (node_type(i) <= max_node_type)) {
             counts[node_type(i)] += 1;
-//printf("%i %i\n",node_type(i),node_subtype(i));
         }
     }
     for (int i = 0; i < max_node_type; i++) {
@@ -1890,34 +1808,20 @@ halfword tex_list_node_mem_usage(void)
 
 /*
     Now comes some attribute stuff. We could have a fast allocator for them and a dedicated pool
-    (actually for each node type I guess).
+    (actually for each node tyep I guess).
 */
 
 extern void tex_change_attribute_register(halfword a, halfword id, halfword value)
 {
     if (eq_value(id) != value) { 
         if (is_global(a)) { 
-         // for (int i = (lmt_save_state.save_stack_data.ptr - 1); i >= 0; i--) { 
-         //     if (save_type(i) == level_boundary_save_type) { 
-         //         delete_attribute_reference(save_value_2(i)); /* watch the _2 here */
-         //         save_value_2(i) = attribute_cache_disabled;  /* watch the _2 here */
-         //     } 
-         // } 
-            int ptr = lmt_save_state.save_stack_data.ptr - 1; 
-            while (ptr >= 0) { 
-                if (save_type(ptr) == level_boundary_save_type) { 
-                    delete_attribute_reference(save_value_2(ptr)); /* watch the _2 here */
-                    save_value_2(ptr) = attribute_cache_disabled;  /* watch the _2 here */
-                    if (ptr) { 
-                        ptr = save_value(ptr);
-                    } else {
-                        break;
-                    }
-                } else { 
-                    /* something is wrong here */
-                    break;
-                }
-            }
+            int i; 
+            for (i = (lmt_save_state.save_stack_data.ptr - 1); i >= 0; i--) { 
+                if (save_type(i) == attribute_list_save_type) { 
+                    delete_attribute_reference(save_value(i)); 
+                    save_value(i) = attribute_cache_disabled; 
+                } 
+            } 
         } else { 
             delete_attribute_reference(current_attribute_state); 
         } 
@@ -1940,7 +1844,7 @@ inline static halfword tex_aux_new_attribute_node(halfword index, int value)
     halfword r = tex_get_node(attribute_node_size);
     node_type(r) = attribute_node;
     node_subtype(r) = attribute_value_subtype;
-    attribute_index(r) = (quarterword) index;
+    attribute_index(r) = index;
     attribute_value(r) = value;
     return r;
 }
@@ -2053,7 +1957,7 @@ halfword tex_current_attribute_list(void)
         }
         return current_attribute_state;
     } else {
-        return null;
+        return null ;
     }
 }
 
@@ -2081,7 +1985,6 @@ void tex_dereference_attribute_list(halfword a)
                     {
                         int u = 0;
                         /* this works (different order) */
-if (0) { /* chains are often short */
                         while (a) {
                             halfword n = node_next(a);
                             lmt_node_memory_state.nodesizes[a] = 0;
@@ -2090,19 +1993,17 @@ if (0) { /* chains are often short */
                             ++u;
                             a = n;
                         }
-} else { 
                         /* this doesn't always (which is weird) */
-                        halfword h = a;
-                        halfword t = a;
-                        while (a) {
-                            lmt_node_memory_state.nodesizes[a] = 0;
-                            ++u;
-                            t = a;
-                            a = node_next(a);
-                        }
-                        node_next(t) = lmt_node_memory_state.free_chain[attribute_node_size];
-                        lmt_node_memory_state.free_chain[attribute_node_size] = h;
-}
+                     // halfword h = a;
+                     // halfword t = a;
+                     // while (a) {
+                     //     lmt_node_memory_state.nodesizes[a] = 0;
+                     //     ++u;
+                     //     t = a;
+                     //     a = node_next(a);
+                     // }
+                     // node_next(t) = lmt_node_memory_state.free_chain[attribute_node_size];
+                     // lmt_node_memory_state.free_chain[attribute_node_size] = h;
                         /* */
                         lmt_node_memory_state.nodes_data.ptr -= u * attribute_node_size;
                     }
@@ -2653,16 +2554,16 @@ void tex_show_node_list(halfword p, int threshold, int max)
                         }
                         /* effective */
                         if (whd.wd) {
-                            tex_print_format(", wd %p", whd.wd);
+                            tex_print_format(", wd %D", whd.wd, pt_unit);
                         }
                         if (whd.ht) {
-                            tex_print_format(", ht %p", whd.ht);
+                            tex_print_format(", ht %D", whd.ht, pt_unit);
                         }
                         if (whd.dp) {
-                            tex_print_format(", dp %p", whd.dp);
+                            tex_print_format(", dp %D", whd.dp, pt_unit);
                         }
                         if (whd.ic) {
-                            tex_print_format(", ic %p", whd.ic);
+                            tex_print_format(", ic %D", whd.ic, pt_unit);
                         }
                         /* */
                         if (get_glyph_language(p)) {
@@ -2675,30 +2576,30 @@ void tex_show_node_list(halfword p, int threshold, int max)
                             tex_print_format(", hyphenationmode %x", get_glyph_hyphenate(p));
                         }
                         if (glyph_x_offset(p)) {
-                            tex_print_format(", xoffset %p", glyph_x_offset(p));
+                            tex_print_format(", xoffset %D", glyph_x_offset(p), pt_unit);
                         }
                         if (glyph_y_offset(p)) {
-                            tex_print_format(", yoffset %p", glyph_y_offset(p));
+                            tex_print_format(", yoffset %D", glyph_y_offset(p), pt_unit);
                         }
                         if (glyph_left(p)) {
-                            tex_print_format(", left %p", glyph_left(p));
+                            tex_print_format(", left %D", glyph_left(p), pt_unit);
                         }
                         if (glyph_right(p)) {
-                            tex_print_format(", right %p", glyph_right(p));
+                            tex_print_format(", right %D", glyph_right(p), pt_unit);
                         }
                         if (glyph_raise(p)) {
-                            tex_print_format(", raise %p", glyph_raise(p));
+                            tex_print_format(", raise %D", glyph_raise(p), pt_unit);
                         }
                         if (glyph_expansion(p)) {
                             tex_print_format(", expansion %i", glyph_expansion(p));
                         }
-                        if (glyph_scale(p) && glyph_scale(p) != scaling_factor) {
+                        if (glyph_scale(p) && glyph_scale(p) != 1000) {
                             tex_print_format(", scale %i", glyph_scale(p));
                         }
-                        if (glyph_x_scale(p) && glyph_x_scale(p) != scaling_factor) {
+                        if (glyph_x_scale(p) && glyph_x_scale(p) != 1000) {
                             tex_print_format(", xscale %i", glyph_x_scale(p));
                         }
-                        if (glyph_y_scale(p) && glyph_y_scale(p) != scaling_factor) {
+                        if (glyph_y_scale(p) && glyph_y_scale(p) != 1000) {
                             tex_print_format(", yscale %i", glyph_y_scale(p));
                         }
                         if (glyph_data(p)) {
@@ -2722,13 +2623,13 @@ void tex_show_node_list(halfword p, int threshold, int max)
                 case unset_node:
                     /*tex Display box |p|. */
                     if (box_width(p)) {
-                        tex_print_format(", width %p", box_width(p));
+                        tex_print_format(", width %D", box_width(p), pt_unit);
                     }
                     if (box_height(p)) {
-                        tex_print_format(", height %p", box_height(p));
+                        tex_print_format(", height %D", box_height(p), pt_unit);
                     }
                     if (box_depth(p)) {
-                        tex_print_format(", depth %p", box_depth(p));
+                        tex_print_format(", depth %D", box_depth(p), pt_unit);
                     }
                     if (node_type(p) == unset_node) {
                         /*tex Display special fields of the unset node |p|. */
@@ -2774,7 +2675,7 @@ void tex_show_node_list(halfword p, int threshold, int max)
                             }
                         }
                         if (box_shift_amount(p) != 0) {
-                            tex_print_format(", shifted %p", box_shift_amount(p));
+                            tex_print_format(", shifted %D", box_shift_amount(p), pt_unit);
                         }
                         if (valid_direction(box_dir(p))) {
                             tex_print_format(", direction %2", box_dir(p));
@@ -2785,7 +2686,7 @@ void tex_show_node_list(halfword p, int threshold, int max)
                                 tex_print_format(", orientation %x", box_orientation(p));
                             }
                             if (tex_has_box_geometry(p, offset_geometry)) {
-                                tex_print_format(", offset(%p,%p)", box_x_offset(p), box_y_offset(p));
+                                tex_print_format(", offset(%D,%D)", box_x_offset(p), pt_unit, box_y_offset(p), pt_unit);
                             }
                             if (tex_has_box_geometry(p, anchor_geometry)) {
                                 if (box_anchor(p)) {
@@ -2823,38 +2724,11 @@ void tex_show_node_list(halfword p, int threshold, int max)
                     if (rule_depth(p)) {
                         tex_print_format(", depth %R", rule_depth(p));
                     }
-                    switch (node_subtype(p)) { 
-                        case virtual_rule_subtype:
-                            if (rule_virtual_width(p)) {
-                                tex_print_format(", virtual width %R", rule_virtual_width(p));
-                            }
-                            if (rule_virtual_height(p)) {
-                                tex_print_format(", virtual height %R", rule_virtual_height(p));
-                            }
-                            if (rule_virtual_depth(p)) {
-                                tex_print_format(", virtual depth %R", rule_virtual_depth(p));
-                            }
-                            break;
-                        case strut_rule_subtype:
-                            if (rule_strut_font(p)) {
-                                if (rule_strut_font(p) >= rule_font_fam_offset) {
-                                    tex_print_format(", family %i", rule_strut_font(p) - rule_font_fam_offset);
-                                } else {
-                                    tex_print_format(", font %F", rule_strut_font(p) < 0 ? 0 : rule_strut_font(p));
-                                }
-                            }
-                            if (rule_strut_character(p)) {
-                                tex_print_format(", character %U", rule_strut_character(p));
-                            }
-                            /* fall through */
-                        default: 
-                            if (rule_left(p)) {
-                                tex_print_format(", left / top %R", rule_left(p));
-                            }
-                            if (rule_right(p)) {
-                                tex_print_format(", right / bottom %R", rule_right(p));
-                            }
-                            break;
+                    if (rule_left(p)) {
+                        tex_print_format(", left / top %R", rule_left(p));
+                    }
+                    if (rule_right(p)) {
+                        tex_print_format(", right / bottom %R", rule_right(p));
                     }
                     if (rule_x_offset(p)) {
                         tex_print_format(", xoffset %R", rule_x_offset(p));
@@ -2862,17 +2736,24 @@ void tex_show_node_list(halfword p, int threshold, int max)
                     if (rule_y_offset(p)) {
                         tex_print_format(", yoffset %R", rule_y_offset(p));
                     }
-                    if (rule_data(p)) {
-                        tex_print_format(", data %R", rule_data(p));
+                    if (rule_font(p)) {
+                        if (rule_font(p) >= rule_font_fam_offset) {
+                            tex_print_format(", family %i", rule_font(p) - rule_font_fam_offset);
+                        } else {
+                            tex_print_format(", font %F", rule_font(p) < 0 ? 0 : rule_font(p));
+                        }
+                    }
+                    if (rule_character(p)) {
+                        tex_print_format(", character %U", rule_character(p));
                     }
                     break;
                 case insert_node:
                     /*tex Display insertion |p|. The natural size is the sum of height and depth. */
                     tex_print_format(
-                        ", index %i, total height %p, max depth %p, split glue (", 
+                        ", index %i, total height %D, max depth %D, split glue (", 
                         insert_index(p), 
-                        insert_total_height(p),
-                        insert_max_depth(p)
+                        insert_total_height(p), pt_unit,
+                        insert_max_depth(p), pt_unit
                     );
                     tex_print_specnode(insert_split_top(p), no_unit); /* todo: formatter for specnode but what CHAR to use */
                     tex_print_format(
@@ -2890,58 +2771,52 @@ void tex_show_node_list(halfword p, int threshold, int max)
                         /*tex We're already past processing so we only show the stored values. */
                         tex_print_format(", direction %2", par_dir(p));
                         if (node_subtype(p) == vmode_par_par_subtype) {
-                            if (tex_par_state_is_set(p, par_par_shape_code)               ) { v = par_par_shape(p)               ; if (v)                     { tex_print_str(", parshape * ");              } }
-                            if (tex_par_state_is_set(p, par_inter_line_penalties_code)    ) { v = par_inter_line_penalties(p)    ; if (v)                     { tex_print_str(", interlinepenalties * ");    } }
-                            if (tex_par_state_is_set(p, par_club_penalties_code)          ) { v = par_club_penalties(p)          ; if (v)                     { tex_print_str(", clubpenalties * ");         } }
-                            if (tex_par_state_is_set(p, par_widow_penalties_code)         ) { v = par_widow_penalties(p)         ; if (v)                     { tex_print_str(", widowpenalties * ");        } }
-                            if (tex_par_state_is_set(p, par_display_widow_penalties_code) ) { v = par_display_widow_penalties(p) ; if (v)                     { tex_print_str(", displaywidowpenalties * "); } }
-                            if (tex_par_state_is_set(p, par_orphan_penalties_code)        ) { v = par_orphan_penalties(p)        ; if (v)                     { tex_print_str(", orphanpenalties * ");       } }
-                            if (tex_par_state_is_set(p, par_hang_indent_code)             ) { v = par_hang_indent(p)             ; if (v)                     { tex_print_str(", hangindent ");              tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_hang_after_code)              ) { v = par_hang_after(p)              ; if (v)                     { tex_print_str(", hangafter ");               tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_hsize_code)                   ) { v = par_hsize(p)                   ; if (v)                     { tex_print_str(", hsize ");                   tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_right_skip_code)              ) { v = par_right_skip(p)              ; if (! tex_glue_is_zero(v)) { tex_print_str(", rightskip ");               tex_print_specnode (v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_left_skip_code)               ) { v = par_left_skip(p)               ; if (! tex_glue_is_zero(v)) { tex_print_str(", leftskip ");                tex_print_specnode (v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_last_line_fit_code)           ) { v = par_last_line_fit(p)           ; if (v)                     { tex_print_str(", lastlinefit ");             tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_pre_tolerance_code)           ) { v = par_pre_tolerance(p)           ; if (v)                     { tex_print_str(", pretolerance ");            tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_tolerance_code)               ) { v = par_tolerance(p)               ; if (v)                     { tex_print_str(", tolerance ");               tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_looseness_code)               ) { v = par_looseness(p)               ; if (v)                     { tex_print_str(", looseness ");               tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_adjust_spacing_code)          ) { v = par_adjust_spacing(p)          ; if (v)                     { tex_print_str(", adjustspacing ");           tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_adj_demerits_code)            ) { v = par_adj_demerits(p)            ; if (v)                     { tex_print_str(", adjdemerits ");             tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_double_adj_demerits_code)     ) { v = par_double_adj_demerits(p)     ; if (v)                     { tex_print_str(", doubleadjdemerits ");       tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_protrude_chars_code)          ) { v = par_protrude_chars(p)          ; if (v)                     { tex_print_str(", protrudechars ");           tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_line_penalty_code)            ) { v = par_line_penalty(p)            ; if (v)                     { tex_print_str(", linepenalty ");             tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_double_hyphen_demerits_code)  ) { v = par_double_hyphen_demerits(p)  ; if (v)                     { tex_print_str(", doublehyphendemerits ");    tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_final_hyphen_demerits_code)   ) { v = par_final_hyphen_demerits(p)   ; if (v)                     { tex_print_str(", finalhyphendemerits ");     tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_inter_line_penalty_code)      ) { v = par_inter_line_penalty(p)      ; if (v)                     { tex_print_str(", interlinepenalty ");        tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_club_penalty_code)            ) { v = par_club_penalty(p)            ; if (v)                     { tex_print_str(", clubpenalty ");             tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_widow_penalty_code)           ) { v = par_widow_penalty(p)           ; if (v)                     { tex_print_str(", widowpenalty ");            tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_display_widow_penalty_code)   ) { v = par_display_widow_penalty(p)   ; if (v)                     { tex_print_str(", displaywidowpenalty ");     tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_orphan_penalty_code)          ) { v = par_orphan_penalty(p)          ; if (v)                     { tex_print_str(", orphanpenalty ");           tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_single_line_penalty_code)     ) { v = par_single_line_penalty(p)     ; if (v)                     { tex_print_str(", singlelinepenalty ");       tex_print_int      (v);          } }                                      
-                            if (tex_par_state_is_set(p, par_broken_penalty_code)          ) { v = par_broken_penalty(p)          ; if (v)                     { tex_print_str(", brokenpenalty ");           tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_emergency_stretch_code)       ) { v = par_emergency_stretch(p)       ; if (v)                     { tex_print_str(", emergencystretch ");        tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_par_indent_code)              ) { v = par_par_indent(p)              ; if (v)                     { tex_print_str(", parindent ");               tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_par_fill_left_skip_code)      ) { v = par_par_fill_left_skip(p)      ; if (! tex_glue_is_zero(v)) { tex_print_str(", parfilleftskip ");          tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_par_fill_right_skip_code)     ) { v = par_par_fill_right_skip(p)     ; if (! tex_glue_is_zero(v)) { tex_print_str(", parfillskip ");             tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_par_init_left_skip_code)      ) { v = par_par_init_left_skip(p)      ; if (! tex_glue_is_zero(v)) { tex_print_str(", parinitleftskip ");         tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_par_init_right_skip_code)     ) { v = par_par_init_right_skip(p)     ; if (! tex_glue_is_zero(v)) { tex_print_str(", parinitrightskip ");        tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_emergency_left_skip_code)     ) { v = par_emergency_left_skip(p)     ; if (! tex_glue_is_zero(v)) { tex_print_str(", emergencyleftskip ");       tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_emergency_right_skip_code)    ) { v = par_emergency_right_skip(p)    ; if (! tex_glue_is_zero(v)) { tex_print_str(", emergencyrightskip ");      tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_baseline_skip_code)           ) { v = par_baseline_skip(p)           ; if (! tex_glue_is_zero(v)) { tex_print_str(", baselineskip ");            tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_line_skip_code)               ) { v = par_line_skip(p)               ; if (! tex_glue_is_zero(v)) { tex_print_str(", lineskip ");                tex_print_specnode (v, pt_unit); } } 
-                            if (tex_par_state_is_set(p, par_line_skip_limit_code)         ) { v = par_line_skip_limit(p)         ; if (v)                     { tex_print_str(", lineskiplimt ");            tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_adjust_spacing_step_code)     ) { v = par_adjust_spacing_step(p)     ; if (v > 0)                 { tex_print_str(", adjustspacingstep ");       tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_adjust_spacing_shrink_code)   ) { v = par_adjust_spacing_shrink(p)   ; if (v > 0)                 { tex_print_str(", adjustspacingshrink ");     tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_adjust_spacing_stretch_code)  ) { v = par_adjust_spacing_stretch(p)  ; if (v > 0)                 { tex_print_str(", adjustspacingstretch ");    tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_hyphenation_mode_code)        ) { v = par_hyphenation_mode(p)        ; if (v > 0)                 { tex_print_str(", hyphenationmode ");         tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_shaping_penalties_mode_code)  ) { v = par_shaping_penalties_mode(p)  ; if (v > 0)                 { tex_print_str(", shapingpenaltiesmode ");    tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_shaping_penalty_code)         ) { v = par_shaping_penalty(p)         ; if (v > 0)                 { tex_print_str(", shapingpenalty ");          tex_print_int      (v);          } }
-                            if (tex_par_state_is_set(p, par_emergency_extra_stretch_code) ) { v = par_emergency_extra_stretch(p) ; if (v)                     { tex_print_str(", emergencyextrastretch ");   tex_print_dimension(v, pt_unit); } }
-                            if (tex_par_state_is_set(p, par_par_passes_code)              ) { v = par_par_passes(p)              ; if (v)                     { tex_print_str(", parpasses * ");                                              } }
+                            if (tex_par_state_is_set(p, par_par_shape_code)              ) { v = par_par_shape(p)               ; if (v)                     { tex_print_str(", parshape * ");               } }
+                            if (tex_par_state_is_set(p, par_inter_line_penalties_code)   ) { v = par_inter_line_penalties(p)    ; if (v)                     { tex_print_str(", interlinepenalties * ");     } }
+                            if (tex_par_state_is_set(p, par_club_penalties_code)         ) { v = par_club_penalties(p)          ; if (v)                     { tex_print_str(", clubpenalties * ");          } }
+                            if (tex_par_state_is_set(p, par_widow_penalties_code)        ) { v = par_widow_penalties(p)         ; if (v)                     { tex_print_str(", widowpenalties * ");         } }
+                            if (tex_par_state_is_set(p, par_display_widow_penalties_code)) { v = par_display_widow_penalties(p) ; if (v)                     { tex_print_str(", displsaywidowpenalties * "); } }
+                            if (tex_par_state_is_set(p, par_orphan_penalties_code)       ) { v = par_orphan_penalties(p)        ; if (v)                     { tex_print_str(", orphanpenalties * ");        } }
+                            if (tex_par_state_is_set(p, par_hang_indent_code)            ) { v = par_hang_indent(p)             ; if (v)                     { tex_print_str(", hangindent ");               tex_print_dimension(v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_hang_after_code)             ) { v = par_hang_after(p)              ; if (v)                     { tex_print_str(", hangafter ");                tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_hsize_code)                  ) { v = par_hsize(p)                   ; if (v)                     { tex_print_str(", hsize ");                    tex_print_dimension(v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_right_skip_code)             ) { v = par_right_skip(p)              ; if (! tex_glue_is_zero(v)) { tex_print_str(", rightskip ");                tex_print_specnode (v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_left_skip_code)              ) { v = par_left_skip(p)               ; if (! tex_glue_is_zero(v)) { tex_print_str(", leftskip ");                 tex_print_specnode (v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_last_line_fit_code)          ) { v = par_last_line_fit(p)           ; if (v)                     { tex_print_str(", lastlinefit ");              tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_pre_tolerance_code)          ) { v = par_pre_tolerance(p)           ; if (v)                     { tex_print_str(", pretolerance ");             tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_tolerance_code)              ) { v = par_tolerance(p)               ; if (v)                     { tex_print_str(", tolerance ");                tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_looseness_code)              ) { v = par_looseness(p)               ; if (v)                     { tex_print_str(", looseness ");                tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_adjust_spacing_code)         ) { v = par_adjust_spacing(p)          ; if (v)                     { tex_print_str(", adjustspacing ");            tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_adj_demerits_code)           ) { v = par_adj_demerits(p)            ; if (v)                     { tex_print_str(", adjdemerits ");              tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_protrude_chars_code)         ) { v = par_protrude_chars(p)          ; if (v)                     { tex_print_str(", protrudechars ");            tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_line_penalty_code)           ) { v = par_line_penalty(p)            ; if (v)                     { tex_print_str(", linepenalty ");              tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_double_hyphen_demerits_code) ) { v = par_double_hyphen_demerits(p)  ; if (v)                     { tex_print_str(", doublehyphendemerits ");     tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_final_hyphen_demerits_code)  ) { v = par_final_hyphen_demerits(p)   ; if (v)                     { tex_print_str(", finalhyphendemerits ");      tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_inter_line_penalty_code)     ) { v = par_inter_line_penalty(p)      ; if (v)                     { tex_print_str(", interlinepenalty ");         tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_club_penalty_code)           ) { v = par_club_penalty(p)            ; if (v)                     { tex_print_str(", clubpenalty ");              tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_widow_penalty_code)          ) { v = par_widow_penalty(p)           ; if (v)                     { tex_print_str(", widowpenalty ");             tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_display_widow_penalty_code)  ) { v = par_display_widow_penalty(p)   ; if (v)                     { tex_print_str(", displaywidowpenalty ");      tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_orphan_penalty_code)         ) { v = par_orphan_penalty(p)          ; if (v)                     { tex_print_str(", orphanpenalty ");            tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_broken_penalty_code)         ) { v = par_broken_penalty(p)          ; if (v)                     { tex_print_str(", brokenpenalty ");            tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_emergency_stretch_code)      ) { v = par_emergency_stretch(p)       ; if (v)                     { tex_print_str(", emergencystretch ");         tex_print_dimension(v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_par_indent_code)             ) { v = par_par_indent(p)              ; if (v)                     { tex_print_str(", parindent ");                tex_print_dimension(v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_par_fill_left_skip_code)     ) { v = par_par_fill_left_skip(p)      ; if (! tex_glue_is_zero(v)) { tex_print_str(", parfilleftskip ");           tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_par_fill_right_skip_code)    ) { v = par_par_fill_right_skip(p)     ; if (! tex_glue_is_zero(v)) { tex_print_str(", parfillskip ");              tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_par_init_left_skip_code)     ) { v = par_par_init_left_skip(p)      ; if (! tex_glue_is_zero(v)) { tex_print_str(", parinitleftskip ");          tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_par_init_right_skip_code)    ) { v = par_par_init_right_skip(p)     ; if (! tex_glue_is_zero(v)) { tex_print_str(", parinitrightskip ");         tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_baseline_skip_code)          ) { v = par_baseline_skip(p)           ; if (! tex_glue_is_zero(v)) { tex_print_str(", baselineskip ");             tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_line_skip_code)              ) { v = par_line_skip(p)               ; if (! tex_glue_is_zero(v)) { tex_print_str(", lineskip ");                 tex_print_specnode (v, pt_unit); } } 
+                            if (tex_par_state_is_set(p, par_line_skip_limit_code)        ) { v = par_line_skip_limit(p)         ; if (v)                     { tex_print_str(", lineskiplimt ");             tex_print_dimension(v, pt_unit); } }
+                            if (tex_par_state_is_set(p, par_adjust_spacing_step_code)    ) { v = par_adjust_spacing_step(p)     ; if (v > 0)                 { tex_print_str(", adjustspacingstep ");        tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_adjust_spacing_shrink_code)  ) { v = par_adjust_spacing_shrink(p)   ; if (v > 0)                 { tex_print_str(", adjustspacingshrink ");      tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_adjust_spacing_stretch_code) ) { v = par_adjust_spacing_stretch(p)  ; if (v > 0)                 { tex_print_str(", adjustspacingstretch ");     tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_hyphenation_mode_code)       ) { v = par_hyphenation_mode(p)        ; if (v > 0)                 { tex_print_str(", hyphenationmode ");          tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_shaping_penalties_mode_code) ) { v = par_shaping_penalties_mode(p)  ; if (v > 0)                 { tex_print_str(", shapingpenaltiesmode ");     tex_print_int      (v);          } }
+                            if (tex_par_state_is_set(p, par_shaping_penalty_code)        ) { v = par_shaping_penalty(p)         ; if (v > 0)                 { tex_print_str(", shapingpenalty ");           tex_print_int      (v);          } }
                         }
                         /* local boxes */
-                        v = tex_get_local_left_width(p)  ; if (v) { tex_print_format(", leftboxwidth %p", v); }
-                        v = tex_get_local_right_width(p) ; if (v) { tex_print_format(", rightboxwidth %p", v); }
+                        v = tex_get_local_left_width(p)  ; if (v) { tex_print_format(", leftboxwidth %D", v, pt_unit); }
+                        v = tex_get_local_right_width(p) ; if (v) { tex_print_format(", rightboxwidth %D", v, pt_unit); }
                         tex_print_node_list(par_box_left(p), "leftbox", threshold, max);
                         tex_print_node_list(par_box_right(p), "rightbox", threshold, max);
                         tex_print_node_list(par_box_middle(p), "middlebox", threshold, max);
@@ -2998,15 +2873,12 @@ void tex_show_node_list(halfword p, int threshold, int max)
                         if (node_subtype(p) == space_skip_glue && glue_font(p)) {
                             tex_print_format(", font %i", glue_font(p));
                         }
-                        if (glue_options(p)) {
-                            tex_print_format(", options %x", glue_options(p));
-                        }
                     }
                     break;
                 case kern_node:
                     /*tex Display kern |p| */
                     if (node_subtype(p) != explicit_math_kern_subtype) {
-                        tex_print_format(", amount %p", kern_amount(p));
+                        tex_print_format(", amount %D", kern_amount(p), pt_unit);
                         if (kern_expansion(p)) {
                             tex_print_format(", expansion %i", kern_expansion(p));
                         }
@@ -3020,19 +2892,10 @@ void tex_show_node_list(halfword p, int threshold, int max)
                         tex_print_str(", glued ");
                         tex_print_specnode(p, no_unit);
                     } else if (math_surround(p)) {
-                        tex_print_format(", surrounded %p", math_surround(p));
+                        tex_print_format(", surrounded %D", math_surround(p), pt_unit);
                     }
                     if (math_penalty(p)) {
                         tex_print_format(", penalty %i", math_penalty(p));
-                    }
-                    if (math_pre_tolerance(p)) {
-                        tex_print_format(", pretolerance %i", math_pre_tolerance(p));
-                    }
-                    if (math_tolerance(p)) {
-                        tex_print_format(", tolerance %i", math_tolerance(p));
-                    }
-                    if (math_options(p)) {
-                        tex_print_format(", options %x", math_options(p));
                     }
                     break;
                 case penalty_node:
@@ -3069,10 +2932,10 @@ void tex_show_node_list(halfword p, int threshold, int max)
                         tex_print_format(", index %i", adjust_index(p));
                     }
                     if (has_adjust_option(p, adjust_option_depth_before) && adjust_depth_before(p)) {
-                        tex_print_format(", depthbefore %p", adjust_depth_before(p));
+                        tex_print_format(", depthbefore %D", adjust_depth_before(p), pt_unit);
                     }
                     if (has_adjust_option(p, adjust_option_depth_after) &&adjust_depth_before(p)) {
-                        tex_print_format(", depthafter %p", adjust_depth_after(p));
+                        tex_print_format(", depthafter %D", adjust_depth_after(p), pt_unit);
                     }
                     tex_print_node_list(adjust_list(p), "list", threshold, max);
                     break;
@@ -3110,7 +2973,7 @@ void tex_show_node_list(halfword p, int threshold, int max)
 static halfword tex_aux_get_actual_box_width(halfword r, halfword p, scaled initial_width)
 {
     /*tex calculated |size| */
-    scaled w = -max_dimension;
+    scaled w = -max_dimen;
     /*tex |w| plus possible glue amount */
     scaled v = initial_width;
     while (p) {
@@ -3134,7 +2997,7 @@ static halfword tex_aux_get_actual_box_width(halfword r, halfword p, scaled init
                 /*tex At the end of the line we should actually take the |pre|. */
                 if (disc_no_break(p)) {
                     d = tex_aux_get_actual_box_width(r, disc_no_break_head(p),0);
-                    if (d <= -max_dimension || d >= max_dimension) {
+                    if (d <= -max_dimen || d >= max_dimen) {
                         d = 0;
                     }
                 } else {
@@ -3149,12 +3012,12 @@ static halfword tex_aux_get_actual_box_width(halfword r, halfword p, scaled init
                     switch (box_glue_sign(r)) {
                         case stretching_glue_sign:
                             if ((box_glue_order(r) == math_stretch_order(p)) && math_stretch(p)) {
-                                v = max_dimension;
+                                v = max_dimen;
                             }
                             break;
                         case shrinking_glue_sign:
                             if ((box_glue_order(r) == math_shrink_order(p)) && math_shrink(p)) {
-                                v = max_dimension;
+                                v = max_dimen;
                             }
                             break;
                     }
@@ -3172,11 +3035,11 @@ static halfword tex_aux_get_actual_box_width(halfword r, halfword p, scaled init
                 d = glue_amount(p);
                 if (box_glue_sign(r) == stretching_glue_sign) {
                     if ((box_glue_order(r) == glue_stretch_order(p)) && glue_stretch(p)) {
-                        v = max_dimension;
+                        v = max_dimen;
                     }
                 } else if (box_glue_sign(r) == shrinking_glue_sign) {
                     if ((box_glue_order(r) == glue_shrink_order(p)) && glue_shrink(p)) {
-                        v = max_dimension;
+                        v = max_dimen;
                     }
                 }
                 if (is_leader(p)) {
@@ -3187,16 +3050,16 @@ static halfword tex_aux_get_actual_box_width(halfword r, halfword p, scaled init
                 d = 0;
                 break;
         }
-        if (v < max_dimension) {
+        if (v < max_dimen) {
             v += d;
         }
         goto NOT_FOUND;
       FOUND:
-        if (v < max_dimension) {
+        if (v < max_dimen) {
             v += d;
             w = v;
         } else {
-            w = max_dimension;
+            w = max_dimen;
             break;
         }
       NOT_FOUND:
@@ -3409,8 +3272,6 @@ halfword tex_new_char_node(quarterword subtype, halfword fnt, halfword chr, int 
         set_glyph_y_scale(p, glyph_y_scale_par);
         set_glyph_x_offset(p, glyph_x_offset_par);
         set_glyph_y_offset(p, glyph_y_offset_par);
-        set_glyph_slant(p, glyph_slant_par);
-        set_glyph_weight(p, glyph_weight_par);
     }
     if (! tex_char_exists(fnt, chr)) {
         int callback_id = lmt_callback_defined(missing_character_callback);
@@ -3443,8 +3304,6 @@ halfword tex_new_text_glyph(halfword fnt, halfword chr)
     set_glyph_y_scale(p, glyph_y_scale_par);
     set_glyph_x_offset(p, glyph_x_offset_par);
     set_glyph_y_offset(p, glyph_y_offset_par);
-    set_glyph_slant(p, glyph_slant_par);
-    set_glyph_weight(p, glyph_weight_par);
     return p;
 }
 
@@ -3490,7 +3349,7 @@ scaled tex_glyph_width_ex(halfword p)
     }
     w -= (glyph_left(p) + glyph_right(p));
     if (glyph_expansion(p)) {
-        w = w + tex_ext_xn_over_d(w, scaling_factor_squared + glyph_expansion(p), scaling_factor_squared);
+        w = w + tex_ext_xn_over_d(w, 1000000 + glyph_expansion(p), 1000000);
     }
     return w;
 }
@@ -3561,7 +3420,7 @@ scaledwhd tex_glyph_dimensions_ex(halfword p)
         whd.dp = 0;
     }
     if (whd.wd && glyph_expansion(p)) {
-        whd.wd = tex_ext_xn_over_d(whd.wd, scaling_factor_squared + glyph_expansion(p), scaling_factor_squared);
+        whd.wd = tex_ext_xn_over_d(whd.wd, 1000000 + glyph_expansion(p), 1000000);
     }
     return whd;
 }
@@ -3597,18 +3456,18 @@ halfword tex_kern_dimension_ex(halfword p)
 {
     halfword k = kern_amount(p);
     if (k && kern_expansion(p)) {
-        k = tex_ext_xn_over_d(k, scaling_factor_squared + kern_expansion(p), scaling_factor_squared);
+        k = tex_ext_xn_over_d(k, 1000000 + kern_expansion(p), 1000000);
     }
     return k;
 }
 
 scaledwhd tex_pack_dimensions(halfword p)
 {
-    scaledwhd siz = { .wd = 0, .ht = 0, .dp = 0, .ns = 0 };
-    siz.ht = box_height(p);
-    siz.dp = box_depth(p);
-    siz.wd = box_width(p);
-    return siz;
+    scaledwhd whd = { 0, 0, 0, 0 };
+    whd.ht = box_height(p);
+    whd.dp = box_depth(p);
+    whd.wd = box_width(p);
+    return whd;
 }
 
 /*tex
@@ -3633,7 +3492,6 @@ halfword tex_new_disc_node(quarterword s)
     halfword p = tex_new_node(disc_node, s);
     disc_penalty(p) = hyphen_penalty_par;
     disc_class(p) = unset_disc_class;
-    set_disc_options(p, discretionary_options_par);
     return p;
 }
 
@@ -3896,25 +3754,19 @@ halfword tex_new_penalty_node(halfword m, quarterword s)
     cleanups. We could either snapshot parameters before a group ends, or we can add a lots of
     |\local...| parameters.
 
-    This section might move to its own file. 
-
 */
 
-halfword tex_new_par_node(quarterword subtype)
+halfword tex_new_par_node(quarterword mode)
 {
     int callback_id, top;
-    halfword p = tex_new_node(par_node, subtype);
+    halfword p = tex_new_node(par_node, mode);
     /* */
-    if (subtype == parameter_par_subtype) {
-        tex_set_local_interline_penalty(p, local_interline_penalty_par);
-        tex_set_local_broken_penalty(p, local_broken_penalty_par);
-        tex_set_local_tolerance(p, local_tolerance_par);
-        tex_set_local_pre_tolerance(p, local_pre_tolerance_par);
-    }
+    tex_set_local_interline_penalty(p, local_interline_penalty_par);
+    tex_set_local_broken_penalty(p, local_broken_penalty_par);
     par_dir(p) = par_direction_par;
     /* */
     tex_add_local_boxes(p);
-    if (subtype != local_box_par_subtype) {
+    if (mode != local_box_par_subtype) {
         /*tex Callback with node passed. Todo: move to luanode with the rest of callbacks. */
         callback_id = lmt_callback_defined(insert_par_callback);
         if (callback_id > 0) {
@@ -3922,7 +3774,7 @@ halfword tex_new_par_node(quarterword subtype)
             if (lmt_callback_okay(L, callback_id, &top)) {
                 int i;
                 lmt_node_list_to_lua(L, p);
-                lmt_push_par_mode(L, subtype);
+                lmt_push_par_mode(L, mode);
                 i = lmt_callback_call(L, 2, 0 ,top);
                 if (i) {
                     lmt_callback_error(L, top, i);
@@ -3937,7 +3789,7 @@ halfword tex_new_par_node(quarterword subtype)
 
 static halfword tex_aux_internal_to_par_code(halfword cmd, halfword index) {
     switch (cmd) {
-        case internal_integer_cmd:
+        case internal_int_cmd:
             switch (index) {
                 case hang_after_code             : return par_hang_after_code;
                 case adjust_spacing_code         : return par_adjust_spacing_code;
@@ -3952,24 +3804,21 @@ static halfword tex_aux_internal_to_par_code(halfword cmd, halfword index) {
                 case widow_penalty_code          : return par_widow_penalty_code;
                 case display_widow_penalty_code  : return par_display_widow_penalty_code;
                 case orphan_penalty_code         : return par_orphan_penalty_code;
-                case single_line_penalty_code    : return par_single_line_penalty_code;
                 case broken_penalty_code         : return par_broken_penalty_code;
                 case adj_demerits_code           : return par_adj_demerits_code;
-                case double_adj_demerits_code    : return par_double_adj_demerits_code;
                 case double_hyphen_demerits_code : return par_double_hyphen_demerits_code;
                 case final_hyphen_demerits_code  : return par_final_hyphen_demerits_code;
                 case shaping_penalties_mode_code : return par_shaping_penalties_mode_code;
                 case shaping_penalty_code        : return par_shaping_penalty_code;
             }
             break;
-        case internal_dimension_cmd:
+        case internal_dimen_cmd:
             switch (index) {
-                case hsize_code                   : return par_hsize_code;
-                case hang_indent_code             : return par_hang_indent_code;
-                case par_indent_code              : return par_par_indent_code;
-                case emergency_stretch_code       : return par_emergency_stretch_code;
-                case line_skip_limit_code         : return par_line_skip_limit_code;
-                case emergency_extra_stretch_code : return par_emergency_extra_stretch_code;
+                case hsize_code                  : return par_hsize_code;
+                case hang_indent_code            : return par_hang_indent_code;
+                case par_indent_code             : return par_par_indent_code;
+                case emergency_stretch_code      : return par_emergency_stretch_code;
+                case line_skip_limit_code        : return par_line_skip_limit_code;
             }
             break;
         case internal_glue_cmd:
@@ -3980,8 +3829,6 @@ static halfword tex_aux_internal_to_par_code(halfword cmd, halfword index) {
                 case par_fill_right_skip_code    : return par_par_fill_right_skip_code;
                 case par_init_left_skip_code     : return par_par_init_left_skip_code;
                 case par_init_right_skip_code    : return par_par_init_right_skip_code;
-                case emergency_left_skip_code    : return par_emergency_left_skip_code;
-                case emergency_right_skip_code   : return par_emergency_right_skip_code;
                 case baseline_skip_code          : return par_baseline_skip_code;
                 case line_skip_code              : return par_line_skip_code;
             }
@@ -3994,7 +3841,6 @@ static halfword tex_aux_internal_to_par_code(halfword cmd, halfword index) {
                 case widow_penalties_code        : return par_widow_penalties_code;
                 case display_widow_penalties_code: return par_display_widow_penalties_code;
                 case orphan_penalties_code       : return par_orphan_penalties_code;
-                case par_passes_code             : return par_par_passes_code;
             }
             break;
     }
@@ -4033,7 +3879,6 @@ halfword tex_get_par_par(halfword p, halfword what)
         case par_looseness_code:               return set ? par_looseness(p)               : looseness_par;
         case par_adjust_spacing_code:          return set ? par_adjust_spacing(p)          : adjust_spacing_par;
         case par_adj_demerits_code:            return set ? par_adj_demerits(p)            : adj_demerits_par;
-        case par_double_adj_demerits_code:     return set ? par_double_adj_demerits(p)     : double_adj_demerits_par;
         case par_protrude_chars_code:          return set ? par_protrude_chars(p)          : protrude_chars_par;
         case par_line_penalty_code:            return set ? par_line_penalty(p)            : line_penalty_par;
         case par_double_hyphen_demerits_code:  return set ? par_double_hyphen_demerits(p)  : double_hyphen_demerits_par;
@@ -4043,7 +3888,6 @@ halfword tex_get_par_par(halfword p, halfword what)
         case par_widow_penalty_code:           return set ? par_widow_penalty(p)           : widow_penalty_par;
         case par_display_widow_penalty_code:   return set ? par_display_widow_penalty(p)   : display_widow_penalty_par;
         case par_orphan_penalty_code:          return set ? par_orphan_penalty(p)          : orphan_penalty_par;
-        case par_single_line_penalty_code:     return set ? par_single_line_penalty(p)     : single_line_penalty_par;
         case par_broken_penalty_code:          return set ? par_broken_penalty(p)          : broken_penalty_par;
         case par_emergency_stretch_code:       return set ? par_emergency_stretch(p)       : emergency_stretch_par;
         case par_par_indent_code:              return set ? par_par_indent(p)              : par_indent_par;
@@ -4051,8 +3895,6 @@ halfword tex_get_par_par(halfword p, halfword what)
         case par_par_fill_right_skip_code:     return set ? par_par_fill_right_skip(p)     : par_fill_right_skip_par;
         case par_par_init_left_skip_code:      return set ? par_par_init_left_skip(p)      : par_init_left_skip_par;
         case par_par_init_right_skip_code:     return set ? par_par_init_right_skip(p)     : par_init_right_skip_par;
-        case par_emergency_left_skip_code:     return set ? par_emergency_left_skip(p)     : emergency_left_skip_par;
-        case par_emergency_right_skip_code:    return set ? par_emergency_right_skip(p)    : emergency_right_skip_par;
         case par_baseline_skip_code:           return set ? par_baseline_skip(p)           : baseline_skip_par;
         case par_line_skip_code:               return set ? par_line_skip(p)               : line_skip_par;
         case par_line_skip_limit_code:         return set ? par_line_skip_limit(p)         : line_skip_limit_par;
@@ -4062,8 +3904,6 @@ halfword tex_get_par_par(halfword p, halfword what)
         case par_hyphenation_mode_code:        return set ? par_hyphenation_mode(p)        : hyphenation_mode_par;
         case par_shaping_penalties_mode_code:  return set ? par_shaping_penalties_mode(p)  : shaping_penalties_mode_par;
         case par_shaping_penalty_code:         return set ? par_shaping_penalty(p)         : shaping_penalty_par;
-        case par_emergency_extra_stretch_code: return set ? par_emergency_extra_stretch(p) : emergency_extra_stretch_par;
-        case par_par_passes_code:              return set ? par_par_passes(p)              : par_passes_par;
     }
     return null;
 }
@@ -4120,18 +3960,6 @@ void tex_set_par_par(halfword p, halfword what, halfword v, int force)
                 }
                 par_par_init_right_skip(p) = v ? tex_copy_node(v) : null;
                 break;
-            case par_emergency_left_skip_code:
-                if (par_emergency_left_skip(p)) {
-                    tex_flush_node(par_emergency_left_skip(p));
-                }
-                par_emergency_left_skip(p) = v ? tex_copy_node(v) : null;
-                break;
-            case par_emergency_right_skip_code:
-                if (par_emergency_right_skip(p)) {
-                    tex_flush_node(par_emergency_right_skip(p));
-                }
-                par_emergency_right_skip(p) = v ? tex_copy_node(v) : null;
-                break;
             case par_adjust_spacing_code:
                 par_adjust_spacing(p) = v;
                 break;
@@ -4149,9 +3977,6 @@ void tex_set_par_par(halfword p, halfword what, halfword v, int force)
                 break;
             case par_looseness_code:
                 par_looseness(p) = v;
-                break;
-            case par_single_line_penalty_code:
-                par_single_line_penalty(p) = v;
                 break;
             case par_last_line_fit_code:
                 par_last_line_fit(p) = v;
@@ -4179,9 +4004,6 @@ void tex_set_par_par(halfword p, halfword what, halfword v, int force)
                 break;
             case par_adj_demerits_code:
                 par_adj_demerits(p) = v;
-                break;
-            case par_double_adj_demerits_code:
-                par_double_adj_demerits(p) = v;
                 break;
             case par_double_hyphen_demerits_code:
                 par_double_hyphen_demerits(p) = v;
@@ -4258,15 +4080,6 @@ void tex_set_par_par(halfword p, halfword what, halfword v, int force)
             case par_shaping_penalty_code:
                 par_shaping_penalty(p) = v;
                 break;
-            case par_emergency_extra_stretch_code:
-                par_emergency_extra_stretch(p) = v;
-                break;
-            case par_par_passes_code:
-                if (par_par_passes(p)) {
-                    tex_flush_node(par_par_passes(p));
-                }
-                par_par_passes(p) = v ? tex_copy_node(v) : null;
-                break;
         }
         tex_set_par_state(p, what);
     }
@@ -4319,7 +4132,6 @@ void tex_set_par_par(halfword p, halfword what, halfword v, int force)
             if (tex_par_to_be_set(what, par_orphan_penalty_code))          { tex_set_par_par(p, par_orphan_penalty_code,          unset ? null : orphan_penalty_par,          1); }
             if (tex_par_to_be_set(what, par_broken_penalty_code))          { tex_set_par_par(p, par_broken_penalty_code,          unset ? null : broken_penalty_par,          1); }
             if (tex_par_to_be_set(what, par_adj_demerits_code))            { tex_set_par_par(p, par_adj_demerits_code,            unset ? null : adj_demerits_par,            1); }
-            if (tex_par_to_be_set(what, par_double_adj_demerits_code))     { tex_set_par_par(p, par_double_adj_demerits_code,     unset ? null : double_adj_demerits_par,     1); }
             if (tex_par_to_be_set(what, par_double_hyphen_demerits_code))  { tex_set_par_par(p, par_double_hyphen_demerits_code,  unset ? null : double_hyphen_demerits_par,  1); }
             if (tex_par_to_be_set(what, par_final_hyphen_demerits_code))   { tex_set_par_par(p, par_final_hyphen_demerits_code,   unset ? null : final_hyphen_demerits_par,   1); }
             if (tex_par_to_be_set(what, par_par_shape_code))               { tex_set_par_par(p, par_par_shape_code,               unset ? null : par_shape_par,               1); }
@@ -4419,20 +4231,6 @@ void tex_snapshot_par(halfword p, halfword what)
             }
             par_par_init_right_skip(p) = v ? tex_copy_node(v) : null;
         }
-        if (tex_par_to_be_set(what, par_emergency_left_skip_code)) { 
-            halfword v = unset ? null : emergency_left_skip_par; 
-            if (par_emergency_left_skip(p)) {
-                tex_flush_node(par_emergency_left_skip(p));
-            }
-            par_emergency_left_skip(p) = v ? tex_copy_node(v) : null;
-        }
-        if (tex_par_to_be_set(what, par_emergency_right_skip_code)) { 
-            halfword v = unset ? null : emergency_right_skip_par; 
-            if (par_emergency_right_skip(p)) {
-                tex_flush_node(par_emergency_right_skip(p));
-            }
-            par_emergency_right_skip(p) = v ? tex_copy_node(v) : null;
-        }
         if (tex_par_to_be_set(what, par_adjust_spacing_code)) { 
             par_adjust_spacing(p) = unset ? null : adjust_spacing_par; 
         }
@@ -4472,17 +4270,11 @@ void tex_snapshot_par(halfword p, halfword what)
         if (tex_par_to_be_set(what, par_orphan_penalty_code)) { 
             par_orphan_penalty(p) = unset ? null : orphan_penalty_par; 
         }
-        if (tex_par_to_be_set(what, par_single_line_penalty_code)) { 
-            par_single_line_penalty(p) = unset ? null : single_line_penalty_par; 
-        }
         if (tex_par_to_be_set(what, par_broken_penalty_code)) { 
             par_broken_penalty(p) = unset ? null : broken_penalty_par; 
         }
         if (tex_par_to_be_set(what, par_adj_demerits_code)) { 
             par_adj_demerits(p) = unset ? null : adj_demerits_par; 
-        }
-        if (tex_par_to_be_set(what, par_double_adj_demerits_code)) { 
-            par_double_adj_demerits(p) = unset ? null : double_adj_demerits_par; 
         }
         if (tex_par_to_be_set(what, par_double_hyphen_demerits_code)){ 
             par_double_hyphen_demerits(p) = unset ? null : double_hyphen_demerits_par; 
@@ -4567,19 +4359,6 @@ void tex_snapshot_par(halfword p, halfword what)
         if (tex_par_to_be_set(what, par_shaping_penalty_code)) { 
             par_shaping_penalty(p) = unset ? null : shaping_penalty_par; 
         }
-        if (tex_par_to_be_set(what, par_emergency_extra_stretch_code)) { 
-            par_emergency_extra_stretch(p) = unset ? null : emergency_extra_stretch_par; 
-        }
-        if (tex_par_to_be_set(what, par_par_passes_code))  { 
-            halfword v = unset ? null : par_passes_par; 
-            if (par_par_passes(p)) {
-                tex_flush_node(par_par_passes(p));
-            }
-            par_par_passes(p) = v ? tex_copy_node(v) : null;
-        }
-        if (tex_par_to_be_set(what, par_single_line_penalty_code)) { 
-            par_single_line_penalty(p) = unset ? null : single_line_penalty_par; 
-        }
      // tex_set_par_state(p, what);
         if (what == par_all_category) {
             par_state(p) = unset ? 0 : par_all_category;
@@ -4609,17 +4388,17 @@ halfword tex_reversed_node_list(halfword list)
     if (list) {
         halfword prev = list;
         halfword last = list;
-        halfword next = node_next(list);
-        if (next) {
+        list = node_next(list);
+        if (list) {
             while (1) {
+                halfword next = node_next(list);
                 tex_couple_nodes(list, prev);
                 if (node_type(list) == dir_node) {
-                    node_subtype(list) = node_subtype(list) == cancel_dir_subtype ? normal_dir_subtype : cancel_dir_subtype;
+                    node_subtype(list) = node_subtype(list) == cancel_dir_subtype ? normal_dir_subtype : cancel_dir_subtype ;
                 }
                 if (next) {
                     prev = list;
                     list = next;
-                    next = node_next(list);
                 } else {
                     node_next(last) = null;
                     node_prev(list) = null;
@@ -4642,7 +4421,6 @@ halfword tex_new_specification_node(halfword n, quarterword s, halfword options)
 
 void tex_dispose_specification_nodes(void) {
     if (par_shape_par)               { tex_flush_node(par_shape_par);               par_shape_par               = null; }
-    if (par_passes_par)              { tex_flush_node(par_passes_par);              par_passes_par              = null; }
     if (inter_line_penalties_par)    { tex_flush_node(inter_line_penalties_par);    inter_line_penalties_par    = null; }
     if (club_penalties_par)          { tex_flush_node(club_penalties_par);          club_penalties_par          = null; }
     if (widow_penalties_par)         { tex_flush_node(widow_penalties_par);         widow_penalties_par         = null; }
@@ -4658,46 +4436,36 @@ void tex_null_specification_list(halfword a)
     specification_count(a) = 0;
 }
 
-static void *tex_aux_allocate_specification(halfword p, int n, size_t *s)
+static void *tex_aux_allocate_specification(int n, size_t *s)
 {
-    void *l = NULL;
-    if (node_subtype(p) == par_passes_code) { 
-        n *= par_passes_size;
-    }
+    void *p = NULL;
     *s = n * sizeof(memoryword);
     lmt_node_memory_state.extra_data.allocated += (int) *s;
     lmt_node_memory_state.extra_data.ptr = lmt_node_memory_state.extra_data.allocated;
     if (lmt_node_memory_state.extra_data.ptr > lmt_node_memory_state.extra_data.top) {
         lmt_node_memory_state.extra_data.top = lmt_node_memory_state.extra_data.ptr;
     }
-    l = lmt_memory_calloc(n, sizeof(memoryword));
-    if (! l) {
+    p = lmt_memory_malloc(*s);
+    if (! p) {
         tex_overflow_error("nodes", (int) *s);
     }
-    return l;
+    return p;
 }
 
 static void tex_aux_deallocate_specification(void *p, int n)
 {
     size_t s = n * sizeof(memoryword);
-    lmt_node_memory_state.extra_data.allocated -= (int) s; // not ok, we need to multiply by 3 for passes
+    lmt_node_memory_state.extra_data.allocated -= (int) s;
     lmt_node_memory_state.extra_data.ptr = lmt_node_memory_state.extra_data.allocated;
     lmt_memory_free(p);
 }
 
 void tex_new_specification_list(halfword a, halfword n, halfword o)
 {
-    size_t size = 0;
-    specification_pointer(a) = tex_aux_allocate_specification(a, n, &size);
+    size_t s = 0;
+    specification_pointer(a) = tex_aux_allocate_specification(n, &s);
     specification_count(a) = specification_pointer(a) ? n : 0;
     specification_options(a) = o;
-    if (node_subtype(a) == par_passes_code) { 
-        for (int i = 1; i <= n; i++) { 
-            tex_set_passes_threshold(a, i, max_dimension);
-            tex_set_passes_badness(a, i, infinite_bad);        
-            tex_set_passes_optional(a, i, 0x1000000);        
-        }
-    }
 }
 
 void tex_dispose_specification_list(halfword a)
@@ -4712,12 +4480,12 @@ void tex_dispose_specification_list(halfword a)
 
 void tex_copy_specification_list(halfword a, halfword b) {
     if (specification_pointer(b)) {
-        size_t size = 0;
-        specification_pointer(a) = tex_aux_allocate_specification(b, specification_count(b), &size);
+        size_t s = 0;
+        specification_pointer(a) = tex_aux_allocate_specification(specification_count(b), &s);
         if (specification_pointer(a) && specification_pointer(b)) {
             specification_count(a) = specification_count(b);
             specification_options(a) = specification_options(b);
-            memcpy(specification_pointer(a), specification_pointer(b), size);
+            memcpy(specification_pointer(a), specification_pointer(b), s);
         } else {
             specification_count(a) = 0;
             specification_options(a) = 0;
@@ -4732,7 +4500,7 @@ void tex_shift_specification_list(halfword a, int n, int rotate)
         if (rotate) {
             if (n > 0 && c > 0 && n < c && c != n) {
                 size_t s = 0;
-                memoryword *b = tex_aux_allocate_specification(a, c, &s);
+                memoryword *b = tex_aux_allocate_specification(c, &s);
                 memoryword *p = specification_pointer(a);
                 halfword m = c - n;
                 s = m * sizeof(memoryword);
@@ -4753,7 +4521,7 @@ void tex_shift_specification_list(halfword a, int n, int rotate)
                     memoryword *p = specification_pointer(a);
                     o = specification_options(a);
                     m = c - n;
-                    b = tex_aux_allocate_specification(a, m, &s);
+                    b = tex_aux_allocate_specification(m, &s);
                     memcpy(b, p + n, s);
                 }
                 if (c > 0) {
@@ -4778,7 +4546,7 @@ void tex_set_disc_field(halfword target, halfword location, halfword source)
     }
     node_prev(source) = null; /* don't expose this one! */
     if (source) {
-        node_head(target) = source;
+        node_head(target) = source ;
         node_tail(target) = tex_tail_of_node_list(source);
     } else {
         node_head(target) = null;
@@ -4836,7 +4604,7 @@ halfword tex_flatten_discretionaries(halfword head, int *count, int nest)
                         } else {
                             tex_try_couple_nodes(node_prev(current), h);
                         }
-                        disc_no_break_head(d) = null;
+                        disc_no_break_head(d) = null ;
                     } else if (current == head) {
                         head = next;
                     } else {
@@ -4863,70 +4631,61 @@ halfword tex_flatten_discretionaries(halfword head, int *count, int nest)
     return head;
 }
 
-int tex_flatten_leaders(halfword box, int grp, int just_pack)
+void tex_flatten_leaders(halfword box, int *count)
 {
     halfword head = box ? box_list(box) : null;
     if (head) {
         halfword current = head;
-        int count = 0;
         while (current) {
             halfword next = node_next(current);
             if (node_type(current) == glue_node && node_subtype(current) == u_leaders) {
-                halfword prev = node_prev(current);
-                halfword leader = glue_leader_ptr(current);
-                if (leader && (node_type(leader) == hlist_node || node_type(leader) == vlist_node)) {
-                    halfword packed = null;
-                    halfword amount = glue_amount(current);
-                    halfword callback = glue_callback(current);
-                    double width = (double) amount;
+                halfword b = glue_leader_ptr(current);
+                if (b && (node_type(b) == hlist_node || node_type(b) == vlist_node)) {
+                    halfword p = null;
+                    halfword a = glue_amount(current);
+                    double w = (double) a;
                     switch (box_glue_sign(box)) {
                         case stretching_glue_sign:
                             if (glue_stretch_order(current) == box_glue_order(box)) {
-                                width += glue_stretch(current) * (double) box_glue_set(box);
+                                w += glue_stretch(current) * (double) box_glue_set(box);
                             }
                             break;
                         case shrinking_glue_sign:
                             if (glue_shrink_order(current) == box_glue_order(box)) {
-                                width -= glue_shrink(current) * (double) box_glue_set(box);
+                                w -= glue_shrink(current) * (double) box_glue_set(box);
                             }
                             break;
                     }
-                    if (node_type(leader) == hlist_node) {
-                        packed = tex_hpack(box_list(leader), scaledround(width), packing_exactly, box_dir(leader), holding_none_option, box_limit_none);
+                    if (node_type(b) == hlist_node) {
+                        p = tex_hpack(box_list(b), scaledround(w), packing_exactly, box_dir(b), holding_none_option);
                     } else {
-                        packed = tex_vpack(box_list(leader), scaledround(width), packing_exactly, 0, box_dir(leader), holding_none_option, NULL);
+                        p = tex_vpack(box_list(b), scaledround(w), packing_exactly, 0, box_dir(b), holding_none_option);
                     }
-                    box_list(leader) = box_list(packed);
-                    box_width(leader) = box_width(packed);
-                    box_height(leader) = box_height(packed);
-                    box_depth(leader) = box_depth(packed);
-                    box_glue_order(leader) = box_glue_order(packed);
-                    box_glue_sign(leader) = box_glue_sign(packed);
-                    box_glue_set(leader) = box_glue_set(packed);
-                    set_box_package_state(leader, package_u_leader_set);
-                    box_list(packed) = null;
-                    tex_flush_node(packed);
+                    box_list(b) = box_list(p);
+                    box_width(b) = box_width(p);
+                    box_height(b) = box_height(p);
+                    box_depth(b) = box_depth(p);
+                    box_glue_order(b) = box_glue_order(p);
+                    box_glue_sign(b) = box_glue_sign(p);
+                    box_glue_set(b) = box_glue_set(p);
+                    set_box_package_state(b, package_u_leader_set);
+                    box_list(p) = null;
+                    tex_flush_node(p);
                     glue_leader_ptr(current) = null;
                     tex_flush_node(current);
-                    if (callback && ! just_pack) {
-                        node_prev(leader) = null;
-                        node_next(leader) = null;
-                        leader = lmt_uleader_callback(leader, grp, callback);
-                    }
-                    tex_try_couple_nodes(leader, next);
+                    tex_try_couple_nodes(b, next);
                     if (current == head) {
-                        box_list(box) = leader;
+                        box_list(box) = b;
                     } else {
-                        tex_try_couple_nodes(prev, leader);
+                        tex_try_couple_nodes(node_prev(current), b);
                     }
-                    count += 1;
+                    if (count) {
+                        *count += 1;
+                    }
                 }
             }
             current = next;
         }
-        return count;
-    } else { 
-        return 0;
     }
 }
 

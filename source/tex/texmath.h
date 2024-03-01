@@ -29,8 +29,6 @@ typedef struct math_state_info {
     halfword last_right;
     scaled   last_atom;  
     scaled   scale;        
-    halfword single;
-    halfword padding;
 } math_state_info;
 
 extern math_state_info lmt_math_state;
@@ -43,7 +41,7 @@ typedef enum math_sizes {
 
 # define last_math_size script_script_size
 
-# define undefined_math_parameter max_dimension
+# define undefined_math_parameter max_dimen
 
 typedef enum math_indirect_types {
     indirect_math_unset,
@@ -65,8 +63,8 @@ typedef enum math_indirect_types {
 # define last_math_indirect indirect_math_internal_mugluespec
 
 typedef enum math_parameter_types {
-    math_integer_parameter,
-    math_dimension_parameter,
+    math_int_parameter,
+    math_dimen_parameter,
     math_muglue_parameter,
     math_style_parameter,
     math_pair_parameter,
@@ -74,7 +72,6 @@ typedef enum math_parameter_types {
 
 typedef enum math_parameters {
     math_parameter_quad,
-    math_parameter_exheight,
     math_parameter_axis,
     math_parameter_accent_base_height,
     math_parameter_accent_base_depth,
@@ -130,11 +127,8 @@ typedef enum math_parameters {
     math_parameter_superscript_subscript_bottom_max,
     math_parameter_subscript_superscript_vgap,
     math_parameter_space_before_script,
-    math_parameter_space_between_script,
     math_parameter_space_after_script,
     math_parameter_connector_overlap_min,
-    math_parameter_superscript_snap, /* bonus */
-    math_parameter_subscript_snap,   /* bonus */
     /* */
     math_parameter_extra_superscript_shift,
     math_parameter_extra_subscript_shift,
@@ -236,18 +230,14 @@ typedef enum math_parameters {
 # define math_parameter_rules_left(n)    ((n - math_parameter_atom_rules_first) / max_n_of_math_classes)
 # define math_parameter_rules_right(n)   ((n - math_parameter_atom_rules_first) % max_n_of_math_classes)
 
-# define ignore_math_parameter(n)   (integer_parameter(first_math_ignore_code + n))
-# define options_math_parameter(n)  (integer_parameter(first_math_options_code + n))
+# define ignore_math_parameter(n)   (count_parameter(first_math_ignore_code + n))
+# define options_math_parameter(n)  (count_parameter(first_math_options_code + n))
 
 # define math_all_class    (max_n_of_math_classes - 3)
 # define math_begin_class  (max_n_of_math_classes - 2)
 # define math_end_class    (max_n_of_math_classes - 1)
 
-# define math_first_user_class (last_noad_subtype + 1)
-# define math_last_user_class  (math_all_class    - 1)
-
 # define valid_math_class_code(n)  (n >= 0 && n < max_n_of_math_classes)
-# define real_math_class_code(n)   (n >= 0 && n < math_all_class)
 
 # define last_math_parameter               math_parameter_stack_variant
 # define math_parameter_first_variant      math_parameter_over_line_variant
@@ -256,41 +246,36 @@ typedef enum math_parameters {
 # define math_default_rules_parameter      0
 
 typedef enum math_class_options {
-    no_pre_slack_class_option                 = 0x00000001,
-    no_post_slack_class_option                = 0x00000002,
-    left_top_kern_class_option                = 0x00000004,
-    right_top_kern_class_option               = 0x00000008,
-    left_bottom_kern_class_option             = 0x00000010,
-    right_bottom_kern_class_option            = 0x00000020,
-    look_ahead_for_end_class_option           = 0x00000040,
-    no_italic_correction_class_option         = 0x00000080,
-    check_ligature_class_option               = 0x00000100,
-    check_italic_correction_class_option      = 0x00000200,
-    check_kern_pair_class_option              = 0x00000400,
-    flatten_class_option                      = 0x00000800,
-    omit_penalty_class_option                 = 0x00001000,
-    unpack_class_option                       = 0x00002000,
-    raise_prime_option                        = 0x00004000,
- // open_fence_class_option                   = 0x00000100,
- // close_fence_class_option                  = 0x00000200,
- // middle_fence_class_option                 = 0x00000400,
-    carry_over_left_top_kern_class_option     = 0x00008000,
-    carry_over_right_top_kern_class_option    = 0x00010000,
-    carry_over_left_bottom_kern_class_option  = 0x00020000,
-    carry_over_right_bottom_kern_class_option = 0x00040000,
-    prefer_delimiter_dimensions_class_option  = 0x00080000,
-    auto_inject_class_option                  = 0x00100000,
-    remove_italic_correction_class_option     = 0x00200000,
-    operator_italic_correction_class_option   = 0x00400000,
-    short_inline_class_option                 = 0x00800000,
-    push_nesting_class_option                 = 0x01000000,
-    pop_nesting_class_option                  = 0x02000000,
-    obey_nesting_class_option                 = 0x04000000,
-    no_class_options                          = 0xF0000000,
+    no_pre_slack_class_option                 = 0x0000001,
+    no_post_slack_class_option                = 0x0000002,
+    left_top_kern_class_option                = 0x0000004,
+    right_top_kern_class_option               = 0x0000008,
+    left_bottom_kern_class_option             = 0x0000010,
+    right_bottom_kern_class_option            = 0x0000020,
+    look_ahead_for_end_class_option           = 0x0000040,
+    no_italic_correction_class_option         = 0x0000080,
+    check_ligature_class_option               = 0x0000100,
+    check_italic_correction_class_option      = 0x0000200,
+    check_kern_pair_class_option              = 0x0000400,
+    flatten_class_option                      = 0x0000800,
+    omit_penalty_class_option                 = 0x0001000,
+    unpack_class_option                       = 0x0002000,
+    raise_prime_option                        = 0x0004000,
+ // open_fence_class_option                   = 0x0000100,
+ // close_fence_class_option                  = 0x0000200,
+ // middle_fence_class_option                 = 0x0000400,
+    carry_over_left_top_kern_class_option     = 0x0008000,
+    carry_over_right_top_kern_class_option    = 0x0010000,
+    carry_over_left_bottom_kern_class_option  = 0x0020000,
+    carry_over_right_bottom_kern_class_option = 0x0040000,
+    prefer_delimiter_dimensions_class_option  = 0x0080000,
+    auto_inject_class_option                  = 0x0100000,
+    remove_italic_correction_class_option     = 0x0200000,
+    operator_italic_correction_class_option   = 0x0400000,
+    no_class_options                          = 0xF000000,
 } math_class_options;
 
 extern int tex_math_has_class_option(halfword cls, int option);
-extern int tex_math_has_class_parent(halfword cls);
 
 typedef enum math_atom_font_options {
     math_atom_no_font_option   = 0,
@@ -298,7 +283,7 @@ typedef enum math_atom_font_options {
     math_atom_math_font_option = 2,
 } math_atom_font_options;
 
-static inline int math_parameter_value_type(int n)
+inline static int math_parameter_value_type(int n)
 {
     if (n < last_math_parameter) {
         return lmt_interface.math_parameter_values[n].type;
@@ -343,8 +328,6 @@ typedef enum math_style_variants {
 } math_style_variants;
 
 # define last_math_style_variant math_double_superscript_variant
-
-inline static int tex_is_cramped_style(int s) { return (s % 2) != 0; }
 
 /*
 
@@ -439,7 +422,6 @@ Hans) overhauled the math engine.
 \NC FlattenedAccentBottomShiftDown    \NC undefined \NC \NC \NR     
 \NC DelimiterPercent                  \NC           \NC \NC \NR     
 \NC DelimiterShortfall                \NC           \NC \NC \NR     
-\NC DelimiterExtendMargin             \NC           \NC \NC \NR
 \stoptabulate
 
 */
@@ -506,8 +488,6 @@ typedef enum math_parameter_codes {
     RadicalKernBeforeExtensible,
     /* unofficial */
     MinConnectorOverlap,
-    SuperscriptSnap,
-    SubscriptSnap,
     SubscriptShiftDownWithSuperscript,
     FractionDelimiterSize,
     FractionDelimiterDisplayStyleSize,
@@ -516,7 +496,6 @@ typedef enum math_parameter_codes {
     AccentBaseDepth,          /* reserved */
     FlattenedAccentBaseDepth, /* reserved */
     SpaceBeforeScript,                        
-    SpaceBetweenScript,                        
     PrimeRaisePercent,                        
     PrimeRaiseComposedPercent,                        
     PrimeShiftUp,                             
@@ -536,8 +515,6 @@ typedef enum math_parameter_codes {
     FlattenedAccentBottomShiftDown,           
     DelimiterPercent,                       
     DelimiterShortfall,
-    DelimiterDisplayPercent,                       
-    DelimiterDisplayShortfall,
     DelimiterExtendMargin,
     /* done */
     math_parameter_last_code,
@@ -561,7 +538,6 @@ typedef enum math_skip_modes {
     math_skip_always_surround    = 4, /*tex ignore, obey marthsurround */
     math_skip_ignore             = 5, /*tex all spacing disabled */
     math_skip_only_when_skip     = 6,
-    math_skip_only_when_no_skip  = 7,
 } math_skip_modes;
 
 /*tex All kind of helpers: */
@@ -577,7 +553,7 @@ extern halfword tex_to_math_rules_parameter      (halfword left, halfword right)
 
 extern halfword tex_math_style_variant           (halfword style, halfword param);
 
-extern void     tex_def_math_parameter           (int style, int param, scaled value, int level, int indirect, int fixup);
+extern void     tex_def_math_parameter           (int style, int param, scaled value, int level, int indirect);
 extern scaled   tex_get_math_parameter           (int style, int param, halfword *type);
 extern int      tex_has_math_parameter           (int style, int param);
 extern scaled   tex_get_math_parameter_checked   (int style, int param);
@@ -601,7 +577,6 @@ extern scaled   tex_get_math_quad_style          (int style);
 extern scaled   tex_math_axis_size               (int size);
 extern scaled   tex_get_math_quad_size           (int size);
 extern scaled   tex_get_math_quad_size_scaled    (int size);
-extern scaled   tex_get_math_quad_size_unscaled  (int size);
 
 extern void     tex_initialize_math              (void);
 extern void     tex_initialize_math_spacing      (void);
@@ -638,7 +613,6 @@ extern void     tex_scan_extdef_del_code         (int level, int extcode);
 extern void     tex_scan_extdef_math_code        (int level, int extcode);
 extern int      tex_current_math_style           (void);
 extern int      tex_current_math_main_style      (void);
-extern int      tex_current_math_parent_style    (void);
 extern int      tex_scan_math_code_val           (halfword code, mathcodeval *mval, mathdictval *dval);
 extern int      tex_scan_math_cmd_val            (mathcodeval *mval, mathdictval *dval);
 
@@ -654,10 +628,6 @@ extern void     tex_set_default_math_codes       (void);
 
 extern int      tex_check_active_math_char       (int character);
 extern int      tex_pass_active_math_char        (int character);
-
-inline int      tex_math_scripts_allowed         (halfword node) { return ((node_type(node) >= simple_noad) && (node_type(node) < fence_noad)); }
-
-extern halfword tex_new_math_continuation_atom   (halfword node, halfword attr);
 
 /*tex The runners in maincontrol: */
 
@@ -688,30 +658,16 @@ extern void     tex_finish_math_radical        (void);
 extern void     tex_finish_math_operator       (void);
 extern void     tex_finish_display_alignment   (halfword head, halfword tail, halfword prevdepth);
 
-extern void     tex_show_math_fraction_group   (void);
-extern void     tex_show_math_radical_group    (void);
-extern void     tex_show_math_operator_group   (void);
-extern void     tex_show_math_choice_group     (void);
-extern void     tex_show_math_number_group     (void);
-
-extern int      tex_show_math_record           (void);
-extern int      tex_show_math_fraction_record  (void);
-extern int      tex_show_math_radical_record   (void);
-extern int      tex_show_math_operator_record  (void);
-extern int      tex_show_math_group_record     (void);
-extern int      tex_show_math_choice_record    (void);
-extern int      tex_show_math_number_record    (void);
-
 typedef enum math_control_codes {
-    math_control_use_font_control            = 0x0000001, /* use the font flag, maybe for traditional, might go */
-    math_control_over_rule                   = 0x0000002,
-    math_control_under_rule                  = 0x0000004,
-    math_control_radical_rule                = 0x0000008,
-    math_control_fraction_rule               = 0x0000010,
-    math_control_accent_skew_half            = 0x0000020,
-    math_control_accent_skew_apply           = 0x0000040,
-    math_control_apply_ordinary_kern_pair    = 0x0000080,
-    math_control_apply_vertical_italic_kern  = 0x0000100,
+    math_control_use_font_control            = 0x000001, /* use the font flag, maybe for traditional, might go */
+    math_control_over_rule                   = 0x000002,
+    math_control_under_rule                  = 0x000004,
+    math_control_radical_rule                = 0x000008,
+    math_control_fraction_rule               = 0x000010,
+    math_control_accent_skew_half            = 0x000020,
+    math_control_accent_skew_apply           = 0x000040,
+    math_control_apply_ordinary_kern_pair    = 0x000080,
+    math_control_apply_vertical_italic_kern  = 0x000100,
     math_control_apply_ordinary_italic_kern  = 0x0000200,
     math_control_apply_char_italic_kern      = 0x0000400, /* traditional */
     math_control_rebox_char_italic_kern      = 0x0000800, /* traditional */
@@ -771,5 +727,53 @@ typedef enum math_control_codes {
     \stoptyping
 
 */
+
+typedef enum saved_math_items {
+    saved_math_item_direction = 0,
+ /* saved_math_item_x_scale   = 1, */ /* this was an experiment */
+ /* saved_math_item_y_scale   = 2, */ /* this was an experiment */
+ /* saved_math_n_of_items     = 3, */
+    saved_math_n_of_items     = 1,
+} saved_math_items;
+
+typedef enum saved_equation_number_items {
+    saved_equation_number_item_location = 0,
+    saved_equation_number_n_of_items    = 1,
+} saved_equation_number_items;
+
+typedef enum saved_choice_items {
+    saved_choice_item_count = 0,
+    saved_choice_n_of_items = 1,
+} saved_choice_items;
+
+typedef enum saved_fraction_items {
+    saved_fraction_item_userstyle = 0,
+    saved_fraction_item_autostyle = 1,
+    saved_fraction_item_variant   = 2,
+    saved_fraction_n_of_items     = 3,
+} saved_fraction_items;
+
+typedef enum saved_radical_items {
+    saved_radical_degree_done = 0,
+    saved_radical_style       = 1,
+    saved_radical_n_of_items  = 2,
+} saved_radical_items;
+
+typedef enum saved_operator_items {
+    saved_operator_item_variant = 0,
+    saved_operator_n_of_items   = 1,
+} saved_operator_items;
+
+/*tex
+    These items are for regular groups, ustacks, atoms and such. We could make dedicated items
+    but in the end it means duplicatign code and we then also need to redo accents as these 
+    check for the group, in which case we then have to intercept the lot. I might do it anyway. 
+*/
+
+typedef enum saved_math_group_items {
+    saved_math_group_item_pointer = 0,
+    saved_math_group_all_class    = 1,
+    saved_math_group_n_of_items   = 2,
+} saved_math_group_items;
 
 # endif

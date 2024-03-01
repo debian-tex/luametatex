@@ -4,8 +4,6 @@
 
 # include "luametatex.h"
 
-/*tex TODO: update |[get|set]field| for new fields */
-
 /*tex
 
     We come now to what is probably the most interesting algorithm of \TEX: the mechanism for
@@ -55,14 +53,6 @@
     understand. (Remark for myself: the lua variant that i use for playing around occasionally is
     not in sync with the code here!)
 
-    I played a bit with prerolling: make a copy, run the par builder, afterwards collect the 
-    result in a box that then can be consulted: wd, ht, dp, quality, hyphens, and especially 
-    shape fitting (which was the reason, because |\hangafter| assumes lines and esp with math a 
-    line is somewhat unpredictable so we get bad fitting). In the end we decided that it was kind
-    of useless because of the unlikely usage scenario. But I might pick up on it. Of course it can 
-    be done in \LUA\ but we don't want the associated performance hit (management overhead) and
-    dealing with (progressive) solution oscillating is also an issue. 
-
 */
 
 linebreak_state_info lmt_linebreak_state = {
@@ -91,8 +81,8 @@ linebreak_state_info lmt_linebreak_state = {
     .internal_penalty_broken      = 0,
     .internal_left_box            = null,
     .internal_left_box_width      = 0,
-    .internal_left_box_init       = 0,
-    .internal_left_box_width_init = 0,
+    .init_internal_left_box       = 0,
+    .init_internal_left_box_width = 0,
     .internal_right_box           = null,
     .internal_right_box_width     = 0,
     .internal_middle_box          = null,
@@ -115,9 +105,6 @@ linebreak_state_info lmt_linebreak_state = {
     .dir_ptr                      = 0,
     .warned                       = 0,
     .calling_back                 = 0,
-    .saved_threshold              = 0,
-    .line_break_dir               = 0,
-    .checked_expansion            = -1,
 };
 
 /*tex
@@ -152,10 +139,10 @@ void tex_line_break_prepare(
     halfword *parinit_right_skip_glue,
     halfword *parfill_left_skip_glue,
     halfword *parfill_right_skip_glue,
-    halfword *final_line_penalty
+    halfword *final_penalty
 )
 {
-    /* too much testing of next .. it needs checking anyway */
+    /* too much testing of next */
     if (node_type(par) == par_node) {
         if (tracing_linebreak_lists) {
             tex_begin_diagnostic();
@@ -164,7 +151,7 @@ void tex_line_break_prepare(
             tex_end_diagnostic();
         }
         *tail = *tail ? *tail : tex_tail_of_node_list(par);
-        *final_line_penalty = tex_new_penalty_node(infinite_penalty, line_penalty_subtype);
+        *final_penalty = tex_new_penalty_node(infinite_penalty, line_penalty_subtype);
         *parfill_left_skip_glue = tex_new_glue_node(tex_get_par_par(par, par_par_fill_left_skip_code), par_fill_left_skip_glue);
         *parfill_right_skip_glue = tex_new_glue_node(tex_get_par_par(par, par_par_fill_right_skip_code), par_fill_right_skip_glue);
         *parinit_left_skip_glue = null;
@@ -175,11 +162,11 @@ void tex_line_break_prepare(
             tex_flush_node(*tail);
             *tail = prev;
         }
-        tex_attach_attribute_list_copy(*final_line_penalty, par);
+        tex_attach_attribute_list_copy(*final_penalty, par);
         tex_attach_attribute_list_copy(*parfill_left_skip_glue, par);
         tex_attach_attribute_list_copy(*parfill_right_skip_glue, par);
-        tex_try_couple_nodes(*tail, *final_line_penalty);
-        tex_try_couple_nodes(*final_line_penalty, *parfill_left_skip_glue);
+        tex_try_couple_nodes(*tail, *final_penalty);
+        tex_try_couple_nodes(*final_penalty, *parfill_left_skip_glue);
         tex_try_couple_nodes(*parfill_left_skip_glue, *parfill_right_skip_glue);
         *tail = *parfill_right_skip_glue;
         if (node_next(par)) {
@@ -252,8 +239,8 @@ void tex_line_break(int d, int line_break_context)
             halfword parinit_right_skip_glue = null;
             halfword parfill_left_skip_glue = null;
             halfword parfill_right_skip_glue = null;
-            halfword final_line_penalty = null;
-            tex_line_break_prepare(par, &tail, &parinit_left_skip_glue, &parinit_right_skip_glue, &parfill_left_skip_glue, &parfill_right_skip_glue, &final_line_penalty);
+            halfword final_penalty = null;
+            tex_line_break_prepare(par, &tail, &parinit_left_skip_glue, &parinit_right_skip_glue, &parfill_left_skip_glue, &parfill_right_skip_glue, &final_penalty);
             cur_list.tail = tail;
             /*tex 
                 We start with a prepared list. If you mess with that the linebreak routine might not 
@@ -302,13 +289,13 @@ void tex_line_break(int d, int line_break_context)
                     .parfill_right_skip      = parfill_right_skip_glue,
                     .parinit_left_skip       = parinit_left_skip_glue,
                     .parinit_right_skip      = parinit_right_skip_glue,
+                    .pretolerance            = tex_get_par_par(par, par_pre_tolerance_code),
                     .tolerance               = tex_get_par_par(par, par_tolerance_code),
                     .emergency_stretch       = tex_get_par_par(par, par_emergency_stretch_code),
                     .looseness               = tex_get_par_par(par, par_looseness_code),
                     .adjust_spacing          = tex_get_par_par(par, par_adjust_spacing_code),
                     .protrude_chars          = tex_get_par_par(par, par_protrude_chars_code),
                     .adj_demerits            = tex_get_par_par(par, par_adj_demerits_code),
-                    .double_adj_demerits     = tex_get_par_par(par, par_double_adj_demerits_code),
                     .line_penalty            = tex_get_par_par(par, par_line_penalty_code),
                     .last_line_fit           = tex_get_par_par(par, par_last_line_fit_code),
                     .double_hyphen_demerits  = tex_get_par_par(par, par_double_hyphen_demerits_code),
@@ -316,9 +303,6 @@ void tex_line_break(int d, int line_break_context)
                     .hsize                   = tex_get_par_par(par, par_hsize_code),
                     .left_skip               = tex_get_par_par(par, par_left_skip_code),
                     .right_skip              = tex_get_par_par(par, par_right_skip_code),
-                    .emergency_left_skip     = tex_get_par_par(par, par_emergency_left_skip_code),
-                    .emergency_right_skip    = tex_get_par_par(par, par_emergency_right_skip_code),
-                    .pretolerance            = tex_get_par_par(par, par_pre_tolerance_code),
                     .hang_indent             = tex_get_par_par(par, par_hang_indent_code),
                     .hang_after              = tex_get_par_par(par, par_hang_after_code),
                     .par_shape               = tex_get_par_par(par, par_par_shape_code),
@@ -331,7 +315,6 @@ void tex_line_break(int d, int line_break_context)
                     .display_widow_penalty   = tex_get_par_par(par, par_display_widow_penalty_code),
                     .display_widow_penalties = tex_get_par_par(par, par_display_widow_penalties_code),
                     .orphan_penalty          = tex_get_par_par(par, par_orphan_penalty_code),
-                    .single_line_penalty     = tex_get_par_par(par, par_single_line_penalty_code),
                     .orphan_penalties        = tex_get_par_par(par, par_orphan_penalties_code),
                     .broken_penalty          = tex_get_par_par(par, par_broken_penalty_code),
                     .baseline_skip           = tex_get_par_par(par, par_baseline_skip_code),
@@ -343,13 +326,6 @@ void tex_line_break(int d, int line_break_context)
                     .hyphenation_mode        = tex_get_par_par(par, par_hyphenation_mode_code),
                     .shaping_penalties_mode  = tex_get_par_par(par, par_shaping_penalties_mode_code),
                     .shaping_penalty         = tex_get_par_par(par, par_shaping_penalty_code),
-                    .emergency_extra_stretch = tex_get_par_par(par, par_emergency_extra_stretch_code),
-                    .par_passes              = tex_get_par_par(par, par_par_passes_code),
-                    .tracing_passes          = tracing_passes_par,
-                    .line_break_criterion    = line_break_criterion_par,
-                    .extra_hyphen_penalty    = 0,
-                    .optional_found          = 0,
-                    .line_break_optional     = line_break_optional_par,
                 };
                 tex_do_line_break(&properties);
                 /*tex
@@ -441,11 +417,10 @@ static void tex_aux_warn_expand_pars(void)
 
 static int tex_aux_check_expand_pars(halfword adjust_spacing_step, halfword f)
 {
- // if ((font_step(f) == 0) || ((font_max_stretch(f) == 0) && (font_max_shrink(f) == 0))) {
-    if (! has_font_text_control(f, text_control_expansion)) {
-        return 0;
-    } else if (adjust_spacing_step > 0) {
+    if (adjust_spacing_step > 0) {
         return 1;
+    } else if ((font_step(f) == 0) || ((font_max_stretch(f) == 0) && (font_max_shrink(f) == 0))) {
+        return 0;
     } else if (lmt_linebreak_state.current_font_step < 0) {
         lmt_linebreak_state.current_font_step = font_step(f);
     } else if (lmt_linebreak_state.current_font_step != font_step(f)) {
@@ -529,7 +504,7 @@ static halfword tex_aux_find_protchar_left(halfword l, int d)
                     }
                     run = 0;
                 }
-                if (node_next(l) && node_type(l) == boundary_node && node_subtype(l) == protrusion_boundary && (boundary_data(l) == protrusion_skip_next || boundary_data(l) == protrusion_skip_both)) {
+                if (node_next(l) && node_type(l) == boundary_node && node_subtype(l) == protrusion_boundary && (boundary_data(l) == 1 || boundary_data(l) == 3)) {
                     /*tex Skip next node. */
                     l = node_next(l);
                 }
@@ -601,7 +576,7 @@ static halfword tex_aux_find_protchar_right(halfword l, halfword r)
                     }
                 }
                 if ((r != l) && r) {
-                    if (node_prev(r) && node_type(r) == boundary_node && node_subtype(r) == protrusion_boundary && (boundary_data(r) == protrusion_skip_previous || boundary_data(r) == protrusion_skip_both)) {
+                    if (node_prev(r) && node_type(r) == boundary_node && node_subtype(r) == protrusion_boundary && (boundary_data(r) == 2 || boundary_data(r) == 3)) {
                         /*tex Skip next node. */
                         r = node_prev(r);
                     }
@@ -879,22 +854,21 @@ void tex_initialize_active(void)
 
 */
 
-static void tex_aux_clean_up_the_memory(void)
+static halfword tex_aux_clean_up_the_memory(halfword p)
 {
     halfword q = node_next(active_head);
     while (q != active_head) {
-        halfword p = node_next(q);
-     // tex_free_node(q, get_node_size(node_type(q))); // less overhead & testing 
+        p = node_next(q);
         tex_flush_node(q);
         q = p;
     }
     q = lmt_linebreak_state.passive;
     while (q) {
-        halfword p = node_next(q);
-     // tex_free_node(q, get_node_size(node_type(q))); // less overhead & testing 
+        p = node_next(q);
         tex_flush_node(q);
         q = p;
     }
+    return p;
 }
 
 /*tex
@@ -904,7 +878,7 @@ static void tex_aux_clean_up_the_memory(void)
 
 inline static void tex_aux_add_disc_source_to_target(halfword adjust_spacing, scaled target[], const scaled source[])
 {
-    target[total_advance_amount] += source[total_advance_amount];
+    target[total_glue_amount] += source[total_glue_amount];
     if (adjust_spacing) {
         target[font_stretch_amount] += source[font_stretch_amount];
         target[font_shrink_amount]  += source[font_shrink_amount];
@@ -913,7 +887,7 @@ inline static void tex_aux_add_disc_source_to_target(halfword adjust_spacing, sc
 
 inline static void tex_aux_sub_disc_target_from_source(halfword adjust_spacing, scaled target[], const scaled source[])
 {
-    target[total_advance_amount] -= source[total_advance_amount];
+    target[total_glue_amount] -= source[total_glue_amount];
     if (adjust_spacing) {
         target[font_stretch_amount] -= source[font_stretch_amount];
         target[font_shrink_amount]  -= source[font_shrink_amount];
@@ -922,7 +896,7 @@ inline static void tex_aux_sub_disc_target_from_source(halfword adjust_spacing, 
 
 inline static void tex_aux_reset_disc_target(halfword adjust_spacing, scaled *target)
 {
-    target[total_advance_amount] = 0;
+    target[total_glue_amount] = 0;
     if (adjust_spacing) {
         target[font_stretch_amount] = 0;
         target[font_shrink_amount]  = 0;
@@ -933,13 +907,12 @@ inline static void tex_aux_reset_disc_target(halfword adjust_spacing, scaled *ta
 
 inline static void tex_aux_set_target_to_source(halfword adjust_spacing, scaled target[], const scaled source[])
 {
- // memcpy(&target[total_glue_amount], &source[total_glue_amount], font_shrink_amount * sizeof(halfword));
-    for (int i = total_advance_amount; i <= total_shrink_amount; i++) {
+    for (int i = total_glue_amount; i <= total_shrink_amount; i++) {
         target[i] = source[i];
     }
     if (adjust_spacing) {
-        target[font_stretch_amount] = source[font_stretch_amount];
         target[font_shrink_amount]  = source[font_shrink_amount];
+        target[font_stretch_amount] = source[font_stretch_amount];
     }
 }
 
@@ -967,7 +940,7 @@ inline static void tex_aux_set_target_to_source(halfword adjust_spacing, scaled 
 
 inline static void tex_aux_add_to_target_from_delta(halfword adjust_spacing, scaled target[], halfword delta)
 {
-    target[total_advance_amount] += delta_field_total_glue(delta);
+    target[total_glue_amount]    += delta_field_total_glue(delta);
     target[total_stretch_amount] += delta_field_total_stretch(delta);
     target[total_fi_amount]      += delta_field_total_fi_amount(delta);
     target[total_fil_amount]     += delta_field_total_fil_amount(delta);
@@ -982,7 +955,7 @@ inline static void tex_aux_add_to_target_from_delta(halfword adjust_spacing, sca
 
 inline static void tex_aux_sub_delta_from_target(halfword adjust_spacing, scaled target[], halfword delta)
 {
-    target[total_advance_amount] -= delta_field_total_glue(delta);
+    target[total_glue_amount]    -= delta_field_total_glue(delta);
     target[total_stretch_amount] -= delta_field_total_stretch(delta);
     target[total_fi_amount]      -= delta_field_total_fi_amount(delta);
     target[total_fil_amount]     -= delta_field_total_fil_amount(delta);
@@ -1012,7 +985,7 @@ inline static void tex_aux_add_to_delta_from_delta(halfword adjust_spacing, half
 
 inline static void tex_aux_set_delta_from_difference(halfword adjust_spacing, halfword delta, const scaled source_1[], const scaled source_2[])
 {
-    delta_field_total_glue(delta)         = (source_1[total_advance_amount] - source_2[total_advance_amount]);
+    delta_field_total_glue(delta)         = (source_1[total_glue_amount]    - source_2[total_glue_amount]);
     delta_field_total_stretch(delta)      = (source_1[total_stretch_amount] - source_2[total_stretch_amount]);
     delta_field_total_fi_amount(delta)    = (source_1[total_fi_amount]      - source_2[total_fi_amount]);
     delta_field_total_fil_amount(delta)   = (source_1[total_fil_amount]     - source_2[total_fil_amount]);
@@ -1027,7 +1000,7 @@ inline static void tex_aux_set_delta_from_difference(halfword adjust_spacing, ha
 
 inline static void tex_aux_add_delta_from_difference(halfword adjust_spacing, halfword delta, const scaled source_1[], const scaled source_2[])
 {
-    delta_field_total_glue(delta)         += (source_1[total_advance_amount] - source_2[total_advance_amount]);
+    delta_field_total_glue(delta)         += (source_1[total_glue_amount]    - source_2[total_glue_amount]);
     delta_field_total_stretch(delta)      += (source_1[total_stretch_amount] - source_2[total_stretch_amount]);
     delta_field_total_fi_amount(delta)    += (source_1[total_fi_amount]      - source_2[total_fi_amount]);
     delta_field_total_fil_amount(delta)   += (source_1[total_fil_amount]     - source_2[total_fil_amount]);
@@ -1067,7 +1040,7 @@ static void tex_aux_add_to_widths(halfword s, int adjust_spacing, int adjust_spa
     while (s) {
         switch (node_type(s)) {
             case glyph_node:
-                widths[total_advance_amount] += tex_glyph_width(s); 
+                widths[total_glue_amount] += tex_glyph_width(s);
                 if (adjust_spacing && ! tex_has_glyph_option(s, glyph_option_no_expansion) && tex_aux_check_expand_pars(adjust_spacing_step, glyph_font(s))) {
                     lmt_packaging_state.previous_char_ptr = s;
                     widths[font_stretch_amount] += tex_char_stretch(s);
@@ -1076,18 +1049,18 @@ static void tex_aux_add_to_widths(halfword s, int adjust_spacing, int adjust_spa
                 break;
             case hlist_node:
             case vlist_node:
-                widths[total_advance_amount] += box_width(s);
+                widths[total_glue_amount] += box_width(s);
                 break;
             case rule_node:
-                widths[total_advance_amount] += rule_width(s);
+                widths[total_glue_amount] += rule_width(s);
                 break;
             case glue_node:
-                widths[total_advance_amount] += glue_amount(s);
-                widths[total_stretch_amount + glue_stretch_order(s)] += glue_stretch(s);
+                widths[total_glue_amount] += glue_amount(s);
+                widths[2 + glue_stretch_order(s)] += glue_stretch(s);
                 widths[total_shrink_amount] += glue_shrink(s);
                 break;
             case kern_node:
-                widths[total_advance_amount] += kern_amount(s);
+                widths[total_glue_amount] += kern_amount(s);
                 if (adjust_spacing == adjust_spacing_full && node_subtype(s) == font_kern_subtype) {
                     halfword n = node_prev(s);
                     if (n && node_type(n) == glyph_node && ! tex_has_glyph_option(node_next(s), glyph_option_no_expansion)) {
@@ -1120,7 +1093,7 @@ static void tex_aux_sub_from_widths(halfword s, int adjust_spacing, int adjust_s
         /*tex Subtract the width of node |s| from |break_width|; */
         switch (node_type(s)) {
             case glyph_node:
-                widths[total_advance_amount] -= tex_glyph_width(s);
+                widths[total_glue_amount] -= tex_glyph_width(s);
                 if (adjust_spacing && ! tex_has_glyph_option(s, glyph_option_no_expansion) && tex_aux_check_expand_pars(adjust_spacing_step, glyph_font(s))) {
                     lmt_packaging_state.previous_char_ptr = s;
                     widths[font_stretch_amount] -= tex_char_stretch(s);
@@ -1129,18 +1102,18 @@ static void tex_aux_sub_from_widths(halfword s, int adjust_spacing, int adjust_s
                 break;
             case hlist_node:
             case vlist_node:
-                widths[total_advance_amount] -= box_width(s);
+                widths[total_glue_amount] -= box_width(s);
                 break;
             case rule_node:
-                widths[total_advance_amount] -= rule_width(s);
+                widths[total_glue_amount] -= rule_width(s);
                 break;
             case glue_node:
-                widths[total_advance_amount] -= glue_amount(s);
-                widths[total_stretch_amount + glue_stretch_order(s)] -= glue_stretch(s);
-                widths[total_shrink_amount] -= glue_shrink(s);
+                  widths[total_glue_amount] -= glue_amount(s);
+                  widths[2 + glue_stretch_order(s)] -= glue_stretch(s);
+                  widths[total_shrink_amount] -= glue_shrink(s);
                 break;
             case kern_node:
-                widths[total_advance_amount] -= kern_amount(s);
+                widths[total_glue_amount] -= kern_amount(s);
                 if (adjust_spacing == adjust_spacing_full && node_subtype(s) == font_kern_subtype) {
                     halfword n = node_prev(s);
                     if (n && node_type(n) == glyph_node && ! tex_has_glyph_option(node_next(s), glyph_option_no_expansion)) {
@@ -1231,25 +1204,25 @@ static void tex_aux_compute_break_width(int break_type, int adjust_spacing, int 
         switch (node_type(s)) {
             case glue_node:
                 /*tex Subtract glue from |break_width|; */
-                lmt_linebreak_state.break_width[total_advance_amount] -= glue_amount(s);
-                lmt_linebreak_state.break_width[total_stretch_amount + glue_stretch_order(s)] -= glue_stretch(s);
+                lmt_linebreak_state.break_width[total_glue_amount] -= glue_amount(s);
+                lmt_linebreak_state.break_width[2 + glue_stretch_order(s)] -= glue_stretch(s);
                 lmt_linebreak_state.break_width[total_shrink_amount] -= glue_shrink(s);
                 break;
             case penalty_node:
                 break;
             case kern_node:
-                if (node_subtype(s) == explicit_kern_subtype || node_subtype(s) == italic_kern_subtype) {
-                    lmt_linebreak_state.break_width[total_advance_amount] -= kern_amount(s);
-                    break;
-                } else {
+                if (node_subtype(s) != explicit_kern_subtype && node_subtype(s) != italic_kern_subtype) {
                     return;
+                } else {
+                    lmt_linebreak_state.break_width[total_glue_amount] -= kern_amount(s);
+                    break;
                 }
             case math_node:
                 if (tex_math_glue_is_zero(s)) {
-                    lmt_linebreak_state.break_width[total_advance_amount] -= math_surround(s);
+                    lmt_linebreak_state.break_width[total_glue_amount] -= math_surround(s);
                 } else {
-                    lmt_linebreak_state.break_width[total_advance_amount] -= math_amount(s);
-                    lmt_linebreak_state.break_width[total_stretch_amount + math_stretch_order(s)] -= math_stretch(s);
+                    lmt_linebreak_state.break_width[total_glue_amount] -= math_amount(s);
+                    lmt_linebreak_state.break_width[2 + math_stretch_order(s)] -= math_stretch(s);
                     lmt_linebreak_state.break_width[total_shrink_amount] -= math_shrink(s);
                 }
                 break;
@@ -1260,103 +1233,38 @@ static void tex_aux_compute_break_width(int break_type, int adjust_spacing, int 
     }
 }
 
-static void tex_aux_initialize_show_break_node(int callback_id)
+static void tex_aux_print_break_node(halfword q, halfword fit_class, halfword break_type, halfword cur_p, const line_break_properties *properties)
 {
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "d->", initialize_show_breaks_context);
-}
-
-static void tex_aux_start_show_break_node(int callback_id, int pass)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "dd->", start_show_breaks_context, pass);
-}
-
-static void tex_aux_stop_show_break_node(int callback_id)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "d->", stop_show_breaks_context);
-}
-
-static void tex_aux_collect_show_break_node(int callback_id)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "d->", collect_show_breaks_context);
-}
-
-static void tex_aux_line_show_break_node(int callback_id)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "dNdddd->", line_show_breaks_context, 
-        lmt_linebreak_state.just_box, lmt_packaging_state.last_badness,  lmt_packaging_state.last_overshoot,
-        lmt_packaging_state.total_shrink[normal_glue_order], lmt_packaging_state.total_stretch[normal_glue_order]
-    );
-}
-
-static void tex_aux_delete_break_node(halfword active, halfword passive, int callback_id)
-{
-    (void) active;
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "dd->", delete_show_breaks_context, 
-        passive_serial(passive)
-    );
-}
-
-static void tex_aux_wrapup_show_break_node(int callback_id)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "d->", wrapup_show_breaks_context);
-}
-
-static void tex_aux_show_break_node(halfword active, halfword passive, int callback_id, int pass, halfword *demerits)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "ddddddddNddd->r", report_show_breaks_context,
-        pass,
-        passive_serial(passive), 
-        passive_prev_break(passive) ? passive_serial(passive_prev_break(passive)) : 0, 
-        active_line_number(active) - 1, 
-        node_type(active), 
-        active_fitness(active), 
-        active_total_demerits(active), /* demerits */
-        passive_cur_break(passive), 
-        active_short(active), 
-        active_glue(active),
-        active_line_width(active),
-        demerits /* optionally changed */
-    );
-}
-
-static void tex_aux_list_break_node(halfword passive, int callback_id)
-{
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "dd->", list_show_breaks_context,
-        passive_serial(passive)
-    );
-}
-
-static void tex_aux_print_break_node(halfword active, halfword passive)
-{
+    (void) properties; 
     /*tex Print a symbolic description of the new break node. */
     tex_print_format(
         "%l[break: serial %i, line %i.%i,%s demerits %i, ",
-        passive_serial(passive),
-        active_line_number(active) - 1,
-        active_fitness(active),
-        node_type(active) == hyphenated_node ? " hyphenated, " : "",
-        active_total_demerits(active)
+        passive_serial(lmt_linebreak_state.passive),
+        active_line_number(q) - 1,
+        fit_class,
+        break_type == hyphenated_node ? " hyphenated, " : "",
+        active_total_demerits(q)
     );
     if (lmt_linebreak_state.do_last_line_fit) {
         /*tex Print additional data in the new active node. */
         tex_print_format(
-            " short %p, %s %p, ",
-            active_short(active),
-            passive_cur_break(passive) ? "glue" : "active",
-            active_glue(active)
+            " short %D, %s %D, ",
+            active_short(q), pt_unit,
+            cur_p ? "glue" : "active",
+            active_glue(q), pt_unit
         );
     }
     tex_print_format(
         "previous %i]",
-        passive_prev_break(passive) ? passive_serial(passive_prev_break(passive)) : null
+        passive_prev_break(lmt_linebreak_state.passive) ? passive_serial(passive_prev_break(lmt_linebreak_state.passive)) : 0
     );
 }
 
-static const char *tex_aux_node_name(halfword current)
+static const char *tex_aux_node_name(halfword cur_p)
 {
-    if (current) {
+    if (cur_p) {
         /*tex This could be more generic helper. */
-        switch (node_type(current)) {
+        switch (node_type(cur_p)) {
             case penalty_node : return "penalty";
             case disc_node    : return "discretionary";
             case kern_node    : return "kern";
@@ -1368,32 +1276,35 @@ static const char *tex_aux_node_name(halfword current)
     }
 }
 
-static void tex_aux_print_feasible_break(halfword current, halfword breakpoint, halfword badness, halfword penalty, halfword d, halfword artificial_demerits, const line_break_properties *properties)
+static void tex_aux_print_feasible_break(halfword cur_p, halfword r, halfword b, int pi, int d, int artificial_demerits, const line_break_properties *properties)
 {
     (void) properties; 
     /*tex Print a symbolic description of this feasible break. */
-    if (lmt_linebreak_state.printed_node != current) {
+    if (lmt_linebreak_state.printed_node != cur_p) {
         /*tex Print the list between |printed_node| and |cur_p|, then set |printed_node := cur_p|. */
         tex_print_nlp();
-        if (current) {
-            halfword save_link = node_next(current);
-            node_next(current) = null;
+        if (cur_p) {
+            halfword save_link = node_next(cur_p);
+            node_next(cur_p) = null;
             tex_short_display(node_next(lmt_linebreak_state.printed_node));
-            node_next(current) = save_link;
+            node_next(cur_p) = save_link;
         } else {
             tex_short_display(node_next(lmt_linebreak_state.printed_node));
         }
-        lmt_linebreak_state.printed_node = current;
+        lmt_linebreak_state.printed_node = cur_p;
     }
     tex_print_format(
         "%l[break: feasible, trigger %s, serial %i, badness %B, penalty %i, demerits %B]",
-        tex_aux_node_name(current),
-        active_break_node(breakpoint) ? passive_serial(active_break_node(breakpoint)) : 0,
-        badness,
-        penalty,
+        tex_aux_node_name(cur_p),
+        active_break_node(r) ? passive_serial(active_break_node(r)) : 0,
+        b,
+        pi,
         artificial_demerits ? awful_bad : d
     );
 }
+
+# define total_font_stretch cur_active_width[font_stretch_amount]
+# define total_font_shrink  cur_active_width[font_shrink_amount]
 
 /*tex We implement this one later on. */
 
@@ -1402,7 +1313,7 @@ static void tex_aux_print_feasible_break(halfword current, halfword breakpoint, 
     trickery depending on it.
 */
 
-static void tex_aux_post_line_break(const line_break_properties *properties, halfword line_break_dir, int callback_id, halfword quality);
+static void tex_aux_post_line_break(const line_break_properties *properties, halfword line_break_dir);
 
 /*tex
 
@@ -1424,7 +1335,7 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
     A core aspect of the linebreak algorithm is the calculation of badness. The formula currently 
     used has evolved with the tex versions before Don Knuth settled on this approach. And I (HH) 
     admit that I see no real reason to change something here. The only possible extension could
-    be changing the hardcoded |loose_criterion| of 99 and |decent_criterion| of 12. These could
+    be changing the hardcoded |loose_criterium| of 99 and |decent_criterium| of 12. These could
     become parameters instead. When looking at the code you will notice a loop that runs from 
     |very_loose_fit| to |tight_fit| with the following four steps:
 
@@ -1444,86 +1355,68 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
     experiment. However, the result is not that spectacular: I'm pretty sure that users will 
     not be able to choose consistently what result looks better, but who knows. For the moment 
     I keep it, if only to be able to discuss it as useless extension. Configuring the value s
-    is done with |\linebreakcriterion| which gets split into 4 parts (2 bytes per criterion). 
+    is done with |\linebreakcriterium| which gets split into 4 parts (2 bytes per criterium). 
 
     It is probably hard to explain to users what a different setting does and although one can 
     force different output in narrow raggedright text it would probbably enough to just make 
-
-    the |decent_criterion| configureable. Anyway, because we're talking heuristics and pretty 
+    the |decent_criterium| configureable. Anyway, because we're talking heuristics and pretty 
     good estimates from Don Knuth here, it would be pretentious to suggest that I really did 
     research this fuzzy topic (if it was worth the effort at all). 
 
-    Here |large_width_excess| is 110.32996pt while |small_stretchability| equals 25.38295pt. 
-
-*/
-
-/*tex 
-    Around 2023-05-24 Mikael Sundqvist and I did numerous tests with the badness function below in
-    comparison with the variant mentioned in Digital Typography (DEK) and we observed that indeed 
-    both functions behave pretty close (emulations with lua, mathematica etc). In practice one can 
-    get different badness values (especially low numbers). We ran some test on documents and on 
-    hundreds of pages one can get a few different decisions. The main reason for looking into this 
-    was that we were exploring a bit more visual approach to deciding on what penalties to use in 
-    the math inter-atom spacing in \CONTEXT\ (where we use a more granular class model). In the end 
-    the magic criteria became even more magic (and impressive). BTW, indeed we could get these 1095 
-    different badness cases with as maximum calculated one 8189. 
 */
 
 halfword tex_badness(scaled t, scaled s)
 {
-    /*tex Approximation to $\alpha t/s$, where $\alpha^3 \approx 100 \cdot 2^{18}$ */
+    /*tex Approximation to $\alpha t/s$, where $\alpha^3\approx 100\cdot2^{18}$ */
     if (t == 0) {
         return 0;
     } else if (s <= 0) {
         return infinite_bad;
     } else {
-        /*tex $297^3 = 99.94 \times 2^{18}$ */
-        if (t <= large_width_excess) {          
-            t = (t * 297) / s;  /* clipping by integer division */
-        } else if (s >= small_stretchability) { 
-            t = t / (s / 297);  /* clipping by integer division */
-        } else { 
-            /*tex 
-                When we end up here |t| is pretty large so we can as well save a test and return 
-                immediately. (HH & MS: we tested this while cheating a bit because this function 
-                is seldom entered with values that make us end up here.) 
-            */
-            return infinite_bad;
+        /*tex $297^3=99.94\times2^{18}$ */
+        if (t <= large_width_excess) {
+            t = (t * 297) / s;
+        } else if (s >= small_stretchability) {
+            t = t / (s / 297);
         }
-        if (t > 1290) {                         
-            /*tex As $1290^3 < 2^{31} < 1291^3$ we catch an overflow here. */ /* actually badness 8189 */
+        if (t > 1290) {
+            /*tex $1290^3<2^{31}<1291^3$ */
             return infinite_bad;
         } else {
-            /*tex 297*297*297 == 26198073 / 100 => 261981 */
-            /*tex This is $t^3 / 2^{18}$, rounded to the nearest integer */ 
-         // return (t * t * t + 0400000) / 01000000; /* 0400000/01000000 == 1/2 */
-         // return (t * t * t + 0x20000) /  0x40000;
-            return (t * t * t +  131072) /   262144;
+            /*tex This is $t^3/2^{18}$, rounded to the nearest integer. */
+            return ((t * t * t + 0400000) / 01000000);
         }
     }
 }
 
-inline static void tex_split_line_break_criterion(halfword criterion, halfword *semi_tight, halfword *decent, halfword *semi_loose, halfword *loose) {
-    *semi_tight = (criterion >> 24) & 0x7F;
-    *decent = (criterion >> 16) & 0x7F;
-    *semi_loose = (criterion >> 8) & 0x7F;
-    *loose = criterion & 0x7F;
+inline static void tex_split_line_break_criterium(halfword criterium, halfword *semi_tight, halfword *decent, halfword *semi_loose, halfword *loose) {
+    *semi_tight = (criterium >> 24) & 0x7F;
+    *decent = (criterium >> 16) & 0x7F;
+    *semi_loose = (criterium >> 8) & 0x7F;
+    *loose = criterium & 0x7F;
     if (! *semi_tight) { 
-        *semi_tight = semi_tight_criterion;
+        *semi_tight = semi_tight_criterium;
     }
     if (! *decent) { 
-        *decent = decent_criterion;
+        *decent = decent_criterium;
     }
     if (! *semi_loose) { 
-        *semi_loose = semi_loose_criterion;
+        *semi_loose = semi_loose_criterium;
     }
     if (! *loose) { 
-        *loose = loose_criterion;
+        *loose = loose_criterium;
     }
 }
 
 inline static halfword tex_normalized_loose_badness(halfword b, halfword loose, halfword semi_loose, halfword decent) 
 {
+ // if (b > loose_criterium) {
+ //     return very_loose_fit;
+ // } else if (b > decent_criterium) {
+ //     return loose_fit;
+ // } else {
+ //     return decent_fit;
+ // }
     if (b > loose) {
         return very_loose_fit;
     } else if (b > semi_loose) {
@@ -1537,6 +1430,11 @@ inline static halfword tex_normalized_loose_badness(halfword b, halfword loose, 
 
 inline static halfword tex_normalized_tight_badness(halfword b, halfword decent, halfword semi_tight) 
 {
+ // if (b > decent_criterium) {
+ //     return tight_fit;
+ // } else {
+ //     return decent_fit;
+ // }
     if (b > semi_tight) {
         return semi_tight_fit;
     } else if (b > decent) {
@@ -1546,160 +1444,78 @@ inline static halfword tex_normalized_tight_badness(halfword b, halfword decent,
     } 
 }
 
-static void tex_check_protrusion_shortfall(halfword breakpoint, halfword first, halfword current, halfword *shortfall)
-{
-    // if (line_break_dir == dir_righttoleft) {
-    //     /*tex Not now, we need to keep more track. */
-    // } else {
-        halfword other = null;
-        halfword left = active_break_node(breakpoint) ? passive_cur_break(active_break_node(breakpoint)) : first;
-        if (current) {
-            other = node_prev(current);
-            if (node_next(other) != current) {
-                tex_normal_error("linebreak", "the node list is messed up");
-            }
-        }
-        /*tex
-
-            The last characters (hyphenation character) if these two list should always be
-            the same anyway, so we just look at |pre_break|. Let's look at the right margin
-            first.
-
-        */
-        if (current && node_type(current) == disc_node && disc_pre_break_head(current)) {
-            /*tex
-                A |disc_node| with non-empty |pre_break|, protrude the last char of
-                |pre_break|:
-            */
-            other = disc_pre_break_tail(current);
-        } else {
-            other = tex_aux_find_protchar_right(left, other);
-        }
-        if (other && node_type(other) == glyph_node) {
-            *shortfall += tex_char_protrusion(other, right_margin_kern_subtype);
-        }
-        /*tex now the left margin */
-        if (left && node_type(left) == disc_node && disc_post_break_head(left)) {
-            /*tex The first char could be a disc! Protrude the first char. */
-            other = disc_post_break_head(left);
-        } else {
-            other = tex_aux_find_protchar_left(left, 1);
-        }
-        if (other && node_type(other) == glyph_node) {
-            *shortfall += tex_char_protrusion(other, left_margin_kern_subtype);
-        }
-    // }
-}
-
-static void tex_aux_set_quality(halfword active, halfword passive, scaled shrt, scaled glue, scaled width, halfword badness) 
-{
-    halfword quality = 0;
-    halfword deficiency = 0;
-    active_short(active) = shrt;
-    active_glue(active) = glue;
-    active_line_width(active) = width;
-    if (shrt < 0) {
-        shrt = -shrt;
-        if (shrt > glue) {
-            quality = par_is_overfull;
-            deficiency = shrt - glue;
-        }
-    } else if (shrt > 0) {
-        if (shrt > glue) {
-            quality = par_is_underfull;
-            deficiency = shrt - glue;
-        }
-    }
-    passive_quality(passive) = quality;
-    passive_deficiency(passive) = deficiency;
-    passive_badness(passive) = badness;
-    active_quality(active) = quality;
-    active_deficiency(active) = deficiency;
-    active_badness(active) = badness;
-}
-
 static void tex_aux_try_break(
     const line_break_properties *properties,
-    halfword penalty,
+    halfword pi, /* a penalty */
     halfword break_type,
     halfword first_p,
-    halfword cur_p,
-    int callback_id, 
-    int pass
+    halfword cur_p
 )
 {
+    /*tex runs through the active list */
+    halfword r;
     /*tex stays a step behind |r| */
-    halfword previous = active_head;
+    halfword prev_r = active_head;
     /*tex a step behind |prev_r|, if |type(prev_r) = delta_node| */
-    halfword before_previous = null;
+    halfword prev_prev_r = null;
+    /*tex maximum line number in current equivalence class of lines */
+    halfword old_l = 0;
+    /*tex have we found a feasible break at |cur_p|? */
+    int no_break_yet = 1;
+    /*tex line number of current active node */
+    halfword l;
+    /*tex should node |r| remain in the active list? */
+    int node_r_stays_active;
+    /*tex the current line will be justified to this width */
+    scaled line_width = 0;
+    /*tex possible fitness class of test line */
+    halfword fit_class;
+    /*tex badness of test line */
+    halfword b;
+    /*tex demerits of test line */
+    int d;
+    /*tex has |d| been forced to zero? */
+    int artificial_demerits;
+    /*tex used in badness calculations */
+    scaled shortfall = 0;
+    /*tex glue stretch or shrink of test line, adjustment for last line */
+    scaled g = 0;
     /*tex distance from current active node */
-    scaled current_active_width[n_of_glue_amounts] = { 0 };
-    /*tex 
-        These status arrays are global to the main loop and will be initialized as we go.
-    */
+    scaled cur_active_width[10] = { 0 };
     halfword best_place[n_of_finess_values];
     halfword best_place_line[n_of_finess_values];
     scaled   best_place_short[n_of_finess_values];
     scaled   best_place_glue[n_of_finess_values];
-    /* 
-        These are more local but we keep them here because of readability. 
-    */
-    /*tex badness of test line */
-    halfword badness = 0;
-    /*tex demerits of test line */
-    int demerits = 0;
-    /*tex glue stretch or shrink of test line, adjustment for last line */
-    scaled glue = 0;
-    /*tex used in badness calculations */
-    scaled shortfall = 0;
-    /*tex maximum line number in current equivalence class of lines */
-    halfword old_line = 0;
-    /*tex have we found a feasible break at |cur_p|? */
-    bool no_break_yet = true;
-    /*tex should node |r| remain in the active list? */
-    int current_stays_active;
-    /*tex possible fitness class of test line */
-    halfword fit_class;
-    /*tex has |d| been forced to zero? */
-    int artificial_demerits;
-    /*tex the current line will be justified to this width */
-    scaled line_width = 0;
-    /*tex line number of current active node */
-    halfword line = 0;
-    /*tex 
-        We have added an extra category, just as experiment. In practice there is very little 
-        to gain here as it becomes kind of fuzzy and DEK values are quite okay.
-    */
+    /*tex Experiment */
     halfword semi_tight, decent, semi_loose, loose;
-    /*tex in par node */
-    tex_split_line_break_criterion(properties->line_break_criterion, &semi_tight, &decent, &semi_loose, &loose);
- // printf(">> %i %i %i %i\n", semi_tight, decent, semi_loose, loose);
+    /* in par node */
+    tex_split_line_break_criterium(line_break_criterium_par, &semi_tight, &decent, &semi_loose, &loose);
     /*tex Make sure that |pi| is in the proper range; */
-    if (penalty >= infinite_penalty) {
+    if (pi >= infinite_penalty) {
         /*tex this breakpoint is inhibited by infinite penalty */
         return;
-    } else if (penalty <= -infinite_penalty) {
+    } else if (pi <= -infinite_penalty) {
         /*tex this breakpoint will be forced */
-        penalty = eject_penalty;
+        pi = eject_penalty;
     }
-    tex_aux_set_target_to_source(properties->adjust_spacing, current_active_width, lmt_linebreak_state.active_width);
+    tex_aux_set_target_to_source(properties->adjust_spacing, cur_active_width, lmt_linebreak_state.active_width);
     while (1) {
-        /*tex Here |r| runs through the active list: */
-        halfword current = node_next(previous);
+        r = node_next(prev_r);
         /*tex
 
             If node |r| is of type |delta_node|, update |cur_active_width|, set |prev_r| and
             |prev_prev_r|, then |goto continue|. The following code uses the fact that |type
             (active) <> delta_node|.
 
+            Here we get: |unhyphenated_node|, |hyphenated_node, |delta_node|, |passive_node| 
+
         */
-        if (node_type(current) == delta_node) {
-            tex_aux_add_to_target_from_delta(properties->adjust_spacing, current_active_width, current);
-            before_previous = previous;
-            previous = current;
+        if (node_type(r) == delta_node) {
+            /*tex implicit */
+            tex_aux_add_to_target_from_delta(properties->adjust_spacing, cur_active_width, r);
+            prev_prev_r = prev_r;
+            prev_r = r;
             continue;
-        } else { 
-            /*tex We have an |unhyphenated_node| or |hyphenated_node|. */
         }
         /*tex
 
@@ -1712,10 +1528,10 @@ static void tex_aux_try_break(
             that |r = active| and |line_number (active) > old_l|.
 
         */
-        line = active_line_number(current);
-        if (line > old_line) {
-            /*tex Now we are no longer in the inner loop (well ...). */
-            if ((lmt_linebreak_state.minimum_demerits < awful_bad) && ((old_line != lmt_linebreak_state.easy_line) || (current == active_head))) {
+        l = active_line_number(r);
+        if (l > old_l) {
+            /*tex now we are no longer in the inner loop */
+            if ((lmt_linebreak_state.minimum_demerits < awful_bad) && ((old_l != lmt_linebreak_state.easy_line) || (r == active_head))) {
                 /*tex
 
                     Create new active nodes for the best feasible breaks just found. It is not
@@ -1727,7 +1543,7 @@ static void tex_aux_try_break(
 
                 */
                 if (no_break_yet) {
-                    no_break_yet = false;
+                    no_break_yet = 0;
                     tex_aux_set_target_to_source(properties->adjust_spacing, lmt_linebreak_state.break_width, lmt_linebreak_state.background);
                     tex_aux_compute_break_width(break_type, properties->adjust_spacing, properties->adjust_spacing_step, cur_p);
                 }
@@ -1737,19 +1553,19 @@ static void tex_aux_try_break(
                     |type (active) <> delta_node|.
 
                 */
-                if (node_type(previous) == delta_node) {
+                if (node_type(prev_r) == delta_node) {
                     /*tex modify an existing delta node */
-                    tex_aux_add_delta_from_difference(properties->adjust_spacing, previous, lmt_linebreak_state.break_width, current_active_width);
-                } else if (previous == active_head) {
+                    tex_aux_add_delta_from_difference(properties->adjust_spacing, prev_r, lmt_linebreak_state.break_width, cur_active_width);
+                } else if (prev_r == active_head) {
                     /*tex no delta node needed at the beginning */
                     tex_aux_set_target_to_source(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.break_width);
                 } else {
                     halfword q = tex_new_node(delta_node, (quarterword) very_loose_fit);
-                    node_next(q) = current;
-                    tex_aux_set_delta_from_difference(properties->adjust_spacing, q, lmt_linebreak_state.break_width, current_active_width);
-                    node_next(previous) = q;
-                    before_previous = previous;
-                    previous = q;
+                    node_next(q) = r;
+                    tex_aux_set_delta_from_difference(properties->adjust_spacing, q, lmt_linebreak_state.break_width, cur_active_width);
+                    node_next(prev_r) = q;
+                    prev_prev_r = prev_r;
+                    prev_r = q;
                 }
                 if (abs(properties->adj_demerits) >= awful_bad - lmt_linebreak_state.minimum_demerits) {
                     lmt_linebreak_state.minimum_demerits = awful_bad - 1;
@@ -1762,52 +1578,53 @@ static void tex_aux_try_break(
 
                             Insert a new active node from |best_place [fit_class]| to |cur_p|. When
                             we create an active node, we also create the corresponding passive node.
-                            In the passive node we also keep track of the subparagraph penalties. 
 
                         */
-                     // halfword passive = tex_new_node(passive_node, (quarterword) very_loose_fit);
-                        halfword passive = tex_new_node(passive_node, (quarterword) fit_class);
-                        halfword active = tex_new_node((quarterword) break_type, (quarterword) fit_class);
-                        halfword prev_break = best_place[fit_class];
-                        /*tex Initialize the passive node: */
-                        passive_cur_break(passive) = cur_p;
-                        passive_serial(passive) = ++lmt_linebreak_state.pass_number;
-                        passive_prev_break(passive) = prev_break;
-                        passive_pen_inter(passive) = lmt_linebreak_state.internal_penalty_interline;
-                        passive_pen_broken(passive) = lmt_linebreak_state.internal_penalty_broken;
-                        passive_last_left_box(passive) = lmt_linebreak_state.internal_left_box;
-                        passive_last_left_box_width(passive) = lmt_linebreak_state.internal_left_box_width;
-                        if (prev_break) {
-                            passive_left_box(passive) = passive_last_left_box(prev_break);
-                            passive_left_box_width(passive) = passive_last_left_box_width(prev_break);
+                        halfword q = tex_new_node(passive_node, (quarterword) very_loose_fit);
+                        node_next(q) = lmt_linebreak_state.passive;
+                        lmt_linebreak_state.passive = q;
+                        passive_cur_break(q) = cur_p;
+                        ++lmt_linebreak_state.pass_number;
+                        passive_serial(q) = lmt_linebreak_state.pass_number;
+                        passive_prev_break(q) = best_place[fit_class];
+                        /*tex
+
+                            Here we keep track of the subparagraph penalties in the break nodes.
+
+                        */
+                        passive_pen_inter(q) = lmt_linebreak_state.internal_penalty_interline;
+                        passive_pen_broken(q) = lmt_linebreak_state.internal_penalty_broken;
+                        passive_last_left_box(q) = lmt_linebreak_state.internal_left_box;
+                        passive_last_left_box_width(q) = lmt_linebreak_state.internal_left_box_width;
+                        if (passive_prev_break(q)) {
+                            passive_left_box(q) = passive_last_left_box(passive_prev_break(q));
+                            passive_left_box_width(q) = passive_last_left_box_width(passive_prev_break(q));
                         } else {
-                            passive_left_box(passive) = lmt_linebreak_state.internal_left_box_init;
-                            passive_left_box_width(passive) = lmt_linebreak_state.internal_left_box_width_init;
+                            passive_left_box(q) = lmt_linebreak_state.init_internal_left_box;
+                            passive_left_box_width(q) = lmt_linebreak_state.init_internal_left_box_width;
                         }
-                        passive_right_box(passive) = lmt_linebreak_state.internal_right_box;
-                        passive_right_box_width(passive) = lmt_linebreak_state.internal_right_box_width;
-                        passive_middle_box(passive) = lmt_linebreak_state.internal_middle_box;
-                        /*tex Initialize the active node: */
-                        active_break_node(active) = passive;
-                        active_line_number(active) = best_place_line[fit_class] + 1;
-                        active_total_demerits(active) = lmt_linebreak_state.minimal_demerits[fit_class];
-                        /*tex Store additional data in the new active node. */
-                        tex_aux_set_quality(active, passive, best_place_short[fit_class], best_place_glue[fit_class], line_width, badness);
-                        /*tex Append the passive node. */
-                        node_next(passive) = lmt_linebreak_state.passive;
-                        lmt_linebreak_state.passive = passive;
-                        /*tex Append the active node. */
-                        node_next(active) = current;
-                        node_next(previous) = active;
-                        previous = active;
-                        /* */
-                        if (callback_id) {
-                            halfword demerits = active_total_demerits(active);
-                            tex_aux_show_break_node(active, passive, callback_id, pass, &demerits);
-                            active_total_demerits(active) = demerits;
+                        passive_right_box(q) = lmt_linebreak_state.internal_right_box;
+                        passive_right_box_width(q) = lmt_linebreak_state.internal_right_box_width;
+                        passive_middle_box(q) = lmt_linebreak_state.internal_middle_box;
+                        q = tex_new_node((quarterword) break_type, (quarterword) fit_class);
+                        active_break_node(q) = lmt_linebreak_state.passive;
+                        active_line_number(q) = best_place_line[fit_class] + 1;
+                        active_total_demerits(q) = lmt_linebreak_state.minimal_demerits[fit_class];
+                        if (lmt_linebreak_state.do_last_line_fit) {
+                            /*tex
+
+                                Store additional data in the new active node. Here we save these
+                                data in the active node representing a potential line break.
+
+                            */
+                            active_short(q) = best_place_short[fit_class];
+                            active_glue(q) = best_place_glue[fit_class];
                         }
+                        node_next(q) = r;
+                        node_next(prev_r) = q;
+                        prev_r = q;
                         if (properties->tracing_paragraphs > 0) {
-                            tex_aux_print_break_node(active, passive);
+                            tex_aux_print_break_node(q, fit_class, break_type, cur_p, properties);
                         }
                     }
                     lmt_linebreak_state.minimal_demerits[fit_class] = awful_bad;
@@ -1820,13 +1637,13 @@ static void tex_aux_try_break(
                     |r|, so |type (prev_r) <> delta_node|.
 
                 */
-                if (current != active_head) {
-                    halfword delta = tex_new_node(delta_node, (quarterword) very_loose_fit);
-                    node_next(delta) = current;
-                    tex_aux_set_delta_from_difference(properties->adjust_spacing, delta, current_active_width, lmt_linebreak_state.break_width);
-                    node_next(previous) = delta;
-                    before_previous = previous;
-                    previous = delta;
+                if (r != active_head) {
+                    halfword q = tex_new_node(delta_node, (quarterword) very_loose_fit);
+                    node_next(q) = r;
+                    tex_aux_set_delta_from_difference(properties->adjust_spacing, q, cur_active_width, lmt_linebreak_state.break_width);
+                    node_next(prev_r) = q;
+                    prev_prev_r = prev_r;
+                    prev_r = q;
                 }
             }
             /*tex
@@ -1838,19 +1655,19 @@ static void tex_aux_try_break(
                 to the last number in the class of line numbers equivalent to~|l|.
 
             */
-            if (current == active_head) {
+            if (r == active_head) {
                 return;
-            } else if (line > lmt_linebreak_state.easy_line) {
-                old_line = max_halfword - 1;
+            } else if (l > lmt_linebreak_state.easy_line) {
+                old_l = max_halfword - 1;
                 line_width = lmt_linebreak_state.second_width;
             } else {
-                old_line = line;
+                old_l = l;
                 /* if (properties->par_shape && specification_repeat(properties->par_shape)) {
                     line_width = get_specification_width(properties->par_shape, l);
-                } else */ if (line > lmt_linebreak_state.last_special_line) {
+                } else */ if (l > lmt_linebreak_state.last_special_line) {
                     line_width = lmt_linebreak_state.second_width;
                 } else if (properties->par_shape) {
-                    line_width = tex_get_specification_width(properties->par_shape, line);
+                    line_width = tex_get_specification_width(properties->par_shape, l);
                 } else {
                     line_width = lmt_linebreak_state.first_width;
                 }
@@ -1867,17 +1684,59 @@ static void tex_aux_try_break(
 
         */
         artificial_demerits = 0;
-        shortfall = line_width - current_active_width[total_advance_amount];
-        if (active_break_node(current)) {
-            shortfall -= passive_last_left_box_width(active_break_node(current));
+        shortfall = line_width - cur_active_width[total_glue_amount];
+        if (active_break_node(r)) {
+            shortfall -= passive_last_left_box_width(active_break_node(r));
         } else {
-            shortfall -= lmt_linebreak_state.internal_left_box_width_init;
+            shortfall -= lmt_linebreak_state.init_internal_left_box_width;
         }
         shortfall -= lmt_linebreak_state.internal_right_box_width;
      // halfword margin_kern_stretch = 0;
      // halfword margin_kern_shrink = 0;
         if (properties->protrude_chars) {
-            tex_check_protrusion_shortfall(current, first_p, cur_p, &shortfall);
+          // if (line_break_dir == dir_righttoleft) {
+          //     /*tex Not now, we need to keep more track. */
+          // } else {
+                halfword o = null;
+                halfword l1 = active_break_node(r) ? passive_cur_break(active_break_node(r)) : first_p;
+                if (cur_p) {
+                    o = node_prev(cur_p);
+                    if (node_next(o) != cur_p) {
+                        tex_normal_error("linebreak", "the node list is messed up");
+                    }
+                }
+                /*tex
+
+                    The last characters (hyphenation character) if these two list should always be
+                    the same anyway, so we just look at |pre_break|. Let's look at the right margin
+                    first.
+
+                */
+                if (cur_p && node_type(cur_p) == disc_node && disc_pre_break_head(cur_p)) {
+                    /*tex
+                        A |disc_node| with non-empty |pre_break|, protrude the last char of
+                        |pre_break|:
+                    */
+                    o = disc_pre_break_tail(cur_p);
+                } else {
+                    o = tex_aux_find_protchar_right(l1, o);
+                }
+                if (o && node_type(o) == glyph_node) {
+                    shortfall += tex_char_protrusion(o, right_margin_kern_subtype);
+                 // char_pw_kern(o, right_margin_kern, &margin_kern_stretch, &margin_kern_shrink);
+                }
+                /*tex now the left margin */
+                if (l1 && (node_type(l1) == disc_node) && (disc_post_break_head(l1))) {
+                    /*tex The first char could be a disc! Protrude the first char. */
+                    o = disc_post_break_head(l1);
+                } else {
+                    o = tex_aux_find_protchar_left(l1, 1);
+                }
+                if (o && node_type(o) == glyph_node) {
+                    shortfall += tex_char_protrusion(o, left_margin_kern_subtype);
+                 // char_pw_kern(o, left_margin_kern, &margin_kern_stretch, &margin_kern_shrink);
+                }
+         // }
         }
         /*tex
             The only reason why we have a shared ratio is that we need to calculate the shortfall
@@ -1886,8 +1745,8 @@ static void tex_aux_try_break(
         if (shortfall == 0) {
             /*tex We're okay. */
         } else if (shortfall > 0) {
-            halfword total_stretch = current_active_width[font_stretch_amount];
-         // halfword total_stretch = current_active_width[font_stretch_amount] + margin_kern_stretch;
+            halfword total_stretch = total_font_stretch;
+         // halfword total_stretch = total_font_stretch + margin_kern_stretch;
             if (total_stretch > 0) {
                 if (total_stretch > shortfall) {
                     shortfall  = (total_stretch / (lmt_linebreak_state.max_stretch_ratio / lmt_linebreak_state.current_font_step)) / 2;
@@ -1896,11 +1755,11 @@ static void tex_aux_try_break(
                 }
             }
         } else if (shortfall < 0) {
-            halfword total_shrink = current_active_width[font_shrink_amount];
-         // halfword total_shrink = current_active_width[font_shrink_amount] + margin_kern_shrink;
+            halfword total_shrink = total_font_shrink;
+         // halfword total_shrink = total_font_shrink + margin_kern_shrink;
             if (total_shrink > 0) {
                 if (total_shrink > -shortfall) {
-                    shortfall  = - (total_shrink / (lmt_linebreak_state.max_shrink_ratio  / lmt_linebreak_state.current_font_step)) / 2;
+                    shortfall  = - (total_shrink  / (lmt_linebreak_state.max_shrink_ratio  / lmt_linebreak_state.current_font_step)) / 2;
                 } else {
                     shortfall += total_shrink;
                 }
@@ -1919,8 +1778,8 @@ static void tex_aux_try_break(
                 large width excess and small stretchability, before calling the |badness| subroutine.
 
             */
-            if (current_active_width[total_fi_amount]   || current_active_width[total_fil_amount] ||
-                current_active_width[total_fill_amount] || current_active_width[total_filll_amount]) {
+            if (cur_active_width[total_fi_amount]   || cur_active_width[total_fil_amount] ||
+                cur_active_width[total_fill_amount] || cur_active_width[total_filll_amount]) {
                 if (lmt_linebreak_state.do_last_line_fit) {
                     if (! cur_p) {
                         /*tex
@@ -1933,7 +1792,7 @@ static void tex_aux_try_break(
                             |par_fill_skip|.
 
                         */
-                        if (active_short(current) == 0 || active_glue(current) <= 0) {
+                        if (active_short(r) == 0 || active_glue(r) <= 0) {
                             /*tex
 
                                 Previous line was neither stretched nor shrunk, or was infinitely
@@ -1942,31 +1801,31 @@ static void tex_aux_try_break(
                             */
                             goto NOT_FOUND;
                         }
-                        if (current_active_width[total_fi_amount]   != lmt_linebreak_state.fill_width[fi_order]   || current_active_width[total_fil_amount]   != lmt_linebreak_state.fill_width[fil_order] ||
-                            current_active_width[total_fill_amount] != lmt_linebreak_state.fill_width[fill_order] || current_active_width[total_filll_amount] != lmt_linebreak_state.fill_width[filll_order]) {
+                        if (cur_active_width[total_fi_amount]   != lmt_linebreak_state.fill_width[fi_order]   || cur_active_width[total_fil_amount]   != lmt_linebreak_state.fill_width[fil_order] ||
+                            cur_active_width[total_fill_amount] != lmt_linebreak_state.fill_width[fill_order] || cur_active_width[total_filll_amount] != lmt_linebreak_state.fill_width[filll_order]) {
                             /*tex
                                 Infinite stretch of this line not entirely due to |par_fill_skip|.
                             */
                             goto NOT_FOUND;
                         }
-                        if (active_short(current) > 0) {
-                            glue = current_active_width[total_stretch_amount];
+                        if (active_short(r) > 0) {
+                            g = cur_active_width[total_stretch_amount];
                         } else {
-                            glue = current_active_width[total_shrink_amount];
+                            g = cur_active_width[total_shrink_amount];
                         }
-                        if (glue <= 0) {
+                        if (g <= 0) {
                             /*tex No finite stretch resp.\ no shrink. */
                             goto NOT_FOUND;
                         }
                         lmt_scanner_state.arithmic_error = 0;
-                        glue = tex_fract(glue, active_short(current), active_glue(current), max_dimension);
+                        g = tex_fract(g, active_short(r), active_glue(r), max_dimen);
                         if (properties->last_line_fit < 1000) {
-                            glue = tex_fract(glue, properties->last_line_fit, 1000, max_dimension);
+                            g = tex_fract(g, properties->last_line_fit, 1000, max_dimen);
                         }
                         if (lmt_scanner_state.arithmic_error) {
-                            glue = (active_short(current) > 0) ? max_dimension : -max_dimension;
+                            g = (active_short(r) > 0) ? max_dimen : -max_dimen;
                         }
-                        if (glue > 0) {
+                        if (g > 0) {
                             /*tex
 
                                 Set the value of |b| to the badness of the last line for stretching,
@@ -1975,44 +1834,44 @@ static void tex_aux_try_break(
                                 algorithm, with the adjustment amount |g| replacing the |shortfall|.
 
                             */
-                            if (glue > shortfall) {
-                                glue = shortfall;
+                            if (g > shortfall) {
+                                g = shortfall;
                             }
-                            if (glue > large_width_excess && (current_active_width[total_stretch_amount] < small_stretchability)) {
-                                badness = infinite_bad;
+                            if (g > large_width_excess && (cur_active_width[total_stretch_amount] < small_stretchability)) {
+                                b = infinite_bad;
                                 fit_class = very_loose_fit;
-                            } else { 
-                                badness = tex_badness(glue, current_active_width[total_stretch_amount]);
-                                fit_class = tex_normalized_loose_badness(badness, loose, semi_loose, decent);
+                                goto FOUND;
                             }
+                            b = tex_badness(g, cur_active_width[total_stretch_amount]);
+                            fit_class = tex_normalized_loose_badness(b, loose, semi_loose, decent);
                             goto FOUND;
-                        } else if (glue < 0) {
+                        } else if (g < 0) {
                             /*tex
 
                                 Set the value of |b| to the badness of the last line for shrinking,
                                 compute the corresponding |fit_class, and |goto found||.
 
                             */
-                            if (-glue > current_active_width[total_shrink_amount]) {
-                                glue = -current_active_width[total_shrink_amount];
+                            if (-g > cur_active_width[total_shrink_amount]) {
+                                g = -cur_active_width[total_shrink_amount];
                             }
-                            badness = tex_badness(-glue, current_active_width[total_shrink_amount]);
-                            fit_class = tex_normalized_tight_badness(badness, decent, semi_tight);
+                            b = tex_badness(-g, cur_active_width[total_shrink_amount]);
+                            fit_class = tex_normalized_tight_badness(b, decent, semi_tight);
                             goto FOUND;
                         }
                     }
                   NOT_FOUND:
                     shortfall = 0;
                 }
-                badness = 0;
+                b = 0;
                 /*tex Infinite stretch. */
                 fit_class = decent_fit;
-            } else if (shortfall > large_width_excess && current_active_width[total_stretch_amount] < small_stretchability) {
-                badness = infinite_bad;
+            } else if (shortfall > large_width_excess && cur_active_width[total_stretch_amount] < small_stretchability) {
+                b = infinite_bad;
                 fit_class = very_loose_fit;
             } else {
-                badness = tex_badness(shortfall, current_active_width[total_stretch_amount]);
-                fit_class = tex_normalized_loose_badness(badness, loose, semi_loose, decent);
+                b = tex_badness(shortfall, cur_active_width[total_stretch_amount]);
+                fit_class = tex_normalized_loose_badness(b, loose, semi_loose, decent);
             }
         } else {
             /*tex
@@ -2023,30 +1882,28 @@ static void tex_aux_try_break(
                 [total_shrink_amount]|.
 
             */
-            if (-shortfall > current_active_width[total_shrink_amount]) {
-                badness = infinite_bad + 1;
+            if (-shortfall > cur_active_width[total_shrink_amount]) {
+                b = infinite_bad + 1;
             } else {
-                badness = tex_badness(-shortfall, current_active_width[total_shrink_amount]);
+                b = tex_badness(-shortfall, cur_active_width[total_shrink_amount]);
             }
-            fit_class = tex_normalized_tight_badness(badness, decent, semi_tight);
+            fit_class = tex_normalized_tight_badness(b, decent, semi_tight);
         }
-        if (1) { // lmt_linebreak_state.do_last_line_fit) {
+        if (lmt_linebreak_state.do_last_line_fit) {
             /*tex Adjust the additional data for last line; */
             if (! cur_p) {
                 shortfall = 0;
-                glue = 0;
+                g = 0;
             } else if (shortfall > 0) {
-                glue = current_active_width[total_stretch_amount];
+                g = cur_active_width[total_stretch_amount];
             } else if (shortfall < 0) {
-                glue = current_active_width[total_shrink_amount];
+                g = cur_active_width[total_shrink_amount];
             } else {
-                glue = 0;
+                g = 0;
             }
-        } else { 
-            /* Can we get here at all? */
         }
       FOUND:
-        if ((badness > infinite_bad) || (penalty == eject_penalty)) {
+        if ((b > infinite_bad) || (pi == eject_penalty)) {
             /*tex
 
                 Prepare to deactivate node~|r|, and |goto deactivate| unless there is a reason to
@@ -2059,19 +1916,20 @@ static void tex_aux_try_break(
                 changes here.
 
             */
-            if (lmt_linebreak_state.final_pass && (lmt_linebreak_state.minimum_demerits == awful_bad) && (node_next(current) == active_head) && (previous == active_head)) {
+            if (lmt_linebreak_state.final_pass && (lmt_linebreak_state.minimum_demerits == awful_bad) &&
+                (node_next(r) == active_head) && (prev_r == active_head)) {
                 /*tex Set demerits zero, this break is forced. */
                 artificial_demerits = 1;
-            } else if (badness > lmt_linebreak_state.threshold) {
+            } else if (b > lmt_linebreak_state.threshold) {
                 goto DEACTIVATE;
             }
-            current_stays_active = 0;
+            node_r_stays_active = 0;
         } else {
-            previous = current;
-            if (badness > lmt_linebreak_state.threshold) {
+            prev_r = r;
+            if (b > lmt_linebreak_state.threshold) {
                 continue;
             } else {
-                current_stays_active = 1;
+                node_r_stays_active = 1;
             }
         }
         /*tex
@@ -2084,28 +1942,27 @@ static void tex_aux_try_break(
 
         */
         if (artificial_demerits) {
-            demerits = 0;
+            d = 0;
         } else {
             /*tex Compute the demerits, |d|, from |r| to |cur_p|. */
-            int distance = abs(fit_class - (halfword) active_fitness(current));
-            demerits = properties->line_penalty + badness;
-            if (abs(demerits) >= infinite_bad) {
-                demerits = extremely_deplorable;
+            d = properties->line_penalty + b;
+            if (abs(d) >= 10000) {
+                d = 100000000;
             } else {
-                demerits = demerits * demerits;
+                d = d * d;
             }
-            if (penalty) {
-                if (penalty > 0) {
-                    demerits += (penalty * penalty);
-                } else if (penalty > eject_penalty) {
-                    demerits -= (penalty * penalty);
+            if (pi != 0) {
+                if (pi > 0) {
+                    d += (pi * pi);
+                } else if (pi > eject_penalty) {
+                    d -= (pi * pi);
                 }
             }
-            if (break_type == hyphenated_node && node_type(current) == hyphenated_node) {
+            if (break_type == hyphenated_node && node_type(r) == hyphenated_node) {
                 if (cur_p) {
-                    demerits += properties->double_hyphen_demerits;
+                    d += properties->double_hyphen_demerits;
                 } else {
-                    demerits += properties->final_hyphen_demerits;
+                    d += properties->final_hyphen_demerits;
                 }
             }
             /*tex
@@ -2114,34 +1971,35 @@ static void tex_aux_try_break(
                 some compilers (versions or whatever) get confused by the type of (unsigned) integer
                 used.
             */
-            if (distance > 1) {
-                demerits += properties->double_adj_demerits ? properties->double_adj_demerits : properties->adj_demerits;
-            } else if (distance > 0) {
-                demerits += properties->adj_demerits;
+            if (abs(fit_class - (halfword) active_fitness(r)) > 1) {
+                d = d + properties->adj_demerits;
             }
         }
         if (properties->tracing_paragraphs > 0) {
-            tex_aux_print_feasible_break(cur_p, current, badness, penalty, demerits, artificial_demerits, properties);
+            tex_aux_print_feasible_break(cur_p, r, b, pi, d, artificial_demerits, properties);
         }
         /*tex This is the minimum total demerits from the beginning to |cur_p| via |r|. */
-        demerits += active_total_demerits(current);
-        if (demerits <= lmt_linebreak_state.minimal_demerits[fit_class]) {
-            lmt_linebreak_state.minimal_demerits[fit_class] = demerits;
-            best_place[fit_class] = active_break_node(current);
-            best_place_line[fit_class] = line;
-            /*tex
-                Store additional data for this feasible break. For each feasible break we record
-                the shortfall and glue stretch or shrink (or adjustment). Contrary to \ETEX\ we 
-                do this always, also when we have no last line fit set. 
-            */
-            best_place_short[fit_class] = shortfall;
-            best_place_glue[fit_class] = glue;
-            if (demerits < lmt_linebreak_state.minimum_demerits) {
-                lmt_linebreak_state.minimum_demerits = demerits;
+        d += active_total_demerits(r);
+        if (d <= lmt_linebreak_state.minimal_demerits[fit_class]) {
+            lmt_linebreak_state.minimal_demerits[fit_class] = d;
+            best_place[fit_class] = active_break_node(r);
+            best_place_line[fit_class] = l;
+            if (lmt_linebreak_state.do_last_line_fit) {
+                /*tex
+
+                    Store additional data for this feasible break. For each feasible break we record
+                    the shortfall and glue stretch or shrink (or adjustment).
+
+                */
+                best_place_short[fit_class] = shortfall;
+                best_place_glue[fit_class] = g;
+            }
+            if (d < lmt_linebreak_state.minimum_demerits) {
+                lmt_linebreak_state.minimum_demerits = d;
             }
         }
         /*tex Record a new feasible break. */
-        if (current_stays_active) {
+        if (node_r_stays_active) {
             /*tex |prev_r| has been set to |r|. */
             continue;
         }
@@ -2154,12 +2012,9 @@ static void tex_aux_try_break(
             represents the length of material from |vlink (prev_r)| to~|cur_p|.
 
         */
-        node_next(previous) = node_next(current);
-        if (callback_id) {
-             tex_aux_delete_break_node(current, active_break_node(current), callback_id);
-        }
-        tex_flush_node(current);
-        if (previous == active_head) {
+        node_next(prev_r) = node_next(r);
+        tex_flush_node(r);
+        if (prev_r == active_head) {
             /*tex
 
                 Update the active widths, since the first active node has been deleted. The following
@@ -2168,44 +2023,40 @@ static void tex_aux_try_break(
                 initialized when an active node is next inserted.
 
             */
-            current = node_next(active_head);
-            if (node_type(current) == delta_node) {
-                tex_aux_add_to_target_from_delta(properties->adjust_spacing, lmt_linebreak_state.active_width, current);
-                tex_aux_set_target_to_source(properties->adjust_spacing, current_active_width, lmt_linebreak_state.active_width);
-                node_next(active_head) = node_next(current);
-                tex_flush_node(current);
+            r = node_next(active_head);
+            if (node_type(r) == delta_node) {
+                tex_aux_add_to_target_from_delta(properties->adjust_spacing, lmt_linebreak_state.active_width, r);
+                tex_aux_set_target_to_source(properties->adjust_spacing, cur_active_width, lmt_linebreak_state.active_width);
+                node_next(active_head) = node_next(r);
+                tex_flush_node(r);
             }
-        } else if (node_type(previous) == delta_node) {
-            current = node_next(previous);
-            if (current == active_head) {
-                tex_aux_sub_delta_from_target(properties->adjust_spacing, current_active_width, previous);
-                node_next(before_previous) = active_head;
-                tex_flush_node(previous);
-                previous = before_previous;
-            } else if (node_type(current) == delta_node) {
-                tex_aux_add_to_target_from_delta(properties->adjust_spacing, current_active_width, current);
-                tex_aux_add_to_delta_from_delta(properties->adjust_spacing, previous, current);
-                node_next(previous) = node_next(current);
-                tex_flush_node(current);
+        } else if (node_type(prev_r) == delta_node) {
+            r = node_next(prev_r);
+            if (r == active_head) {
+                tex_aux_sub_delta_from_target(properties->adjust_spacing, cur_active_width, prev_r);
+                node_next(prev_prev_r) = active_head;
+                tex_flush_node(prev_r);
+                prev_r = prev_prev_r;
+            } else if (node_type(r) == delta_node) {
+                tex_aux_add_to_target_from_delta(properties->adjust_spacing, cur_active_width, r);
+                tex_aux_add_to_delta_from_delta(properties->adjust_spacing, prev_r, r);
+                node_next(prev_r) = node_next(r);
+                tex_flush_node(r);
             }
         }
     }
 }
 
-static halfword tex_aux_inject_orphan_penalty(halfword current, halfword amount, int orphaned)
+static halfword tex_aux_inject_orphan_penalty(halfword current, halfword amount)
 {
     halfword previous = node_prev(current);
     if (previous && node_type(previous) != penalty_node) {
         halfword penalty = tex_new_penalty_node(amount, orphan_penalty_subtype);
         tex_couple_nodes(previous, penalty);
         tex_couple_nodes(penalty, current);
-        if (orphaned) { 
-            tex_add_penalty_option(penalty, penalty_option_orphaned);
-        }
-        return previous;
-    } else { 
-        return current;
+        current = previous;
     }
+    return current;
 }
 
 inline static int tex_aux_valid_glue_break(halfword p)
@@ -2214,407 +2065,23 @@ inline static int tex_aux_valid_glue_break(halfword p)
     return (prv && prv != temp_head && (node_type(prv) == glyph_node || precedes_break(prv) || precedes_kern(prv) || precedes_dir(prv)));
 }
 
-inline static halfword tex_aux_upcoming_penalty(halfword p) {
-    halfword n = node_next(p);
-    return (n && node_type(n) == math_node && node_subtype(n) == begin_inline_math) ? math_penalty(n) : 0;
-}
-
-/*tex 
-
-    I played a bit with a height driven hanging indentation. One can store |cur_p| in the active 
-    node and progressively calculate the height + depth and then act on that but in the end 
-    interline space, adjustsm etc. also have to be taken into account and that all happens later 
-    so in the end it makes no sense. There are valdi reasons why \TEX\ can't do some things 
-    reliable: user demands are unpredictable.  
-
-*/
-
-/*tex 
-
-    Here we pickup the line number from |prev_graf| which relates to display math inside a 
-    paragraph. A display formula is then considered to span three lines. Of course this also 
-    assume a constant baseline distance with lines heigths not exceeding that amount. It also 
-    assumes that the shape and hang are not reset. We check the prevgraf for a large value 
-    because when we're close to |max_integer| we can wrap around due to addition beyond that 
-    and negative values has side effects (see musings-sideffects) but it's optional so that we
-    can actually use these side effects. 
-
-*/
-
-# define max_prev_graf (max_integer/2)
-
-inline static int tex_aux_short_math(halfword m) {
-    return m && node_subtype(m) == begin_inline_math && math_penalty(m) > 0 && tex_has_math_option(m, math_option_short);
-}
-
-inline static void tex_aux_adapt_short_math_penalty(halfword m, halfword p1, halfword p2, int orphaned) {
-    if (p1 > math_penalty(m)) {
-        math_penalty(m) = p1;
-        if (orphaned) { 
-            tex_add_math_option(m, math_option_orphaned);
-        }
+void tex_do_line_break(line_break_properties *properties)
+{
+    /*tex Miscellaneous nodes of temporary interest. */
+    halfword cur_p, l, r;
+    int line_break_dir = properties->paragraph_dir;
+    int force_check_hyphenation = hyphenation_permitted(properties->hyphenation_mode, force_check_hyphenation_mode);
+    (void) (properties->inter_line_penalties); /* avoid not used message */
+    /*tex Get ready to start */
+    lmt_linebreak_state.fewest_demerits = 0;
+    lmt_linebreak_state.actual_looseness = 0;
+    lmt_linebreak_state.minimum_demerits = awful_bad;
+    for (int i = very_loose_fit; i <= tight_fit; i++) {
+        lmt_linebreak_state.minimal_demerits[i] = awful_bad;
     }
-    if (p2 > math_penalty(m)) {
-        math_penalty(m) = p2;
-        if (orphaned) { 
-            tex_add_math_option(m, math_option_orphaned);
-        }
-    }
-}
-
-inline static halfword tex_aux_backtrack_over_math(halfword m) 
-{
-    if (node_subtype(m) == end_inline_math) { 
-        do { 
-            m = node_prev(m);
-        } while (m && node_type(m) != math_node);
-    }
-    return m;
-}
-
-inline static int tex_aux_emergency(line_break_properties *properties)
-{
-    if (properties->emergency_stretch > 0) {
-        return 1;
-    } else if (properties->emergency_extra_stretch > 0) {
-        return 1;
-    } else if (! (tex_glue_is_zero(properties->emergency_left_skip) && glue_stretch_order(properties->emergency_left_skip) == normal_glue_order && glue_shrink_order(properties->emergency_left_skip) == normal_glue_order)) {
-        return 1;
-    } else if (! (tex_glue_is_zero(properties->emergency_right_skip) && glue_stretch_order(properties->emergency_right_skip) == normal_glue_order && glue_shrink_order(properties->emergency_right_skip) == normal_glue_order)) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-inline static int tex_aux_emergency_skip(halfword s)
-{
-    return ! tex_glue_is_zero(s) && glue_stretch_order(s) == normal_glue_order && glue_shrink_order(s) == normal_glue_order;
-}
-
-static const int classification[] = { 
-    very_loose_class,     
-    loose_fit_class,      
-    semi_loose_fit_class, 
-    decent_fit_class,     
-    semi_tight_fit_class, 
-    tight_fit_class,      
-};
-
-static scaled tex_check_linebreak_quality(halfword quality, scaled *overfull, scaled *underfull, halfword *verdict, halfword *classified)
-{
-    if ((quality & (par_has_glyph | par_has_disc)) == (par_has_glyph | par_has_disc)) {
-        halfword q = active_break_node(lmt_linebreak_state.best_bet);
-        /* last line ... */
-        switch (active_quality(q)) {
-            case par_is_overfull:
-                *overfull = active_deficiency(q);
-                *underfull = 0;
-                break;
-            case par_is_underfull:
-                *overfull = 0;
-                *underfull = active_deficiency(q);
-                break;
-            default: 
-                *overfull = 0;
-                *underfull = 0;
-                break;
-        }
-        *verdict = active_badness(q);
-        *classified |= classification[node_subtype(q)];
-        /* previous lines */
-        q = passive_prev_break(q);
-        while (q) {
-            switch (passive_quality(q)) {
-                case par_is_overfull:
-                    if (passive_deficiency(q) > *overfull) { 
-                        *overfull = passive_deficiency(q);
-                    }
-                    break;
-                case par_is_underfull:
-                    if (passive_deficiency(q) > *underfull) { 
-                        *underfull = passive_deficiency(q);
-                    }
-                    break;
-            }
-            *classified |= classification[node_subtype(q)];
-            if (passive_badness(q) > *verdict) { 
-                *verdict = passive_badness(q);
-            }
-            q = passive_prev_break(q);
-        }
-        if (*verdict > infinite_bad) {
-            *verdict = infinite_bad;
-        }
-        return 1;
-    } else { 
-        return 0;
-    }
-}            
-
-static void tex_aux_quality_callback(int callback_id, int id, int pass, int subpass, int subpasses, halfword quality) 
-{
-    scaled overfull = 0;
-    scaled underfull = 0;
-    halfword verdict = 0;
-    halfword classified = 0;
-    tex_check_linebreak_quality(quality, &overfull, &underfull, &verdict, &classified);
-    lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "ddddddddd->", id, lmt_packaging_state.pack_begin_line, pass, subpass, subpasses, overfull, underfull, verdict, classified);
-}
-
-/*
-    The orphan penalty injection is something new. It works backward so the first penalty in
-    the list is injected first. If there is a penalty before a space we skip that space and
-    also skip a penalty in the list.
-*/
-
-static void tex_aux_remove_orphan_penalties(line_break_properties *properties)
-{
-    halfword current = node_prev(properties->parfill_right_skip);
-    while (current) {
-        switch (node_type(current)) {
-            case glue_node:
-            case penalty_node:
-                current = node_prev(current);
-                break;
-            default:
-                goto CHECK;
-        }
-    }
-  CHECK:
-    while (current) {
-        halfword prev = node_prev(current);
-        switch (node_type(current)) { 
-            case penalty_node:
-                if (node_subtype(current) == orphan_penalty_subtype && tex_has_penalty_option(current, penalty_option_orphaned)) {
-                    tex_try_couple_nodes(prev, node_next(current));
-                    tex_flush_node(current);
-                }
-                break;
-            case math_node:
-                 current = tex_aux_backtrack_over_math(current); 
-                 if (tex_aux_short_math(current)) { 
-                     if (tex_has_math_option(current, math_option_orphaned)) { 
-                        math_penalty(current) = 0;
-                        tex_remove_math_option(current, math_option_orphaned); 
-                     }
-                 }
-                return;
-            case disc_node: 
-                if (tex_has_disc_option(current, disc_option_orphaned)) {
-                    disc_orphaned(current) = 0;
-                    tex_remove_disc_option(current, disc_option_orphaned);
-                }
-                break;
-        }
-        current = prev;
-    }
-}
-
-static void tex_aux_prepare_orphan_penalties(line_break_properties *properties, int orphaned)
-{
-    if (properties->orphan_penalties || properties->orphan_penalty || short_inline_orphan_penalty_par) {
-        halfword current = node_prev(properties->parfill_right_skip);
-        if (current) {
-            /*tex Skip over trailing glue and penalties. */
-            while (current) {
-                switch (node_type(current)) {
-                    case glue_node:
-                    case penalty_node:
-                        current = node_prev(current);
-                        break;
-                    default:
-                        goto INJECT;
-                }
-            }
-          INJECT:
-            if (properties->orphan_penalties) {
-                /*tex 
-                    Inject specified penalties before spaces. When we see a math node with a penalty
-                    set then we take the max and jump over a (preceding) skip. Maybe at some point 
-                    the |short_inline_orphan_penalty_par| value will also move into the par state.
-                */
-                int n = specification_count(properties->orphan_penalties);
-                if (n > 0) {
-                    int skip = 0;
-                    halfword i = 0;
-                    while (current) {
-                        switch (node_type(current)) { 
-                            case glue_node:
-                                switch (node_subtype(current)) {
-                                    case space_skip_glue:
-                                    case xspace_skip_glue:
-                                    case zero_space_skip_glue:
-                                        if (skip) { 
-                                            skip = 0;
-                                        } else {
-                                            current = tex_aux_inject_orphan_penalty(current, tex_get_specification_penalty(properties->orphan_penalties, ++i), 0);
-                                        }
-                                        if (i == n) {
-                                            return;
-                                        } else {
-                                            break;
-                                        }
-                                }
-                                break;
-                            case math_node:
-                                current = tex_aux_backtrack_over_math(current); 
-                                if (tex_aux_short_math(current)) { 
-                                    halfword p = tex_get_specification_penalty(properties->orphan_penalties, ++i);
-                                    tex_aux_adapt_short_math_penalty(current, short_inline_orphan_penalty_par, p, 0);
-                                    if (i == n) {
-                                        return;
-                                    } else {
-                                        skip = 1;
-                                    }
-                                } else { 
-                                    return;
-                                }
-                                break;
-                            default: 
-                                skip = 0;
-                                break;
-                        }
-                        current = node_prev(current);
-                    }
-                }
-            } else if (properties->orphan_penalty) {
-                /*tex
-                    We inject a penalty before the space but we need to intercept the math penalty
-                    that actually is set on the math mode.  If no math orphan penalty is set of when 
-                    we have wider math then we assume it's okay. We don't want interference in math
-                    penalties. 
-                    
-                */
-                while (current) {
-                    switch (node_type(current)) { 
-                        case glue_node:
-                            switch (node_subtype(current)) {
-                                case space_skip_glue:
-                                case xspace_skip_glue:
-                                case zero_space_skip_glue:
-                                    tex_aux_inject_orphan_penalty(current, properties->orphan_penalty, orphaned);
-                                    return;
-                                default: 
-                                    /* maybe we should always quit here */
-                                    break;
-                            }
-                            break;
-                        case penalty_node:
-                            if (node_subtype(current) == orphan_penalty_subtype) {
-                                return;
-                            }
-                            break;
-                        case math_node:
-                            current = tex_aux_backtrack_over_math(current); 
-                            if (tex_aux_short_math(current)) { 
-                                tex_aux_adapt_short_math_penalty(current, short_inline_orphan_penalty_par, properties->orphan_penalty, orphaned);
-                            }
-                            return;
-                        case disc_node: 
-                            /*
-                                This is (or has been) actually an old \CONTEXT\ feature doen in \LUA,
-                                so what should we do here: set the penalty and quit or maybe run till we 
-                                hit a non glyph, disc or font kern? Hyphens already get penalties. So,
-                                we do nothong.
-                            */
-                            disc_orphaned(current) = properties->orphan_penalty;
-                            if (orphaned) { 
-                                tex_add_disc_option(current, disc_option_orphaned);
-                            } 
-                            break;
-                    }
-                    current = node_prev(current);
-                }
-            } else if (short_inline_orphan_penalty_par) {
-                /*tex
-                    Short formulas at the end of a line are normally not followed by something other 
-                    than punctuation. In practice one can set this penalty to e.g. a relatively low 
-                    200 to get the desired effect. We definitely quit on a space and take for granted 
-                    what comes before we see the formula.                     
-                */
-                while (current) {
-                    switch (node_type(current)) { 
-                        case glue_node:
-                            switch (node_subtype(current)) {
-                                case space_skip_glue:
-                                case xspace_skip_glue:
-                                case zero_space_skip_glue:
-                                    return;
-                            }
-                            break;
-                        case math_node:
-                            current = tex_aux_backtrack_over_math(current); 
-                            if (tex_aux_short_math(current)) {  
-                                tex_aux_adapt_short_math_penalty(current, short_inline_orphan_penalty_par, 0, 0);
-                            }
-                            return;
-                            
-                    }
-                    current = node_prev(current);
-                }
-            }
-        }
-    }
-}
-
-inline static int tex_aux_has_expansion(void) 
-{
-    if (lmt_linebreak_state.checked_expansion == -1) {
-        halfword current = node_next(temp_head);
-        while (current) {
-            if (node_type(current) == glyph_node && has_font_text_control(glyph_font(current), text_control_expansion)) { 
-                lmt_linebreak_state.checked_expansion = 1;
-                break;
-            } else {
-                current = node_next(current);
-            }
-        }
-        lmt_linebreak_state.checked_expansion = 0;
-    }
-    return lmt_linebreak_state.checked_expansion;
-}
-
-
-inline static void tex_aux_set_initial_active(void)
-{
-    halfword initial = tex_new_node(unhyphenated_node, (quarterword) decent_fit);
-    node_next(initial) = active_head;
-    active_break_node(initial) = null;
-    active_line_number(initial) = cur_list.prev_graf + 1;
-    active_total_demerits(initial) = 0; // default
-    active_short(initial) = 0;          // default
-    active_glue(initial) = 0;           // default
-    active_line_width(initial) = 0;     // default
-    node_next(active_head) = initial; 
-}
-
-inline static void tex_aux_set_local_par_state(halfword current)
-{
-    if (current && node_type(current) == par_node) {
-        node_prev(current) = temp_head;
-        lmt_linebreak_state.internal_penalty_interline = tex_get_local_interline_penalty(current);
-        lmt_linebreak_state.internal_penalty_broken = tex_get_local_broken_penalty(current);
-        lmt_linebreak_state.internal_left_box_init = par_box_left(current);
-        lmt_linebreak_state.internal_left_box_width_init = tex_get_local_left_width(current);
-        lmt_linebreak_state.internal_right_box = par_box_right(current);
-        lmt_linebreak_state.internal_right_box_width = tex_get_local_right_width(current);
-        lmt_linebreak_state.internal_middle_box = par_box_middle(current);
-    } else {
-        lmt_linebreak_state.internal_penalty_interline = 0;
-        lmt_linebreak_state.internal_penalty_broken = 0;
-        lmt_linebreak_state.internal_left_box_init = null;
-        lmt_linebreak_state.internal_left_box_width_init = 0;
-        lmt_linebreak_state.internal_right_box = null;
-        lmt_linebreak_state.internal_right_box_width = 0;
-        lmt_linebreak_state.internal_middle_box = null;
-    }
-    lmt_linebreak_state.internal_left_box = lmt_linebreak_state.internal_left_box_init;
-    lmt_linebreak_state.internal_left_box_width = lmt_linebreak_state.internal_left_box_width_init;
-}
-
-inline static void tex_aux_set_adjust_spacing(line_break_properties *properties)
-{
+    /*tex
+        This has been moved here: 
+    */
     if (properties->adjust_spacing) {
         lmt_linebreak_state.adjust_spacing = properties->adjust_spacing;
         if (properties->adjust_spacing_step > 0) {
@@ -2641,638 +2108,70 @@ inline static void tex_aux_set_adjust_spacing(line_break_properties *properties)
     lmt_linebreak_state.current_font_step = -1;
     lmt_linebreak_state.max_shrink_ratio = -1;
     lmt_linebreak_state.max_stretch_ratio = -1;
-}
-
-inline static void tex_aux_set_looseness(line_break_properties *properties)
-{
-    if (properties->looseness == 0) {
-        lmt_linebreak_state.easy_line = lmt_linebreak_state.last_special_line;
-    } else {
-        lmt_linebreak_state.easy_line = max_halfword;
-    }
-}
-
-inline static int tex_aux_check_sub_pass(line_break_properties *properties, halfword quality, halfword passes, int subpass, int nofsubpasses, halfword first)
-{
-    scaled overfull = 0; 
-    scaled underfull = 0; 
-    halfword verdict = 0;
-    halfword classified = 0;
-    if (tex_check_linebreak_quality(quality, &overfull, &underfull, &verdict, &classified)) { 
-        if (overfull > 0 || verdict > 0) { 
-            while (subpass < nofsubpasses) { 
-                scaled features = tex_get_passes_features(passes, ++subpass);
-                if (features & passes_quit_pass) { 
-                    return -1;
-                } else if (features & passes_skip_pass) { 
-                    continue;
-                } else {
-                    scaled threshold = tex_get_passes_threshold(passes, subpass);
-                    halfword badness = tex_get_passes_badness(passes, subpass);
-                    halfword classes = tex_get_passes_classes(passes, subpass);
-                    int callback = features & passes_callback_set;
-                    bool tracing = properties->tracing_paragraphs > 0 || properties->tracing_passes > 0;
-                    bool details = properties->tracing_passes > 1;
-                    int success = 0;
-                    bool retry = callback ? 1 : (overfull > threshold || verdict > badness || (classes && (classes & classified) != 0));
-                    if (tracing) {
-                        halfword id = tex_get_passes_identifier(passes, 1);
-                        if (callback) { 
-                            tex_print_format("[id %i, subpass: %i of %i, overfull %p, underfull %p, verdict %i, classified %x, %s]\n", 
-                                id, subpass, nofsubpasses, overfull, underfull, verdict, classified, "callback" 
-                            );
-                        } else { 
-                            const char *action = retry ? "retry" :  "skipped";
-                            if (id < 0) { 
-                                id = -id; /* nicer for our purpose */
-                            }
-                            tex_begin_diagnostic();
-                            if (threshold == max_dimension) { 
-                                if (badness == infinite_bad) { 
-                                    tex_print_format("[id %i, subpass: %i of %i, overfull %p, underfull %p, verdict %i, classified %x, %s]\n", 
-                                        id, subpass, nofsubpasses, overfull, underfull, verdict, classified, action
-                                    );
-                                } else { 
-                                    tex_print_format("[id %i, subpass: %i of %i, overfull %p, underfull %p, verdict %i, badness %i, classified %x, %s]\n", 
-                                        id, subpass, nofsubpasses, overfull, underfull, verdict, badness, classified, action
-                                    );
-                                }
-                            } else { 
-                                if (badness == infinite_bad) { 
-                                    tex_print_format("[id %i, subpass: %i of %i, overfull %p, underfull %p, verdict %i, threshold %p, classified %x, %s]\n", 
-                                        id, subpass, nofsubpasses, overfull, underfull, verdict, threshold, classified, action
-                                    );
-                                } else { 
-                                    tex_print_format("[id %i, subpass: %i of %i, overfull %p, underfull %p, verdict %i, threshold %p, badness %i, classified %x, %s]\n", 
-                                        id, subpass, nofsubpasses, overfull, underfull, verdict, threshold, badness, classified, action
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    if (retry) {
-                        halfword v = tex_get_passes_tolerance(passes, subpass);
-                        if (v) { 
-                            properties->tolerance = v;
-                        }
-                        lmt_linebreak_state.threshold = properties->tolerance;
-                        v = tex_get_passes_linepenalty(passes, subpass); 
-                        if (v) {
-                            properties->line_penalty = v;
-                        }
-                        v = tex_get_passes_orphanpenalty(passes, subpass); 
-                        if (v) {
-                            properties->orphan_penalty = v;
-                        }
-                        v = tex_get_passes_extrahyphenpenalty(passes, subpass);
-                        if (v) { 
-                            properties->extra_hyphen_penalty = v;
-                        }
-                        v = tex_get_passes_doublehyphendemerits(passes, subpass);
-                        if (v) { 
-                            properties->double_hyphen_demerits = v;
-                        }
-                        v =  tex_get_passes_finalhyphendemerits(passes, subpass);
-                        if (v) { 
-                            properties->final_hyphen_demerits = v;
-                        }
-                        v = tex_get_passes_adjdemerits(passes, subpass); 
-                        if (v) { 
-                            properties->adj_demerits = v;
-                        }
-                        v = tex_get_passes_linebreakcriterion(passes, subpass); 
-                        if (v) {
-                            properties->line_break_criterion = v;
-                        }
-                        v = tex_get_passes_emergencystretch(passes, subpass); 
-                        if (v) {
-                            properties->emergency_stretch = v; // emergency_extra_stretch
-                        }
-                        v = tex_get_passes_looseness(passes, subpass); 
-                        if (v) {
-                            properties->looseness = v;
-                        }
-                        v = tex_get_passes_adjustspacingstep(passes, subpass); 
-                        if (v) {
-                            properties->adjust_spacing_step = v;
-                        }
-                        v = tex_get_passes_adjustspacingshrink(passes, subpass); 
-                        if (v) {
-                            properties->adjust_spacing_shrink = v;
-                        }
-                        v = tex_get_passes_adjustspacingstretch(passes, subpass); 
-                        if (v) {
-                            properties->adjust_spacing_stretch = v;
-                        }
-                        v = tex_get_passes_adjustspacing(passes, subpass); 
-                        if (v) {
-                            properties->adjust_spacing = v;
-                        }
-                        if (features & passes_optional_set) {           
-                            v = tex_get_passes_optional(passes, subpass); 
-                            properties->line_break_optional = v;
-                        }
-                        /* 0=quit, 1=once, 2=repeat */
-                        if (features & passes_callback_set) { 
-                            halfword callback = tex_get_passes_callback(passes, subpass);
-                            halfword id = tex_get_passes_identifier(passes, 1);
-                            int repeat = 0;
-                            success = lmt_par_pass_callback(
-                                first, 
-                                properties, id, callback, features, 
-                                overfull, underfull, verdict, classified,
-                                threshold, badness, classes, &repeat
-                            );   
-
-                            if (repeat) { 
-                                subpass -= 1;
-                            }
-                        } else { 
-                            success = 1; 
-                        }
-                        /* wrapup */
-                        tex_aux_remove_orphan_penalties(properties);
-                        if (features & passes_orphan_penalty_set) {           
-                            /* quick hack: we need to check if they are already set */
-                            tex_aux_prepare_orphan_penalties(properties, 1);
-                        }
-                        tex_aux_set_adjust_spacing(properties);
-                        tex_aux_set_looseness(properties);
-                    }
-                    if (details) {
-                        tex_print_format("  tolerance            %i\n", properties->tolerance);                     
-                        tex_print_format("  doublehyphendemerits %i\n", properties->double_hyphen_demerits);
-                        tex_print_format("  finalhyphendemerits  %i\n", properties->final_hyphen_demerits);
-                        tex_print_format("  adjdemerits          %i\n", properties->adj_demerits);
-                        tex_print_format("  doubleadjdemerits    %i\n", properties->double_adj_demerits);
-                        tex_print_format("  emergencystretch     %p\n", properties->emergency_stretch);
-                        tex_print_format("  looseness            %i\n", properties->looseness);
-                        tex_print_format("  adjustspacing        %i\n", properties->adjust_spacing);
-                        tex_print_format("  linepenalty          %i\n", properties->line_penalty);
-                        tex_print_format("  orphanpenalty        %i\n", properties->orphan_penalty);
-                        tex_print_format("  extrahyphenpenalty   %i\n", properties->extra_hyphen_penalty);
-                        tex_print_format("  linebreakoptional    %i\n", properties->line_break_optional);
-                        if (properties->adjust_spacing > 0) {
-                            if (properties->adjust_spacing_step >= 0) {
-                                tex_print_format("  adjustspacingstep    %i\n", properties->adjust_spacing_step);
-                            }
-                            if (properties->adjust_spacing_shrink >= 0) {
-                                tex_print_format("  adjustspacingshrink  %i\n", properties->adjust_spacing_shrink);
-                            }
-                            if (properties->adjust_spacing_stretch >= 0) {
-                                tex_print_format("  adjustspacingstretch %i\n", properties->adjust_spacing_stretch);
-                            }
-                        }
-                        if (properties->line_break_criterion) {
-                            halfword semi_tight, decent, semi_loose, loose;
-                            tex_split_line_break_criterion(properties->line_break_criterion, &semi_tight, &decent, &semi_loose, &loose);
-                            tex_print_format("  linebreakcriterion   %X\n", properties->line_break_criterion);
-                        }
-                    }
-                    if (tracing) {
-                        tex_end_diagnostic();
-                    }
-                    /* This only makes sense ifwe also check if there is a font with expansion. */
-                   
-                    if (features & passes_if_adjust_spacing && tex_aux_has_expansion()) {
-                        if (properties->adjust_spacing) { 
-                            /*tex We're fine. */
-                        } else { 
-                            success = 0;
-                        }
-                    } else { 
-                        /*tex No check but possibly a redundant run. */
-                    }
-                    if (success) {
-                        return subpass;          
-                    }
-                }
-            }
-        } else { 
-            /*tex We have a few hits in our test files. */
-        }
-    }
-    return 0;
-}
-
-/*tex
-
-    To access the first node of paragraph as the first active node has |break_node = null|.
-
-    Determine legal breaks: As we move through the hlist, we need to keep the |active_width| array 
-    up to date, so that the badness of individual lines is readily calculated by |try_break|. It 
-    is convenient to use the short name |active_width [1]| for the component of active width that 
-    represents real width as opposed to glue.
-
-    Advance |cur_p| to the node following the present string of characters. The code that passes 
-    over the characters of words in a paragraph is part of \TEX's inner loop, so it has been 
-    streamlined for speed. We use the fact that |\parfillskip| glue appears at the end of each 
-    paragraph; it is therefore unnecessary to check if |vlink (cur_p) = null| when |cur_p| is a 
-    character node.
-
-    Advance |cur_p| to the node following the present string of characters. The code that passes 
-    over the characters of words in a paragraph is part of \TEX's inner loop, so it has been 
-    streamlined for speed. We use the fact that |\parfillskip| glue appears at the end of each 
-    paragraph; it is therefore unnecessary to check if |vlink (cur_p) = null| when |cur_p| is 
-    a character node. (This is no longer true because we've split the hyphenation and font 
-    processing steps.) 
-
-    The code below is in the meantime a mix between good old \TEX, \ETEX\ (last line) , \OMEGA\
-    (local boxes but redone), \PDFTEX\ (expansion and protrusion), \LUATEX\ and quite a bit of 
-    \LUAMETATEX. But the principles remain the same. 
-
-*/
-
-inline static void tex_aux_wipe_optionals(line_break_properties *properties, halfword current) 
-{
-    if (properties->optional_found) {
-     // printf("WIPING OPTIONALS\n");
-        while (current) {
-            if (node_type(current) == boundary_node && node_subtype(current) == optional_boundary) { 
-                if (properties->line_break_optional) {
-                    if (! boundary_data(current)) {
-                     // printf("END KEEPING\n");
-                        current = node_next(current);
-                        continue;
-                    } else if ((boundary_data(current) & properties->line_break_optional) == properties->line_break_optional) { 
-                     // printf("BEGIN KEEPING\n");
-                        current = node_next(current);
-                        continue;
-                    }
-                }
-                {
-                    halfword first = current;
-                 // printf("BEGIN WIPING\n");
-                    while (1) { 
-                        current = node_next(current);
-                        if (! current) {
-                            return;
-                        } else if (node_type(current) == boundary_node && node_subtype(current) == optional_boundary && ! boundary_data(current) ) {
-                         // printf("END WIPING\n");
-                            halfword prev = node_prev(first);
-                            halfword next = node_next(current);
-                            halfword wiped = first;
-                            node_next(current) = null;
-                            tex_try_couple_nodes(prev, next);
-                            tex_flush_node_list(wiped);
-                            current = prev;
-                            break;
-                        }
-                    }
-                }
-            }
-            current = node_next(current);
-        }
-    }
-}
-
-inline static halfword tex_aux_break_list(line_break_properties *properties, halfword pass, halfword current, halfword first, int callback_id, int force_check_hyphenation, halfword *quality)
-{
-    while (current && (node_next(active_head) != active_head)) { /* we check the cycle */
-        switch (node_type(current)) {
-            case glyph_node:
-                /* why ex here and not in add/sub disc glyphs */
-                lmt_linebreak_state.active_width[total_advance_amount] += tex_glyph_width(current); 
-                if (properties->adjust_spacing && tex_aux_check_expand_pars(properties->adjust_spacing_step, glyph_font(current))) {
-                    lmt_packaging_state.previous_char_ptr = current;
-                    lmt_linebreak_state.active_width[font_stretch_amount] += tex_char_stretch(current);
-                    lmt_linebreak_state.active_width[font_shrink_amount] += tex_char_shrink(current);
-                }
-                *quality |= par_has_glyph;
-                break;
-            case hlist_node:
-            case vlist_node:
-                lmt_linebreak_state.active_width[total_advance_amount] += box_width(current);
-                break;
-            case rule_node:
-                lmt_linebreak_state.active_width[total_advance_amount] += rule_width(current);
-                break;
-            case dir_node:
-                /*tex Adjust the dir stack for the |line_break| routine. */
-                lmt_linebreak_state.line_break_dir = tex_update_dir_state(current, properties->paragraph_dir);
-                break;
-            case par_node:
-                /*tex Advance past a |par| node. */
-                switch (node_subtype(current)) {
-                    case vmode_par_par_subtype:
-                    case hmode_par_par_subtype:
-                        break;
-                    case local_box_par_subtype:
-                        break;
-                    case parameter_par_subtype:
-                        {
-                            halfword t = current == 1 ? tex_get_local_tolerance(current) : tex_get_local_pre_tolerance(current);
-                            if (t) {                             
-                                lmt_linebreak_state.threshold = t;
-                            }
-                            lmt_linebreak_state.internal_penalty_interline = tex_get_local_interline_penalty(current);
-                            lmt_linebreak_state.internal_penalty_broken = tex_get_local_broken_penalty(current);
-                            break;
-                        }
-                }
-                lmt_linebreak_state.internal_left_box = par_box_left(current);
-                lmt_linebreak_state.internal_left_box_width = tex_get_local_left_width(current);
-                lmt_linebreak_state.internal_right_box = par_box_right(current);
-                lmt_linebreak_state.internal_right_box_width = tex_get_local_right_width(current);
-                lmt_linebreak_state.internal_middle_box = par_box_middle(current);
-                break;
-            case glue_node:
-                /*tex
-
-                    If node |cur_p| is a legal breakpoint, call |try_break|; then update the
-                    active widths by including the glue in |glue_ptr(cur_p)|.
-
-                    When node |cur_p| is a glue node, we look at the previous to see whether 
-                    or not a breakpoint is legal at |cur_p|, as explained above.
-
-                    We only break after certain nodes (see texnodes.h), a font related kern 
-                    and a dir node when |\breakafterdirmode = 1|.
-
-                */
-                if (tex_has_glue_option(current, glue_option_no_auto_break)) { 
-                    /*tex Glue in math is not a valid breakpoint, unless we permit it. */
-                } else if (tex_is_par_init_glue(current)) {
-                    /*tex Of course we don't break here. */
-                } else if (tex_aux_valid_glue_break(current)) {
-                    tex_aux_try_break(properties, tex_aux_upcoming_penalty(current), unhyphenated_node, first, current, callback_id, pass);
-                }
-                lmt_linebreak_state.active_width[total_advance_amount] += glue_amount(current);
-                lmt_linebreak_state.active_width[total_stretch_amount + glue_stretch_order(current)] += glue_stretch(current);
-                lmt_linebreak_state.active_width[total_shrink_amount] += tex_aux_checked_shrink(current);
-                switch (node_subtype(current)) {
-                    case space_skip_glue:
-                    case xspace_skip_glue:
-                    case zero_space_skip_glue:
-                        *quality |= par_has_space;
-                        break;
-                    case u_leaders:
-                        *quality |= par_has_uleader;
-                        break;
-                }
-                break;
-            case kern_node:
-                switch (node_subtype(current)) {
-                    case explicit_kern_subtype:
-                    case italic_kern_subtype:
-                    case right_correction_kern_subtype:
-                        { 
-                            /*tex There used to be a |! is_char_node(node_next(cur_p))| test here. */
-                            /*tex We catch |\emph{test} $\hat{x}$| aka |test\kern5pt\hskip10pt$\hat{x}$|. */
-                            halfword nxt = node_next(current);
-                            if (nxt && node_type(nxt) == glue_node && ! tex_aux_upcoming_penalty(nxt) && ! tex_has_glue_option(nxt, glue_option_no_auto_break)) {
-                                tex_aux_try_break(properties, 0, unhyphenated_node, first, current, callback_id, pass);
-                            }
-                        }
-                        break;
-                 // case left_correction_kern_subtype:
-                 //     break;
-                    case font_kern_subtype:
-                        if (properties->adjust_spacing == adjust_spacing_full) {
-                            lmt_linebreak_state.active_width[font_stretch_amount] += tex_kern_stretch(current);
-                            lmt_linebreak_state.active_width[font_shrink_amount] += tex_kern_shrink(current);
-                        }
-                        break;
-                }
-                lmt_linebreak_state.active_width[total_advance_amount] += kern_amount(current);
-                break;
-            case disc_node:
-                /*tex
-
-                    Try to break after a discretionary fragment, then |goto done5|. The
-                    following code knows that discretionary texts contain only character
-                    nodes, kern nodes, box nodes, and rule nodes. This branch differs a bit
-                    from older engines because in \LUATEX\ we already have hyphenated the list.
-                    This means that we need to skip automatic disc nodes. Or better, we need
-                    to treat discretionaries and explicit hyphens always, even in the first
-                    pass.
-
-                    We used to have |init_disc| followed by |select disc| variants where the
-                    |select_disc|s were handled by the leading |init_disc|. The question is: should
-                    we bother about select nodes? Knuth indicates in the original source that only
-                    a very few cases need hyphenation so the exceptional case of >2 char ligatures
-                    having hyphenation points in between is rare. We'd better have proper compound
-                    word handling. Keep in mind that these (old) init and select subtypes always
-                    came in isolated pairs and that they only were meant for the simple (enforced)
-                    hyphenation discretionaries.
-
-                    Therefore, this feature has been dropped from \LUAMETATEX. It not only makes
-                    the code simpler, it also avoids having code on board for border cases that
-                    even when dealt with are suboptimal. It's better to have nothing that something
-                    fuzzy. It also makes dealing with (intermediate) node lists easier. If I want
-                    something like this it should be okay for any situation.
-
-                */
-                {
-                    halfword replace = disc_no_break_head(current);
-                    if (force_check_hyphenation || lmt_linebreak_state.second_pass || (node_subtype(current) != syllable_discretionary_code)) {
-                        halfword actual_penalty = disc_penalty(current) + disc_orphaned(current) + properties->extra_hyphen_penalty;
-                        halfword pre = disc_pre_break_head(current); 
-                        tex_aux_reset_disc_target(properties->adjust_spacing, lmt_linebreak_state.disc_width);
-                        if (pre) {
-                            /*tex 
-                                After \OPENTYPE\ processing we can have long snippets in a disc node 
-                                and as a result we can have trailing disc nodes which also means that 
-                                we can have a replacement that is shorter than a pre snippet so then 
-                                we need bypass the pre checking. It also catches the case where we 
-                                have a pre and replace but no post that then can result in an empty 
-                                line when we have a final disc. 
-
-                                Another more realistic example of required control is when we use 
-                                discretionaries for optional content, where we actually might want to 
-                                favour either the replacement or the prepost pair. We're still talking 
-                                or rare situations (that showed up in test loops that triggered these
-                                border cases).
-                            */
-                            if (replace && node_subtype(current) != mathematics_discretionary_code) { 
-                                if (tex_has_disc_option(current, disc_option_prefer_break) || tex_has_disc_option(current, disc_option_prefer_nobreak)) {
-                                    /*tex 
-                                        Maybe we need some more (subtype) checking but first I need a 
-                                        better (less border) use case. In this border case we forget 
-                                        about expansion. 
-
-                                        We likely default to |prefer_nobreak| so by testing |prefer_break|
-                                        first we let that one take control. 
-                                    */
-                                    switch (node_type(node_next(current))) { 
-                                        case glue_node:
-                                        case penalty_node:
-                                        case boundary_node: 
-                                            {
-                                                /*tex 
-                                                    Lets assume that when |wd == wp| we actually 
-                                                    want the pre text (and a possible empty post). 
-                                                */
-                                                scaled wpre = tex_natural_hsize(pre, NULL);
-                                                scaled wreplace = tex_natural_hsize(replace, NULL);
-                                                if (tex_has_disc_option(current, disc_option_prefer_break)) { 
-                                                    halfword post = disc_post_break_head(current); 
-                                                    scaled wpost = post ? tex_natural_hsize(post, NULL) : 0;
-                                                    if (wpost > 0) { 
-                                                        if (properties->tracing_paragraphs > 1) {
-                                                            tex_begin_diagnostic();
-                                                            tex_print_format("[linebreak: favour final prepost over replace, widths %p %p]", wpre + wpost, wreplace);
-                                                            tex_short_display(node_next(temp_head));
-                                                            tex_end_diagnostic();
-                                                        }
-                                                    } else {
-                                                        goto REPLACEONLY;
-                                                    }
-                                                } else { 
-                                                    if (wreplace < wpre) {
-                                                        if (properties->tracing_paragraphs > 1) {
-                                                            tex_begin_diagnostic();
-                                                            tex_print_format("[linebreak: favour final replace over pre, widths %p %p]", wreplace, wpre);
-                                                            tex_short_display(node_next(temp_head));
-                                                            tex_end_diagnostic();
-                                                        }
-                                                        goto REPLACEONLY;
-                                                    } 
-                                                }
-                                            }
-                                    }
-                                }
-                            }
-                            tex_aux_add_to_widths(pre, properties->adjust_spacing, properties->adjust_spacing_step, lmt_linebreak_state.disc_width);
-                            tex_aux_add_disc_source_to_target(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.disc_width);
-                            tex_aux_try_break(properties, actual_penalty, hyphenated_node, first, current, callback_id, pass);
-                            tex_aux_sub_disc_target_from_source(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.disc_width);
-                        } else {
-                            /*tex trivial pre-break */
-                            tex_aux_try_break(properties, actual_penalty, hyphenated_node, first, current, callback_id, pass);
-                        }
-                    }
-                 REPLACEONLY: 
-                    if (replace) { 
-                        tex_aux_add_to_widths(replace, properties->adjust_spacing, properties->adjust_spacing_step, lmt_linebreak_state.active_width);
-                    }
-                    *quality |= par_has_disc;
-                    break;
-                }
-            case penalty_node:
-                tex_aux_try_break(properties, penalty_amount(current), unhyphenated_node, first, current, callback_id, pass);
-                break;
-            case math_node:
-                {
-                    /*tex 
-                        There used to a ! is_char_node(node_next(cur_p)) test here but I'm
-                        not sure whay that is.  
-                    */
-                    int finishing = node_subtype(current) == end_inline_math;
-                    if (finishing) {
-                        lmt_linebreak_state.threshold = lmt_linebreak_state.saved_threshold;
-                        /* We 
-                            also store the restore value in the end node but we can actually 
-                            change the tolerance mid paragraph so that value might be wrong, 
-                            which is why we save the old threshold and use that. 
-                        */
-                    } else { 
-                        lmt_linebreak_state.saved_threshold = lmt_linebreak_state.threshold;
-                        if (pass == 1) { 
-                            if (math_pre_tolerance(current)) { 
-                                lmt_linebreak_state.threshold = math_pre_tolerance(current);
-                            }
-                        } else {
-                            if (math_tolerance(current)) {                             
-                                lmt_linebreak_state.threshold = math_tolerance(current);
-                            }
-                        }
-                    }
-                    // lmt_linebreak_state.auto_breaking = finishing;
-                    if (tex_math_glue_is_zero(current) || tex_ignore_math_skip(current)) {
-                        /*tex 
-                            When we end up here we assume |\mathsurround| but we only check for 
-                            a break when we're ending math. Maybe this is something we need to 
-                            open up. The math specific penalty only kicks in when we break.
-                        */
-                        if (finishing && node_type(node_next(current)) == glue_node) {
-                            tex_aux_try_break(properties, math_penalty(current), unhyphenated_node, first, current, callback_id, pass);
-                        }
-                        lmt_linebreak_state.active_width[total_advance_amount] += math_surround(current);
-                    } else {
-                        /*tex
-                            This one does quite some testing, is that still needed?
-                        */
-                        if (finishing && tex_aux_valid_glue_break(current)) {
-                            tex_aux_try_break(properties, math_penalty(current), unhyphenated_node, first, current, callback_id, pass);
-                        }
-                        lmt_linebreak_state.active_width[total_advance_amount] += math_amount(current);
-                        lmt_linebreak_state.active_width[total_stretch_amount + math_stretch_order(current)] += math_stretch(current);
-                        lmt_linebreak_state.active_width[total_shrink_amount] += tex_aux_checked_shrink(current);
-                    }
-                }
-                break;
-            case boundary_node:
-                if (node_subtype(current) == optional_boundary) { 
-                    properties->optional_found = 1;
-                    if (properties->line_break_optional) { 
-                        if (! boundary_data(current)) { 
-                         // printf("END PROCESS OPTIONAL\n");
-                            break;
-                        } else if ((boundary_data(current) & properties->line_break_optional) == properties->line_break_optional) { 
-                            /* use this optional */
-                         // printf("BEGIN PROCESS OPTIONAL\n");
-                            break;
-                        }
-                    }
-                 // printf("BEGIN IGNORE OPTIONAL\n");
-                    while (1) { 
-                        current = node_next(current);
-                        if (! current) {
-                            /* actually this is an error */
-                            return null;
-                        } else if (node_type(current) == boundary_node && node_subtype(current) == optional_boundary && ! boundary_data(current)) { 
-                         // printf("END IGNORE OPTIONAL\n");
-                            break;
-                        }
-                    }
-                }
-                break;
-            case whatsit_node:
-            case mark_node:
-            case insert_node:
-            case adjust_node:
-                /*tex Advance past these nodes in the |line_break| loop. */
-                break;
-            default:
-                tex_formatted_error("parbuilder", "weird node %d in paragraph", node_type(current));
-        }
-        current = node_next(current);
-    }
-    return current;
-}
-
-void tex_do_line_break(line_break_properties *properties)
-{
-    /*tex Miscellaneous nodes of temporary interest. */
-    int callback_id = lmt_callback_defined(show_break_callback);
-    int force_check_hyphenation = hyphenation_permitted(properties->hyphenation_mode, force_check_hyphenation_mode);
-    halfword quality = 0; 
-    (void) (properties->inter_line_penalties); /* avoid not used message */
-    /*tex Fix a buglet that probably is a feature. */
-    if ((cur_list.prev_graf > max_prev_graf || cur_list.prev_graf < 0) && normalize_par_mode_permitted(normalize_par_mode_par, limit_prev_graf_mode)) { 
-        tex_formatted_warning("tex", "clipping prev_graf %i to %i", cur_list.prev_graf, max_prev_graf);
-        cur_list.prev_graf = max_prev_graf;
-    }
-    lmt_linebreak_state.line_break_dir = properties->paragraph_dir;
-    /*tex Get ready to start */
-    lmt_linebreak_state.fewest_demerits = 0;
-    lmt_linebreak_state.actual_looseness = 0;
-    lmt_linebreak_state.minimum_demerits = awful_bad;
-    lmt_linebreak_state.checked_expansion = -1;
-    for (int i = very_loose_fit; i <= tight_fit; i++) {
-        lmt_linebreak_state.minimal_demerits[i] = awful_bad;
-    }
-    /*tex
-        This has been moved here: 
-    */
-    tex_aux_set_adjust_spacing(properties);
     /*tex
 
         We compute the values of |easy_line| and the other local variables relating to line length
         when the |line_break| procedure is initializing itself.
 
+        The orphan penalty injection is something new. It works backward so the first penalty in
+        the list is injected first. If there is a penalty before a space we skip that space and
+        also skip a penalty in the list.
+
     */
-    tex_aux_prepare_orphan_penalties(properties, 0);
+    if (properties->orphan_penalties || properties->orphan_penalty) {
+        halfword current = node_prev(properties->parfill_right_skip);
+        if (current) {
+            /*tex Skip over trailing glue and penalties. */
+            while (current) {
+                switch (node_type(current)) {
+                    case glue_node:
+                    case penalty_node:
+                        current = node_prev(current);
+                        break;
+                    default:
+                        goto INJECT;
+                }
+            }
+          INJECT:
+            if (properties->orphan_penalties) {
+                /*tex Inject specified penalties before spaces. */
+                int n = specification_count(properties->orphan_penalties);
+                if (n > 0) {
+                    halfword i = 0;
+                    while (current) {
+                        if (node_type(current) == glue_node) {
+                            switch (node_subtype(current)) {
+                                case space_skip_glue:
+                                case xspace_skip_glue:
+                                case zero_space_skip_glue:
+                                    current = tex_aux_inject_orphan_penalty(current, tex_get_specification_penalty(properties->orphan_penalties, ++i));
+                                    if (i == n) {
+                                        goto ALLDONE;
+                                    } else {
+                                        break;
+                                    }
+                            }
+                        }
+                        current = node_prev(current);
+                    }
+                }
+            } else {
+                while (current) {
+                    if (node_type(current) == glue_node) {
+                        switch (node_subtype(current)) {
+                            case space_skip_glue:
+                            case xspace_skip_glue:
+                            case zero_space_skip_glue:
+                                tex_aux_inject_orphan_penalty(current, properties->orphan_penalty);
+                                goto ALLDONE;
+                        }
+                    }
+                    current = node_prev(current);
+                }
+            }
+        }
+      ALLDONE: ;
+    }
     if (properties->par_shape) {
         int n = specification_count(properties->par_shape);
         if (n > 0) {
@@ -3323,21 +2222,23 @@ void tex_do_line_break(line_break_properties *properties)
             }
         }
     }
-    tex_aux_set_looseness(properties);
-    lmt_linebreak_state.no_shrink_error_yet = 1;
-    { 
-        halfword l = properties->left_skip;
-        halfword r = properties->right_skip;
-        lmt_linebreak_state.background[total_advance_amount] = glue_amount(l) + glue_amount(r);
-        lmt_linebreak_state.background[total_stretch_amount] = 0;
-        lmt_linebreak_state.background[total_fi_amount] = 0;
-        lmt_linebreak_state.background[total_fil_amount] = 0;
-        lmt_linebreak_state.background[total_fill_amount] = 0;
-        lmt_linebreak_state.background[total_filll_amount] = 0;
-        lmt_linebreak_state.background[total_stretch_amount + glue_stretch_order(l)] = glue_stretch(l);
-        lmt_linebreak_state.background[total_stretch_amount + glue_stretch_order(r)] += glue_stretch(r);
-        lmt_linebreak_state.background[total_shrink_amount] = tex_aux_checked_shrink(l) + tex_aux_checked_shrink(r);
+    if (properties->looseness == 0) {
+        lmt_linebreak_state.easy_line = lmt_linebreak_state.last_special_line;
+    } else {
+        lmt_linebreak_state.easy_line = max_halfword;
     }
+    lmt_linebreak_state.no_shrink_error_yet = 1;
+    l = properties->left_skip;
+    r = properties->right_skip;
+    lmt_linebreak_state.background[total_glue_amount] = glue_amount(l) + glue_amount(r);
+    lmt_linebreak_state.background[total_stretch_amount] = 0;
+    lmt_linebreak_state.background[total_fi_amount] = 0;
+    lmt_linebreak_state.background[total_fil_amount] = 0;
+    lmt_linebreak_state.background[total_fill_amount] = 0;
+    lmt_linebreak_state.background[total_filll_amount] = 0;
+    lmt_linebreak_state.background[total_stretch_amount + glue_stretch_order(l)] = glue_stretch(l);
+    lmt_linebreak_state.background[total_stretch_amount + glue_stretch_order(r)] += glue_stretch(r);
+    lmt_linebreak_state.background[total_shrink_amount] = tex_aux_checked_shrink(l) + tex_aux_checked_shrink(r);
     if (properties->adjust_spacing) {
         lmt_linebreak_state.background[font_stretch_amount] = 0;
         lmt_linebreak_state.background[font_shrink_amount] = 0;
@@ -3375,12 +2276,14 @@ void tex_do_line_break(line_break_properties *properties)
     }
     /*tex Find optimal breakpoints. */
     lmt_linebreak_state.threshold = properties->pretolerance;
+
     if (properties->tracing_paragraphs > 1) {
         tex_begin_diagnostic();
         tex_print_str("[linebreak: original]");
         tex_short_display(node_next(temp_head));
         tex_end_diagnostic();
     }
+
     if (lmt_linebreak_state.threshold >= 0) {
         if (properties->tracing_paragraphs > 0) {
             tex_begin_diagnostic();
@@ -3391,234 +2294,359 @@ void tex_do_line_break(line_break_properties *properties)
     } else {
         lmt_linebreak_state.threshold = properties->tolerance;
         lmt_linebreak_state.second_pass = 1;
-        lmt_linebreak_state.final_pass = ! tex_aux_emergency(properties); /* hm */
+        lmt_linebreak_state.final_pass = (properties->emergency_stretch <= 0);
         if (properties->tracing_paragraphs > 0) {
             tex_begin_diagnostic();
         }
     }
-    if (line_break_passes_par == -1) { 
-        lmt_linebreak_state.final_pass = 1;
-    }
-    if (callback_id) {
-        tex_aux_initialize_show_break_node(callback_id);
-    }
-    {
-        halfword passes = properties->par_passes;
-        int subpasses = (passes && line_break_passes_par > 0) ? tex_get_specification_count(passes) : 0;
-        int subpass = 0;
-        int pass = 0;
-        while (++pass) {
-            halfword first = node_next(temp_head);
-            halfword current = first;
-            lmt_linebreak_state.saved_threshold = 0;
-            if (lmt_linebreak_state.threshold > infinite_bad) {
-                lmt_linebreak_state.threshold = infinite_bad; /* we can move this check to where threshold is set */
-            }
-            if (callback_id) {
-                tex_aux_start_show_break_node(callback_id, pass);
-            }
-            /*tex 
-                Create an active breakpoint representing the beginning of the paragraph. After 
-                doing this we have created a cycle. 
-            */
-            tex_aux_set_initial_active();
-            /*tex
-                We now initialize the arrays that will be used in the calculations. We start 
-                fresh each pass. 
-            */
-            tex_aux_set_target_to_source(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.background);
-            lmt_linebreak_state.passive = null;
-            lmt_linebreak_state.printed_node = temp_head;
-            lmt_linebreak_state.pass_number = 0;
-            lmt_print_state.font_in_short_display = null_font;
-            lmt_packaging_state.previous_char_ptr = null;
-            /*tex 
-                We have local boxes and (later) some possible mid paragraph overloads that we need to 
-                initialize.                 
-            */
-            tex_aux_set_local_par_state(current);
-            /*tex
+    while (1) {
+        halfword first_p, q;
+        halfword nest_stack[10];
+        int nest_index = 0;
+        if (lmt_linebreak_state.threshold > infinite_bad) {
+            lmt_linebreak_state.threshold = infinite_bad;
+        }
+        /*tex Create an active breakpoint representing the beginning of the paragraph. */
+        q = tex_new_node(unhyphenated_node, (quarterword) decent_fit);
+        node_next(q) = active_head;
+        active_break_node(q) = null;
+        active_line_number(q) = cur_list.prev_graf + 1;
+        active_total_demerits(q) = 0;
+        active_short(q) = 0;
+        active_glue(q) = 0;
+        node_next(active_head) = q; /* we create a cycle */
+        tex_aux_set_target_to_source(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.background);
+        lmt_linebreak_state.passive = null;
+        lmt_linebreak_state.printed_node = temp_head;
+        lmt_linebreak_state.pass_number = 0;
+        lmt_print_state.font_in_short_display = null_font;
+        /*tex Create an active breakpoint representing the beginning of the paragraph. */
+     /* lmt_linebreak_state.auto_breaking = 1; */ /* gone */
+        cur_p = node_next(temp_head);
+        /*tex Initialize with first (or current) |par| node. */
+        if (cur_p && node_type(cur_p) == par_node) {
+            node_prev(cur_p) = temp_head;
+            lmt_linebreak_state.internal_penalty_interline = tex_get_local_interline_penalty(cur_p);
+            lmt_linebreak_state.internal_penalty_broken = tex_get_local_broken_penalty(cur_p);
+            lmt_linebreak_state.init_internal_left_box = par_box_left(cur_p);
+            lmt_linebreak_state.init_internal_left_box_width = tex_get_local_left_width(cur_p);
+            lmt_linebreak_state.internal_right_box = par_box_right(cur_p);
+            lmt_linebreak_state.internal_right_box_width = tex_get_local_right_width(cur_p);
+            lmt_linebreak_state.internal_middle_box = par_box_middle(cur_p);
+        } else {
+            lmt_linebreak_state.internal_penalty_interline = 0;
+            lmt_linebreak_state.internal_penalty_broken = 0;
+            lmt_linebreak_state.init_internal_left_box = null;
+            lmt_linebreak_state.init_internal_left_box_width = 0;
+            lmt_linebreak_state.internal_right_box = null;
+            lmt_linebreak_state.internal_right_box_width = 0;
+            lmt_linebreak_state.internal_middle_box = null;
+        }
+        lmt_linebreak_state.internal_left_box = lmt_linebreak_state.init_internal_left_box;
+        lmt_linebreak_state.internal_left_box_width = lmt_linebreak_state.init_internal_left_box_width;
+        lmt_packaging_state.previous_char_ptr = null;
+        first_p = cur_p;
+        /*tex
 
-                To access the first node of paragraph as the first active node has |break_node = null|.
+            To access the first node of paragraph as the first active node has |break_node = null|.
 
-                Determine legal breaks: As we move through the hlist, we need to keep the |active_width|
-                array up to date, so that the badness of individual lines is readily calculated by
-                |try_break|. It is convenient to use the short name |active_width [1]| for the component
-                of active width that represents real width as opposed to glue.
+            Determine legal breaks: As we move through the hlist, we need to keep the |active_width|
+            array up to date, so that the badness of individual lines is readily calculated by
+            |try_break|. It is convenient to use the short name |active_width [1]| for the component
+            of active width that represents real width as opposed to glue.
 
-            */
-            current = tex_aux_break_list(properties, pass, current, first, callback_id, force_check_hyphenation, &quality);
-            if (! current) {
-                /*tex
+            Advance |cur_p| to the node following the present string of characters. The code that
+            passes over the characters of words in a paragraph is part of \TEX's inner loop, so it
+            has been streamlined for speed. We use the fact that |\parfillskip| glue appears at the
+            end of each paragraph; it is therefore unnecessary to check if |vlink (cur_p) = null|
+            when |cur_p| is a character node.
 
-                    Try the final line break at the end of the paragraph, and |goto done| if the desired
-                    breakpoints have been found.
-
-                    The forced line break at the paragraph's end will reduce the list of breakpoints so
-                    that all active nodes represent breaks at |cur_p = null|. On the first pass, we
-                    insist on finding an active node that has the correct \quote {looseness.} On the
-                    final pass, there will be at least one active node, and we will match the desired
-                    looseness as well as we can.
-
-                    The global variable |best_bet| will be set to the active node for the best way to
-                    break the paragraph, and a few other variables are used to help determine what is
-                    best.
-
-                */
-                tex_aux_try_break(properties, eject_penalty, hyphenated_node, first, current, callback_id, pass);
-                if (node_next(active_head) != active_head) {
-                    /*tex Find an active node with fewest demerits. */
-                    {
-                        halfword r = node_next(active_head);
-                        lmt_linebreak_state.fewest_demerits = awful_bad;
-                        do {
-                            if ((node_type(r) != delta_node) && (active_total_demerits(r) < lmt_linebreak_state.fewest_demerits)) {
-                                lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
-                                lmt_linebreak_state.best_bet = r;
-                            }
-                            r = node_next(r);
-                        } while (r != active_head);
+        */
+       while (cur_p && (node_next(active_head) != active_head)) { /* we check the cycle */
+            switch (node_type(cur_p)) {
+                case glyph_node:
+                    lmt_linebreak_state.active_width[total_glue_amount] += tex_glyph_width_ex(cur_p);
+                    if (properties->adjust_spacing && tex_aux_check_expand_pars(properties->adjust_spacing_step, glyph_font(cur_p))) {
+                        lmt_packaging_state.previous_char_ptr = cur_p;
+                        lmt_linebreak_state.active_width[font_stretch_amount] += tex_char_stretch(cur_p);
+                        lmt_linebreak_state.active_width[font_shrink_amount] += tex_char_shrink(cur_p);
                     }
-                    lmt_linebreak_state.best_line = active_line_number(lmt_linebreak_state.best_bet);
-                    /*tex Check if we have subpasses. */
-                    if (pass == 2 && subpass < subpasses) {
-                        int found = tex_aux_check_sub_pass(properties, quality, passes, subpass, subpasses, first);
-                        if (found > 0) { 
-                            subpass = found;
-                            --pass;
-                            lmt_linebreak_state.second_pass = 0;
-                            lmt_linebreak_state.final_pass = 0;
-                            goto HERE;
-                        } else if (found < 0) {
-                            goto HERE; 
-                        }
+                    break;
+                case hlist_node:
+                case vlist_node:
+                    lmt_linebreak_state.active_width[total_glue_amount] += box_width(cur_p);
+                    break;
+                case rule_node:
+                    lmt_linebreak_state.active_width[total_glue_amount] += rule_width(cur_p);
+                    break;
+                case dir_node:
+                    /*tex Adjust the dir stack for the |line_break| routine. */
+                    line_break_dir = tex_update_dir_state(cur_p, properties->paragraph_dir);
+                    break;
+                case par_node:
+                    /*tex Advance past a |par| node. */
+                    lmt_linebreak_state.internal_penalty_interline = tex_get_local_interline_penalty(cur_p);
+                    lmt_linebreak_state.internal_penalty_broken = tex_get_local_broken_penalty(cur_p);
+                    lmt_linebreak_state.internal_left_box = par_box_left(cur_p);
+                    lmt_linebreak_state.internal_left_box_width = tex_get_local_left_width(cur_p);
+                    lmt_linebreak_state.internal_right_box = par_box_right(cur_p);
+                    lmt_linebreak_state.internal_right_box_width = tex_get_local_right_width(cur_p);
+                    lmt_linebreak_state.internal_middle_box = par_box_middle(cur_p);
+                    break;
+                case glue_node:
+                    /*tex
+
+                        If node |cur_p| is a legal breakpoint, call |try_break|; then update the
+                        active widths by including the glue in |glue_ptr(cur_p)|.
+
+                        When node |cur_p| is a glue node, we look at the previous to see whether or
+                        not a breakpoint is legal at |cur_p|, as explained above.
+
+                        We only break after certain nodes (see texnodes.h), a font related kern and
+                        a dir node when |\breakafterdirmode = 1|.
+
+                    */
+                    if (tex_has_glue_option(cur_p, glue_option_no_auto_break)) { 
+                        /*tex Glue in math is not a valid breakpoint. */
+                    } else if (tex_is_par_init_glue(cur_p)) {
+                        /*tex Of course we don't break here. */
+                    } else if (tex_aux_valid_glue_break(cur_p)) {
+                        tex_aux_try_break(properties, 0, unhyphenated_node, first_p, cur_p);
                     }
-                    /*tex Find an active node with fewest demerits. */
-                    if (properties->looseness == 0) {
-                        goto DONE;
-                    } else {
-                        /*tex
-
-                            Find the best active node for the desired looseness. The adjustment for a
-                            desired looseness is a slightly more complicated version of the loop just
-                            considered. Note that if a paragraph is broken into segments by displayed
-                            equations, each segment will be subject to the looseness calculation,
-                            independently of the other segments.
-
-                        */
-                        halfword r = node_next(active_head); // can be local
-                        lmt_linebreak_state.actual_looseness = 0;
-                        do {
-                            if (node_type(r) != delta_node) {
-                                lmt_linebreak_state.line_difference = active_line_number(r) - lmt_linebreak_state.best_line;
-                                if (((lmt_linebreak_state.line_difference < lmt_linebreak_state.actual_looseness) && (properties->looseness <= lmt_linebreak_state.line_difference))
-                                 || ((lmt_linebreak_state.line_difference > lmt_linebreak_state.actual_looseness) && (properties->looseness >= lmt_linebreak_state.line_difference))) {
-                                    lmt_linebreak_state.best_bet = r;
-                                    lmt_linebreak_state.actual_looseness = lmt_linebreak_state.line_difference;
-                                    lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
-                                } else if ((lmt_linebreak_state.line_difference == lmt_linebreak_state.actual_looseness) && (active_total_demerits(r) < lmt_linebreak_state.fewest_demerits)) {
-                                    lmt_linebreak_state.best_bet = r;
-                                    lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
+                    lmt_linebreak_state.active_width[total_glue_amount] += glue_amount(cur_p);
+                    lmt_linebreak_state.active_width[2 + glue_stretch_order(cur_p)] += glue_stretch(cur_p);
+                    lmt_linebreak_state.active_width[total_shrink_amount] += tex_aux_checked_shrink(cur_p);
+                    break;
+                case kern_node:
+                    switch (node_subtype(cur_p)) {
+                        case explicit_kern_subtype:
+                        case italic_kern_subtype:
+                            { 
+                                /* there used to a ! is_char_node(node_next(cur_p)) test */
+                                halfword nxt = node_next(cur_p);
+                                if (nxt && node_type(nxt) == glue_node && ! tex_has_glue_option(nxt, glue_option_no_auto_break)) {
+                                    tex_aux_try_break(properties, 0, unhyphenated_node, first_p, cur_p);
                                 }
                             }
-                            r = node_next(r);
-                        } while (r != active_head);
-                        lmt_linebreak_state.best_line = active_line_number(lmt_linebreak_state.best_bet);
-                        /*tex Find the best active node for the desired looseness. */
-                        if ((lmt_linebreak_state.actual_looseness == properties->looseness) || lmt_linebreak_state.final_pass) {
-                            goto DONE;
+                            break;
+                        case font_kern_subtype:
+                            if (properties->adjust_spacing == adjust_spacing_full) {
+                                lmt_linebreak_state.active_width[font_stretch_amount] += tex_kern_stretch(cur_p);
+                                lmt_linebreak_state.active_width[font_shrink_amount] += tex_kern_shrink(cur_p);
+                            }
+                            break;
+                    }
+                    lmt_linebreak_state.active_width[total_glue_amount] += kern_amount(cur_p);
+                    break;
+                case disc_node:
+                    /*tex
+
+                        Try to break after a discretionary fragment, then |goto done5|. The
+                        following code knows that discretionary texts contain only character
+                        nodes, kern nodes, box nodes, and rule nodes. This branch differs a bit
+                        from older engines because in \LUATEX\ we already have hyphenated the list.
+                        This means that we need to skip automatic disc nodes. Or better, we need
+                        to treat discretionaries and explicit hyphens always, even in the first
+                        pass.
+
+                        We used to have |init_disc| followed by |select disc| variants where the
+                        |select_disc|s were handled by the leading |init_disc|. The question is: should
+                        we bother about select nodes? Knuth indicates in the original source that only
+                        a very few cases need hyphenation so the exceptional case of >2 char ligatures
+                        having hyphenation points in between is rare. We'd better have proper compound
+                        word handling. Keep in mind that these (old) init and select subtypes always
+                        came in isolated pairs and that they only were meant for the simple (enforced)
+                        hyphenation discretionaries.
+
+                        Therefore, this feature has been dropped from \LUAMETATEX. It not only makes
+                        the code simpler, it also avoids having code on board for border cases that
+                        even when dealt with are suboptimal. It's better to have nothing that something
+                        fuzzy. It also makes dealing with (intermediate) node lists easier. If I want
+                        something like this it should be okay for any situation.
+
+                    */
+                    if (force_check_hyphenation || lmt_linebreak_state.second_pass || (node_subtype(cur_p) != syllable_discretionary_code)) {
+                        halfword actual_penalty = disc_penalty(cur_p);
+                        halfword s = disc_pre_break_head(cur_p);
+                        tex_aux_reset_disc_target(properties->adjust_spacing, lmt_linebreak_state.disc_width);
+                        if (s) {
+                            tex_aux_add_to_widths(s, properties->adjust_spacing, properties->adjust_spacing_step, lmt_linebreak_state.disc_width);
+                            tex_aux_add_disc_source_to_target(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.disc_width);
+                            tex_aux_try_break(properties, actual_penalty, hyphenated_node, first_p, cur_p);
+                            tex_aux_sub_disc_target_from_source(properties->adjust_spacing, lmt_linebreak_state.active_width, lmt_linebreak_state.disc_width);
+                        } else {
+                            /*tex trivial pre-break */
+                            tex_aux_try_break(properties, actual_penalty, hyphenated_node, first_p, cur_p);
                         }
                     }
-                }
-            } else { 
-                /*tex So we have cycled: |node_next(active_head) == active_head|. */
+                    tex_aux_add_to_widths(disc_no_break_head(cur_p), properties->adjust_spacing, properties->adjust_spacing_step, lmt_linebreak_state.active_width);
+                    break;
+                case penalty_node:
+                    tex_aux_try_break(properties, penalty_amount(cur_p), unhyphenated_node, first_p, cur_p);
+                    break;
+                case math_node:
+                    {
+                        /* there used to a ! is_char_node(node_next(cur_p)) test */
+                        int finishing = node_subtype(cur_p) == end_inline_math;
+                     // lmt_linebreak_state.auto_breaking = finishing;
+                        if (tex_math_glue_is_zero(cur_p) || tex_ignore_math_skip(cur_p)) {
+                            /*tex 
+                                When we end up here we assume |\mathsurround| but we only check for 
+                                a break when we're ending math. Maybe this is something we need to 
+                                open up. The math specific penalty only kicks in when we break.
+                            */
+                            if (finishing && node_type(node_next(cur_p)) == glue_node) {
+                                tex_aux_try_break(properties, math_penalty(cur_p), unhyphenated_node, first_p, cur_p);
+                            }
+                            lmt_linebreak_state.active_width[total_glue_amount] += math_surround(cur_p);
+                        } else {
+                            /*tex
+                                This one does quite some testing, is that still needed?
+                            */
+                            if (finishing && tex_aux_valid_glue_break(cur_p)) {
+                               tex_aux_try_break(properties, math_penalty(cur_p), unhyphenated_node, first_p, cur_p);
+                            }
+                            lmt_linebreak_state.active_width[total_glue_amount] += math_amount(cur_p);
+                            lmt_linebreak_state.active_width[2 + math_stretch_order(cur_p)] += math_stretch(cur_p);
+                            lmt_linebreak_state.active_width[total_shrink_amount] += tex_aux_checked_shrink(cur_p);
+                        }
+                    }
+                    break;
+                case boundary_node:
+                case whatsit_node:
+                case mark_node:
+                case insert_node:
+                case adjust_node:
+                    /*tex Advance past these nodes in the |line_break| loop. */
+                    break;
+                default:
+                    tex_formatted_error("parbuilder", "weird node %d in paragraph", node_type(cur_p));
             }
-            /*tex Clean up the memory by removing the break nodes. */
-          HERE:
-            tex_aux_clean_up_the_memory();
-            if (! lmt_linebreak_state.second_pass) {
-                if (properties->tracing_paragraphs > 0) {
-                    tex_print_format("%l[linebreak: second pass]"); /* @secondpass */;
-                }
-                lmt_linebreak_state.threshold = properties->tolerance;
-                lmt_linebreak_state.second_pass = 1;
-                lmt_linebreak_state.final_pass = ! tex_aux_emergency(properties); /* then second pass is final pass */
-            } else {
-                /*tex If at first you do not succeed, then: */
-                halfword el = properties->emergency_left_skip;
-                halfword er = properties->emergency_right_skip;
-                if (properties->tracing_paragraphs > 0) {
-                    tex_print_format("%l[linebreak: emergency pass]"); /* @emergencypass */
-                }
-                lmt_linebreak_state.background[total_stretch_amount] += properties->emergency_stretch;
-                lmt_linebreak_state.background[total_stretch_amount] += properties->emergency_extra_stretch;
-                if (tex_aux_emergency_skip(el)) {
-                    properties->left_skip = tex_copy_node(properties->left_skip);
-                    glue_amount(properties->left_skip) += glue_amount(el);
-                    glue_stretch(properties->left_skip) += glue_stretch(el);
-                    glue_shrink(properties->left_skip) += glue_shrink(el);
-                    lmt_linebreak_state.background[total_advance_amount] += glue_amount(el);
-                    lmt_linebreak_state.background[total_stretch_amount] += glue_stretch(el);
-                    lmt_linebreak_state.background[total_shrink_amount] += glue_shrink(el);
-                }
-                if (tex_aux_emergency_skip(er)) {
-                    properties->right_skip = tex_copy_node(properties->right_skip);
-                    glue_amount(properties->right_skip) += glue_amount(er);
-                    glue_stretch(properties->right_skip) += glue_stretch(er);
-                    glue_shrink(properties->right_skip) += glue_shrink(er);
-                    lmt_linebreak_state.background[total_advance_amount] += glue_amount(er);
-                    lmt_linebreak_state.background[total_stretch_amount] += glue_stretch(er);
-                    lmt_linebreak_state.background[total_shrink_amount] += glue_shrink(er);
-                }
-                lmt_linebreak_state.final_pass = 1;
-            }
-            if (callback_id) {
-                tex_aux_stop_show_break_node(callback_id);
+            cur_p = node_next(cur_p);
+            while (! cur_p && nest_index > 0) {
+                cur_p = nest_stack[--nest_index];
             }
         }
-      DONE:
-        if (properties->tracing_paragraphs > 0) {
-            tex_end_diagnostic();
+        if (! cur_p) {
             /*tex
-                This is a bit weird, as only here: |normalize_selector()| while we have diagnostics
-                all over the place.
+
+                Try the final line break at the end of the paragraph, and |goto done| if the desired
+                breakpoints have been found.
+
+                The forced line break at the paragraph's end will reduce the list of breakpoints so
+                that all active nodes represent breaks at |cur_p = null|. On the first pass, we
+                insist on finding an active node that has the correct \quote {looseness.} On the
+                final pass, there will be at least one active node, and we will match the desired
+                looseness as well as we can.
+
+                The global variable |best_bet| will be set to the active node for the best way to
+                break the paragraph, and a few other variables are used to help determine what is
+                best.
+
             */
-        }
-        if (lmt_linebreak_state.do_last_line_fit) {
-            /*tex
-                Adjust the final line of the paragraph; here we either reset |do_last_line_fit| or
-                adjust the |par_fill_skip| glue.
-            */
-            if (active_short(lmt_linebreak_state.best_bet) == 0) {
-                lmt_linebreak_state.do_last_line_fit = 0;
-            } else {
-                glue_amount(lmt_linebreak_state.last_line_fill) += (active_short(lmt_linebreak_state.best_bet) - active_glue(lmt_linebreak_state.best_bet));
-                glue_stretch(lmt_linebreak_state.last_line_fill) = 0;
+            tex_aux_try_break(properties, eject_penalty, hyphenated_node, first_p, cur_p);
+            if (node_next(active_head) != active_head) {
+                /*tex Find an active node with fewest demerits. */
+                r = node_next(active_head);
+                lmt_linebreak_state.fewest_demerits = awful_bad;
+                do {
+                    if ((node_type(r) != delta_node) && (active_total_demerits(r) < lmt_linebreak_state.fewest_demerits)) {
+                        lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
+                        lmt_linebreak_state.best_bet = r;
+                    }
+                    r = node_next(r);
+                } while (r != active_head);
+                lmt_linebreak_state.best_line = active_line_number(lmt_linebreak_state.best_bet);
+                /*tex Find an active node with fewest demerits. */
+                if (properties->looseness == 0) {
+                    goto DONE;
+                } else {
+                    /*tex
+
+                        Find the best active node for the desired looseness. The adjustment for a
+                        desired looseness is a slightly more complicated version of the loop just
+                        considered. Note that if a paragraph is broken into segments by displayed
+                        equations, each segment will be subject to the looseness calculation,
+                        independently of the other segments.
+
+                    */
+                    r = node_next(active_head); // can be local
+                    lmt_linebreak_state.actual_looseness = 0;
+                    do {
+                        if (node_type(r) != delta_node) {
+                            lmt_linebreak_state.line_difference = active_line_number(r) - lmt_linebreak_state.best_line;
+                            if (((lmt_linebreak_state.line_difference < lmt_linebreak_state.actual_looseness) && (properties->looseness <= lmt_linebreak_state.line_difference))
+                             || ((lmt_linebreak_state.line_difference > lmt_linebreak_state.actual_looseness) && (properties->looseness >= lmt_linebreak_state.line_difference))) {
+                                lmt_linebreak_state.best_bet = r;
+                                lmt_linebreak_state.actual_looseness = lmt_linebreak_state.line_difference;
+                                lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
+                            } else if ((lmt_linebreak_state.line_difference == lmt_linebreak_state.actual_looseness) && (active_total_demerits(r) < lmt_linebreak_state.fewest_demerits)) {
+                                lmt_linebreak_state.best_bet = r;
+                                lmt_linebreak_state.fewest_demerits = active_total_demerits(r);
+                            }
+                        }
+                        r = node_next(r);
+                    } while (r != active_head);
+                    lmt_linebreak_state.best_line = active_line_number(lmt_linebreak_state.best_bet);
+                    /*tex
+                        Find the best active node for the desired looseness.
+                    */
+                    if ((lmt_linebreak_state.actual_looseness == properties->looseness) || lmt_linebreak_state.final_pass) {
+                        goto DONE;
+                    }
+                }
             }
         }
+        /*tex Clean up the memory by removing the break nodes. */
+        cur_p = tex_aux_clean_up_the_memory(cur_p);
+        if (! lmt_linebreak_state.second_pass) {
+            if (properties->tracing_paragraphs > 0) {
+                tex_print_str("%l[linebreak: second pass]"); /* @secondpass */;
+            }
+            lmt_linebreak_state.threshold = properties->tolerance;
+            lmt_linebreak_state.second_pass = 1;
+            lmt_linebreak_state.final_pass = (properties->emergency_stretch <= 0);
+        } else {
+            /*tex If at first you do not succeed, then: */
+            if (properties->tracing_paragraphs > 0) {
+                tex_print_str("%l[linebreak: emergency pass]"); /* @emergencypass */
+            }
+            lmt_linebreak_state.background[total_stretch_amount] += properties->emergency_stretch;
+            lmt_linebreak_state.final_pass = 1;
+        }
+    }
+  DONE:
+    if (properties->tracing_paragraphs > 0) {
+        tex_end_diagnostic();
         /*tex
-            Break the paragraph at the chosen. Once the best sequence of breakpoints has been found
-            (hurray), we call on the procedure |post_line_break| to finish the remainder of the work.
-            By introducing this subprocedure, we are able to keep |line_break| from getting extremely
-            long. The first thing |ext_post_line_break| does is reset |dir_ptr|.
+            This is a bit weird, as only here: |normalize_selector()| while we have diagnostics
+            all over the place.
         */
-        { 
-            int callback_id = lmt_callback_defined(linebreak_quality_callback);
-            if (callback_id) {
-                tex_aux_quality_callback(callback_id, passes ? tex_get_passes_identifier(passes, 1) : 0, pass, subpass, subpasses, quality);
-            }
+    }
+    if (lmt_linebreak_state.do_last_line_fit) {
+        /*tex
+            Adjust the final line of the paragraph; here we either reset |do_last_line_fit| or
+            adjust the |par_fill_skip| glue.
+        */
+        if (active_short(lmt_linebreak_state.best_bet) == 0) {
+            lmt_linebreak_state.do_last_line_fit = 0;
+        } else {
+            glue_amount(lmt_linebreak_state.last_line_fill) += (active_short(lmt_linebreak_state.best_bet) - active_glue(lmt_linebreak_state.best_bet));
+            glue_stretch(lmt_linebreak_state.last_line_fill) = 0;
         }
-        tex_aux_wipe_optionals(properties, node_next(temp_head));
-        tex_flush_node_list(lmt_linebreak_state.dir_ptr);
-        lmt_linebreak_state.dir_ptr = null;
-        /*tex Here we still have a temp node as head. */
-        tex_aux_post_line_break(properties, lmt_linebreak_state.line_break_dir, callback_id, quality);
-        /*tex Clean up memory by removing the break nodes (maybe: |tex_flush_node_list(cur_p);|). */
-        tex_aux_clean_up_the_memory();
     }
-    if (callback_id) {
-        tex_aux_wrapup_show_break_node(callback_id);
-    }
+    /*tex
+        Break the paragraph at the chosen. Once the best sequence of breakpoints has been found
+        (hurray), we call on the procedure |post_line_break| to finish the remainder of the work.
+        By introducing this subprocedure, we are able to keep |line_break| from getting extremely
+        long. The first thing |ext_post_line_break| does is reset |dir_ptr|.
+    */
+    tex_flush_node_list(lmt_linebreak_state.dir_ptr);
+    lmt_linebreak_state.dir_ptr = null;
+    /*tex Here we still have a temp node as head. */
+    tex_aux_post_line_break(properties, line_break_dir);
+    /*tex Clean up the memory by removing the break nodes. */
+    cur_p = tex_aux_clean_up_the_memory(cur_p);
 }
 
 void tex_get_linebreak_info(int *f, int *a)
@@ -3670,7 +2698,7 @@ static void tex_aux_trace_penalty(const char *what, int line, int index, halfwor
     }
 }
 
-static void tex_aux_post_line_break(const line_break_properties *properties, halfword line_break_dir, int callback_id, halfword quality)
+static void tex_aux_post_line_break(const line_break_properties *properties, halfword line_break_dir)
 {
     /*tex temporary registers for list manipulation */
     halfword q, r;
@@ -3697,7 +2725,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
     int first_line = 0;
     /*tex the current direction: */
     lmt_linebreak_state.dir_ptr = cur_list.direction_stack;
-    (void) quality;
     /*tex
         Reverse the links of the relevant passive nodes, setting |cur_p| to the first breakpoint.
         The job of reversing links in a list is conveniently regarded as the job of taking items
@@ -3706,9 +2733,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
         and having |next_break| fields. Node |r| is the passive node being moved from stack to
         stack.
     */
-    if (callback_id) { 
-        tex_aux_collect_show_break_node(callback_id);
-    } 
     q = active_break_node(lmt_linebreak_state.best_bet);
     do {
         r = q;
@@ -3716,13 +2740,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
         passive_next_break(r) = cur_p;
         cur_p = r;
     } while (q);
-    if (callback_id) { 
-        halfword p = cur_p; 
-        while (p) { 
-            tex_aux_list_break_node(p, callback_id);
-            p = passive_next_break(p);
-        }
-    }
     /*tex prevgraf + 1 */
     cur_line = cur_list.prev_graf + 1;
     do {
@@ -3786,10 +2803,10 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                         goto DONE;
                     }
                 case kern_node:
-                    if (node_subtype(q) == explicit_kern_subtype || node_subtype(q) == italic_kern_subtype) {
-                        break;
-                    } else {
+                    if (node_subtype(q) != explicit_kern_subtype && node_subtype(q) != italic_kern_subtype) {
                         goto DONE;
+                    } else {
+                        break;
                     }
                 case math_node:
                     math_surround(q) = 0;
@@ -3857,9 +2874,7 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                     }
                     break;
                 case kern_node:
-                    if (node_subtype(r) != right_correction_kern_subtype && node_subtype(r) != left_correction_kern_subtype) {
-                        kern_amount(r) = 0;
-                    }
+                    kern_amount(r) = 0;
                     break;
                 case math_node :
                     math_surround(r) = 0;
@@ -4021,16 +3036,16 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             |rightskip| after |q| now?
         */
         if (glue_break) {
-            /*tex A rightskip has already been added. Maybe check it! */
-            rs = q; 
+            /*tex A rightskip has already been added. */
         } else {
             /*tex We add one, even when zero. */
-            rs = tex_new_glue_node(properties->right_skip ? properties->right_skip : zero_glue, right_skip_glue);
-            tex_attach_attribute_list_copy(rs, q); /* or next of it? or q */
-            tex_try_couple_nodes(rs, node_next(q));
-            tex_couple_nodes(q, rs);
-            q = rs;
+            halfword g = tex_new_glue_node(properties->right_skip ? properties->right_skip : zero_glue, right_skip_glue);
+            tex_attach_attribute_list_copy(g, q); /* or next of it? or q */
+            tex_try_couple_nodes(g, node_next(q));
+            tex_couple_nodes(q, g);
+            q = g;
         }
+        rs = q;
         /*tex
             More preparations.
         */
@@ -4058,9 +3073,9 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
         if (properties->protrude_chars) {
             if (line_break_dir == dir_righttoleft && properties->protrude_chars == protrude_chars_advanced) {
                 halfword p = tex_aux_find_protchar_left(q, 0);
-                halfword w = tex_char_protrusion(p, left_margin_kern_subtype);
+                halfword w = tex_char_protrusion(p, right_margin_kern_subtype);
                 if (w && lmt_packaging_state.last_leftmost_char) {
-                    halfword k = tex_new_kern_node(-w, left_margin_kern_subtype);
+                    halfword k = tex_new_kern_node(-w, right_margin_kern_subtype);
                     tex_attach_attribute_list_copy(k, p);
                     tex_couple_nodes(k, q);
                     q = k;
@@ -4089,10 +3104,11 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             width, pack the line into a box of this size, and shift the box by the appropriate
             amount of indentation. In \LUAMETATEX\ we always add the leftskip.
         */
-        ls = tex_new_glue_node(properties->left_skip, left_skip_glue);
-        tex_attach_attribute_list_copy(ls, q);
-        tex_couple_nodes(ls, q);
-        q = ls;
+        r = tex_new_glue_node(properties->left_skip, left_skip_glue);
+        tex_attach_attribute_list_copy(r, q);
+        tex_couple_nodes(r, q);
+        q = r;
+        ls = q;
         /*tex
             We have these |par| nodes that, when we have callbacks, kind of polute the list. Let's
             get rid of them now. We could have done this in previous loops but for the sake of
@@ -4134,7 +3150,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
 
         */
         first_line = rs && (cur_line == 1) && properties->parinit_left_skip && properties->parinit_right_skip;
-        last_line = ls && (cur_line + 1 == lmt_linebreak_state.best_line) && properties->parfill_left_skip && properties->parfill_right_skip;
         if (first_line) {
             halfword n = node_next(properties->parinit_left_skip);
             while (n) {
@@ -4152,6 +3167,7 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                 tex_normal_warning("tex", "right parinit skip is gone");
             }
         }
+        last_line = ls && (cur_line + 1 == lmt_linebreak_state.best_line) && properties->parfill_left_skip && properties->parfill_right_skip;
         if (last_line) {
             halfword n = node_prev(properties->parfill_right_skip);
             while (n) {
@@ -4167,13 +3183,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             if (! n && normalize_line_mode_par) {
                 /*tex For the moment: */
                 tex_normal_warning("tex", "left parfill skip is gone");
-            }
-            if (first_line && node_next(properties->parfill_right_skip) == properties->parinit_right_skip) {
-                halfword p = node_prev(properties->parfill_right_skip);
-                halfword n = node_next(properties->parinit_right_skip);
-                tex_couple_nodes(p, properties->parinit_right_skip);
-                tex_couple_nodes(properties->parfill_right_skip, n);
-                tex_couple_nodes(properties->parinit_right_skip, properties->parfill_right_skip);
             }
         }
         /*tex Some housekeeping. */
@@ -4233,8 +3242,11 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                 }
             }
             shaping = (lefthang || righthang);
-            lmt_linebreak_state.just_box = tex_hpack(head, cur_width, properties->adjust_spacing ? packing_linebreak : packing_exactly, (singleword) properties->paragraph_dir, holding_none_option, box_limit_line);
+            lmt_linebreak_state.just_box = tex_hpack(head, cur_width, properties->adjust_spacing ? packing_linebreak : packing_exactly, (singleword) properties->paragraph_dir, holding_none_option);
          // attach_attribute_list_copy(linebreak_state.just_box, properties->initial_par);
+            if (normalize_line_mode_permitted(normalize_line_mode_par, flatten_h_leaders_mode)) {
+                tex_flatten_leaders(lmt_linebreak_state.just_box, NULL);
+            }
             if (node_type(tail) != glue_node || node_subtype(tail) != right_skip_glue) {
                 halfword rs = tex_new_glue_node((properties->right_skip ? properties->right_skip : zero_glue), right_skip_glue);
                 tex_attach_attribute_list_copy(rs, tail);
@@ -4289,15 +3301,15 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             }
         } else {
             /*tex Here we can have a right skip way to the right due to an overshoot! */
-            lmt_linebreak_state.just_box = tex_hpack(q, cur_width, properties->adjust_spacing ? packing_linebreak : packing_exactly, (singleword) properties->paragraph_dir, holding_none_option, box_limit_line);
+            lmt_linebreak_state.just_box = tex_hpack(q, cur_width, properties->adjust_spacing ? packing_linebreak : packing_exactly, (singleword) properties->paragraph_dir, holding_none_option);
          // attach_attribute_list_copy(linebreak_state.just_box, properties->initial_par);
+            if (normalize_line_mode_permitted(normalize_line_mode_par, flatten_h_leaders_mode)) {
+                tex_flatten_leaders(lmt_linebreak_state.just_box, NULL);
+            }
             box_shift_amount(lmt_linebreak_state.just_box) = cur_indent;
         }
         /*tex Call the packaging subroutine, setting |just_box| to the justified box. */
         node_subtype(lmt_linebreak_state.just_box) = line_list;
-        if (callback_id) { 
-            tex_aux_line_show_break_node(callback_id); 
-        }
         /*tex Pending content (callback). */
         if (node_next(contribute_head)) {
             if (! lmt_page_builder_state.output_active) {
@@ -4317,13 +3329,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             }
         }
         lmt_packaging_state.pre_migrate_tail = null;
-        if (cur_line == 1 && lmt_linebreak_state.best_line == 2 && properties->single_line_penalty) {
-        // if (cur_line == 1 && lmt_linebreak_state.best_line == 2 && single_line_penalty_par) {
-            halfword r = tex_new_penalty_node(properties->single_line_penalty, single_line_penalty_subtype);
-        //  halfword r = tex_new_penalty_node(single_line_penalty_par, single_line_penalty_subtype);
-            tex_couple_nodes(cur_list.tail, r);
-            cur_list.tail = r;
-        } 
         /* Line content (callback). */
         tex_append_to_vlist(lmt_linebreak_state.just_box, lua_key_index(post_linebreak), properties);
         if (! lmt_page_builder_state.output_active) {
@@ -4354,12 +3359,11 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
         */
         if (cur_line + 1 != lmt_linebreak_state.best_line) {
             /*tex 
-                When we end up here we have multiple lines so we need to add penalties between them 
+                When we end up here we hale multiple lines so we need to add penalties between them 
                 according to (several) specifications. 
             */
             halfword pen = 0;
             halfword spm = properties->shaping_penalties_mode;
-            halfword option = 0;
             if (! spm) {
                 shaping = 0;
             }
@@ -4416,9 +3420,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                 if (p) { 
                     pen += p;
                     tex_aux_trace_penalty("club", cur_line, r, p, pen);
-                    if (pen >= infinite_penalty) {
-                        option = penalty_option_clubbed;
-                    }
                 }
             }
             if (! (shaping && is_shaping_penalties_mode(spm, widow_penalty_shaping))) {
@@ -4440,9 +3441,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                 if (p) { 
                     pen += p;
                     tex_aux_trace_penalty("widow", cur_line, r, p, pen);
-                    if (pen >= infinite_penalty) {
-                        option = penalty_option_widowed;
-                    }
                 }
             }
             if (disc_break && ! (shaping && is_shaping_penalties_mode(spm, broken_penalty_shaping))) {
@@ -4465,10 +3463,15 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             }
             if (pen) {
                 r = tex_new_penalty_node(pen, linebreak_penalty_subtype);
-                tex_add_penalty_option(r, option);
                 tex_couple_nodes(cur_list.tail, r);
                 cur_list.tail = r;
             }
+        } else { 
+         // if (tracing_penalties_par > 0) {
+         //     tex_begin_diagnostic();
+         //     tex_print_format("[linebreak: no penalties injected]");
+         //     tex_end_diagnostic();
+         // }
         }
         /*tex
             Append a penalty node, if a nonzero penalty is appropriate. Justify the line ending at
@@ -4501,10 +3504,6 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
             while (1) {
                 q = node_next(r);
                 if (node_type(q) == math_node) {
-                    if (node_subtype(q) == begin_inline_math) {
-                        /*tex We keep it for tracing. */
-                        break;
-                    }
                     /*tex begin mathskip code */
                     math_surround(q) = 0 ;
                     tex_reset_math_glue_to_zero(q);
@@ -4518,11 +3517,11 @@ static void tex_aux_post_line_break(const line_break_properties *properties, hal
                     /*tex Keep it. Can be tricky after a |\break| with no follow up (loops). */
                     break;
                 } else if (node_type(q) == par_node && node_subtype(q) == local_box_par_subtype) {
-                    /*tex Weird, in the middle somewhere .. these local penalties do this. */
+                    /*tex weird, in the middle somewhere .. these local penalties do this */
                     break; /* if not we leak, so maybe this needs more testing */
                 } else if (non_discardable(q)) {
                     break;
-                } else if (node_type(q) == kern_node && ! (node_subtype(q) == explicit_kern_subtype || node_subtype(q) == italic_kern_subtype)) {
+                } else if (node_type(q) == kern_node && node_subtype(q) != explicit_kern_subtype && node_subtype(q) != italic_kern_subtype) {
                     break;
                 }
                 r = q;
