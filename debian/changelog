@@ -1,4 +1,4 @@
-luametatex (2.11.01+ds-3-really-2.10.08+ds) UNRELEASED; urgency=medium
+luametatex (2.11.01+really2.10.08+ds-1) UNRELEASED; urgency=medium
 
   * Downgrade to 2.10.08 (Closes: #1064402).
 
