@@ -1,8 +1,15 @@
 luametatex for Debian
 --------------------
 
-The luametatex_2.11.01+ds-really-2.10.08+ds.orig.tar.gz is identical to
+The luametatex_2.11.01+really2.10.08+ds.orig.tar.gz is identical to
 luametatex_2.10.08+ds.orig.tar.gz, hence not another commit in the
-pristine-tar branch.
+pristine-tar branch. Create a soft link to luametatex_2.10.08+ds.orig.tar.gz
+named luametatex_2.11.01+really2.10.08+ds.orig.tar.gz you should be
+able to create a source package.
 
- -- Hilmar Preusse <hille42@web.de>  Mon, 17 Apr 2023 09:33:47 +0200
+Command to build the source tree from git could be:
+
+gbp buildpackage --git-upstream-tree=upstream_2.10.08+ds --git-no-create-orig \
+--git-export-dir=/tmp --git-builder=/bin/true --git-no-pbuilder --git-no-purge 
+
+ -- Hilmar Preusse <hille42@web.de>  Wed, 06 Mar 2024 23:19:06 +0100

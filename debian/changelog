@@ -1,8 +1,8 @@
-luametatex (2.11.01+really2.10.08+ds-1) UNRELEASED; urgency=medium
+luametatex (2.11.01+really2.10.08+ds-1) unstable; urgency=medium
 
   * Downgrade to 2.10.08 (Closes: #1064402).
 
- -- Hilmar Preusse <hille42@web.de>  Fri, 01 Mar 2024 23:30:05 +0100
+ -- Hilmar Preusse <hille42@web.de>  Wed, 06 Mar 2024 23:18:47 +0100
 
 luametatex (2.11.01+ds-2) unstable; urgency=medium
 
