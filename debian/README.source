@@ -9,7 +9,7 @@ able to create a source package.
 
 Command to build the source tree from git could be:
 
-gbp buildpackage --git-upstream-tree=upstream_2.10.08+ds --git-no-create-orig \
+gbp buildpackage --git-upstream-tag=upstream/2.10.08+ds --git-no-create-orig \
 --git-export-dir=/tmp --git-builder=/bin/true --git-no-pbuilder --git-no-purge 
 
  -- Hilmar Preusse <hille42@web.de>  Wed, 06 Mar 2024 23:19:06 +0100
