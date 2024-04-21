@@ -35,7 +35,8 @@ lua_state_info lmt_lua_state = {
 
 /*tex
     Some more can move here, or we can move some to modules instead. It's a very stepwise
-    process because things need to keep running.
+    process because things need to keep running. We only have fast accessors for strings 
+    that we use in the \LUA\ interface. 
 */
 
 lmt_keys_info lmt_keys;
@@ -44,7 +45,7 @@ lmt_interface_info lmt_interface = {
     .pack_type_values          = NULL,
     .group_code_values         = NULL,
     .par_context_values        = NULL,
-    .par_begin_values          = NULL,
+    .par_trigger_values        = NULL,
     .par_mode_values           = NULL,
     .math_style_name_values    = NULL,
     .math_style_variant_values = NULL,
@@ -136,7 +137,7 @@ void lmt_initialize_interface(void)
     set_par_context_value(span_par_context,        span);
     set_par_context_value(reset_par_context,       reset);
 
-    lmt_interface.page_context_values = lmt_aux_allocate_value_info(alignment_page_context);
+    lmt_interface.page_context_values = lmt_aux_allocate_value_info(triggered_page_context);
 
     # define set_page_context_value(n,k) lmt_interface.page_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
 
@@ -153,6 +154,7 @@ void lmt_initialize_interface(void)
     set_page_context_value(after_display_page_context,   afterdisplay);
     set_page_context_value(after_output_page_context,    afteroutput);
     set_page_context_value(alignment_page_context,       alignment);
+    set_page_context_value(triggered_page_context,       triggered);
 
     lmt_interface.append_line_context_values = lmt_aux_allocate_value_info(post_migrate_append_line_context);
 
@@ -174,24 +176,50 @@ void lmt_initialize_interface(void)
     set_alignment_context_value(package_pass_alignment_context,  package);
     set_alignment_context_value(wrapup_pass_alignment_context,   wrapup);
 
-    lmt_interface.par_begin_values = lmt_aux_allocate_value_info(vrule_char_par_begin);
+    lmt_interface.break_context_values = lmt_aux_allocate_value_info(wrapup_show_breaks_context);
 
-    # define set_par_begin_value(n,k) lmt_interface.par_begin_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
+    # define set_break_context_value(n,k) lmt_interface.break_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
 
-    set_par_begin_value(normal_par_begin,       normal);
-    set_par_begin_value(force_par_begin,        force);
-    set_par_begin_value(indent_par_begin,       indent);
-    set_par_begin_value(no_indent_par_begin,    noindent);
-    set_par_begin_value(math_char_par_begin,    mathchar);
-    set_par_begin_value(char_par_begin,         char);
-    set_par_begin_value(boundary_par_begin,     boundary);
-    set_par_begin_value(space_par_begin,        space);
-    set_par_begin_value(math_par_begin,         math);
-    set_par_begin_value(kern_par_begin,         kern);
-    set_par_begin_value(hskip_par_begin,        hskip);
-    set_par_begin_value(un_hbox_char_par_begin, unhbox);
-    set_par_begin_value(valign_char_par_begin,  valign);
-    set_par_begin_value(vrule_char_par_begin,   vrule);
+    set_break_context_value(initialize_show_breaks_context, initialize);
+    set_break_context_value(start_show_breaks_context,      start);
+    set_break_context_value(list_show_breaks_context,       list); 
+    set_break_context_value(stop_show_breaks_context,       stop);
+    set_break_context_value(collect_show_breaks_context,    collect);
+    set_break_context_value(line_show_breaks_context,       line);
+    set_break_context_value(delete_show_breaks_context,     delete);
+    set_break_context_value(report_show_breaks_context,     report); 
+    set_break_context_value(wrapup_show_breaks_context,     wrapup);
+
+    lmt_interface.build_context_values = lmt_aux_allocate_value_info(wrapup_show_build_context);
+
+    # define set_build_context_value(n,k) lmt_interface.build_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
+
+    set_build_context_value(initialize_show_build_context, initialize);
+    set_build_context_value(step_show_build_context,       step);
+    set_build_context_value(check_show_build_context,      check);
+    set_build_context_value(skip_show_build_context,       skip);
+    set_build_context_value(move_show_build_context,       move);
+    set_build_context_value(fireup_show_build_context,     fireup);
+    set_build_context_value(wrapup_show_build_context,     wrapup);
+
+    lmt_interface.par_trigger_values = lmt_aux_allocate_value_info(vrule_char_par_trigger);
+
+    # define set_par_trigger_value(n,k) lmt_interface.par_trigger_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
+
+    set_par_trigger_value(normal_par_trigger,       normal);
+    set_par_trigger_value(force_par_trigger,        force);
+    set_par_trigger_value(indent_par_trigger,       indent);
+    set_par_trigger_value(no_indent_par_trigger,    noindent);
+    set_par_trigger_value(math_char_par_trigger,    mathchar);
+    set_par_trigger_value(char_par_trigger,         char);
+    set_par_trigger_value(boundary_par_trigger,     boundary);
+    set_par_trigger_value(space_par_trigger,        space);
+    set_par_trigger_value(math_par_trigger,         math);
+    set_par_trigger_value(kern_par_trigger,         kern);
+    set_par_trigger_value(hskip_par_trigger,        hskip);
+    set_par_trigger_value(un_hbox_char_par_trigger, unhbox);
+    set_par_trigger_value(valign_char_par_trigger,  valign);
+    set_par_trigger_value(vrule_char_par_trigger,   vrule);
 
     lmt_interface.par_mode_values = lmt_aux_allocate_value_info(math_par_subtype);
 
@@ -200,7 +228,7 @@ void lmt_initialize_interface(void)
     set_par_mode_value(vmode_par_par_subtype, vmodepar);
     set_par_mode_value(local_box_par_subtype, localbox);
     set_par_mode_value(hmode_par_par_subtype, hmodepar);
-    set_par_mode_value(penalty_par_subtype,   penalty);
+    set_par_mode_value(parameter_par_subtype, parameter);
     set_par_mode_value(math_par_subtype,      math);
 
     lmt_interface.math_style_name_values = lmt_aux_allocate_value_info(cramped_script_script_style);
@@ -230,20 +258,21 @@ void lmt_initialize_interface(void)
     set_math_style_variant_value(math_denominator_style_variant,  denominator);
     set_math_style_variant_value(math_double_superscript_variant, doublesuperscript);
 
-    lmt_interface.lua_function_values = lmt_aux_allocate_value_info(lua_value_direct_code);
+    lmt_interface.lua_function_values = lmt_aux_allocate_value_info(lua_value_conditional_code);
 
     # define set_lua_function_value(n,k) lmt_interface.lua_function_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
 
-    set_lua_function_value(lua_value_none_code,      none);
-    set_lua_function_value(lua_value_integer_code,   integer);
-    set_lua_function_value(lua_value_cardinal_code,  cardinal);
-    set_lua_function_value(lua_value_dimension_code, dimension);
-    set_lua_function_value(lua_value_skip_code,      skip);
-    set_lua_function_value(lua_value_boolean_code,   boolean);
-    set_lua_function_value(lua_value_float_code,     float);
-    set_lua_function_value(lua_value_string_code,    string);
-    set_lua_function_value(lua_value_node_code,      node);
-    set_lua_function_value(lua_value_direct_code,    direct);
+    set_lua_function_value(lua_value_none_code,        none);
+    set_lua_function_value(lua_value_integer_code,     integer);
+    set_lua_function_value(lua_value_cardinal_code,    cardinal);
+    set_lua_function_value(lua_value_dimension_code,   dimension);
+    set_lua_function_value(lua_value_skip_code,        skip);
+    set_lua_function_value(lua_value_boolean_code,     boolean);
+    set_lua_function_value(lua_value_float_code,       float);
+    set_lua_function_value(lua_value_string_code,      string);
+    set_lua_function_value(lua_value_node_code,        node);
+    set_lua_function_value(lua_value_direct_code,      direct);
+    set_lua_function_value(lua_value_conditional_code, conditional);
 
     lmt_interface.direction_values = lmt_aux_allocate_value_info(dir_righttoleft);
 
@@ -325,64 +354,66 @@ void lmt_initialize_interface(void)
 
     # define set_math_parameter_value(n,t,k) lmt_interface.math_parameter_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .type = t }
 
-    set_math_parameter_value(math_parameter_quad,                             math_dimen_parameter, quad);
-    set_math_parameter_value(math_parameter_axis,                             math_dimen_parameter, axis);
-    set_math_parameter_value(math_parameter_accent_base_height,               math_dimen_parameter, accentbaseheight);
-    set_math_parameter_value(math_parameter_accent_base_depth,                math_dimen_parameter, accentbasedepth);
-    set_math_parameter_value(math_parameter_flattened_accent_base_height,     math_dimen_parameter, flattenedaccentbaseheight);
-    set_math_parameter_value(math_parameter_flattened_accent_base_depth,      math_dimen_parameter, flattenedaccentbasedepth);
-    set_math_parameter_value(math_parameter_x_scale,                          math_int_parameter,   xscale);
-    set_math_parameter_value(math_parameter_y_scale,                          math_int_parameter,   yscale);
-    set_math_parameter_value(math_parameter_operator_size,                    math_dimen_parameter, operatorsize);
-    set_math_parameter_value(math_parameter_overbar_kern,                     math_dimen_parameter, overbarkern);
-    set_math_parameter_value(math_parameter_overbar_rule,                     math_dimen_parameter, overbarrule);
-    set_math_parameter_value(math_parameter_overbar_vgap,                     math_dimen_parameter, overbarvgap);
-    set_math_parameter_value(math_parameter_underbar_kern,                    math_dimen_parameter, underbarkern);
-    set_math_parameter_value(math_parameter_underbar_rule,                    math_dimen_parameter, underbarrule);
-    set_math_parameter_value(math_parameter_underbar_vgap,                    math_dimen_parameter, underbarvgap);
-    set_math_parameter_value(math_parameter_radical_kern,                     math_dimen_parameter, radicalkern);
-    set_math_parameter_value(math_parameter_radical_rule,                     math_dimen_parameter, radicalrule);
-    set_math_parameter_value(math_parameter_radical_vgap,                     math_dimen_parameter, radicalvgap);
-    set_math_parameter_value(math_parameter_radical_degree_before,            math_dimen_parameter, radicaldegreebefore);
-    set_math_parameter_value(math_parameter_radical_degree_after,             math_dimen_parameter, radicaldegreeafter);
-    set_math_parameter_value(math_parameter_radical_degree_raise,             math_int_parameter,   radicaldegreeraise);
-    set_math_parameter_value(math_parameter_radical_extensible_after,         math_dimen_parameter, radicalextensibleafter);
-    set_math_parameter_value(math_parameter_radical_extensible_before,        math_dimen_parameter, radicalextensiblebefore);
-    set_math_parameter_value(math_parameter_stack_vgap,                       math_dimen_parameter, stackvgap);
-    set_math_parameter_value(math_parameter_stack_num_up,                     math_dimen_parameter, stacknumup);
-    set_math_parameter_value(math_parameter_stack_denom_down,                 math_dimen_parameter, stackdenomdown);
-    set_math_parameter_value(math_parameter_fraction_rule,                    math_dimen_parameter, fractionrule);
-    set_math_parameter_value(math_parameter_fraction_num_vgap,                math_dimen_parameter, fractionnumvgap);
-    set_math_parameter_value(math_parameter_fraction_num_up,                  math_dimen_parameter, fractionnumup);
-    set_math_parameter_value(math_parameter_fraction_denom_vgap,              math_dimen_parameter, fractiondenomvgap);
-    set_math_parameter_value(math_parameter_fraction_denom_down,              math_dimen_parameter, fractiondenomdown);
-    set_math_parameter_value(math_parameter_fraction_del_size,                math_dimen_parameter, fractiondelsize);
-    set_math_parameter_value(math_parameter_skewed_fraction_hgap,             math_dimen_parameter, skewedfractionhgap);
-    set_math_parameter_value(math_parameter_skewed_fraction_vgap,             math_dimen_parameter, skewedfractionvgap);
-    set_math_parameter_value(math_parameter_limit_above_vgap,                 math_dimen_parameter, limitabovevgap);
-    set_math_parameter_value(math_parameter_limit_above_bgap,                 math_dimen_parameter, limitabovebgap);
-    set_math_parameter_value(math_parameter_limit_above_kern,                 math_dimen_parameter, limitabovekern);
-    set_math_parameter_value(math_parameter_limit_below_vgap,                 math_dimen_parameter, limitbelowvgap);
-    set_math_parameter_value(math_parameter_limit_below_bgap,                 math_dimen_parameter, limitbelowbgap);
-    set_math_parameter_value(math_parameter_limit_below_kern,                 math_dimen_parameter, limitbelowkern);
-    set_math_parameter_value(math_parameter_nolimit_sup_factor,               math_dimen_parameter, nolimitsupfactor);
-    set_math_parameter_value(math_parameter_nolimit_sub_factor,               math_dimen_parameter, nolimitsubfactor);
-    set_math_parameter_value(math_parameter_under_delimiter_vgap,             math_dimen_parameter, underdelimitervgap);
-    set_math_parameter_value(math_parameter_under_delimiter_bgap,             math_dimen_parameter, underdelimiterbgap);
-    set_math_parameter_value(math_parameter_over_delimiter_vgap,              math_dimen_parameter, overdelimitervgap);
-    set_math_parameter_value(math_parameter_over_delimiter_bgap,              math_dimen_parameter, overdelimiterbgap);
-    set_math_parameter_value(math_parameter_subscript_shift_drop,             math_dimen_parameter, subshiftdrop);
-    set_math_parameter_value(math_parameter_superscript_shift_drop,           math_dimen_parameter, supshiftdrop);
-    set_math_parameter_value(math_parameter_subscript_shift_down,             math_dimen_parameter, subshiftdown);
-    set_math_parameter_value(math_parameter_subscript_superscript_shift_down, math_dimen_parameter, subsupshiftdown);
-    set_math_parameter_value(math_parameter_subscript_top_max,                math_dimen_parameter, subtopmax);
-    set_math_parameter_value(math_parameter_superscript_shift_up,             math_dimen_parameter, supshiftup);
-    set_math_parameter_value(math_parameter_superscript_bottom_min,           math_dimen_parameter, supbottommin);
-    set_math_parameter_value(math_parameter_superscript_subscript_bottom_max, math_dimen_parameter, supsubbottommax);
-    set_math_parameter_value(math_parameter_subscript_superscript_vgap,       math_dimen_parameter, subsupvgap);
-    set_math_parameter_value(math_parameter_space_before_script,              math_dimen_parameter, spacebeforescript);
-    set_math_parameter_value(math_parameter_space_after_script,               math_dimen_parameter, spaceafterscript);
-    set_math_parameter_value(math_parameter_connector_overlap_min,            math_dimen_parameter, connectoroverlapmin);
+    set_math_parameter_value(math_parameter_quad,                             math_dimension_parameter, quad);
+    set_math_parameter_value(math_parameter_exheight,                         math_dimension_parameter, exheight);
+    set_math_parameter_value(math_parameter_axis,                             math_dimension_parameter, axis);
+    set_math_parameter_value(math_parameter_accent_base_height,               math_dimension_parameter, accentbaseheight);
+    set_math_parameter_value(math_parameter_accent_base_depth,                math_dimension_parameter, accentbasedepth);
+    set_math_parameter_value(math_parameter_flattened_accent_base_height,     math_dimension_parameter, flattenedaccentbaseheight);
+    set_math_parameter_value(math_parameter_flattened_accent_base_depth,      math_dimension_parameter, flattenedaccentbasedepth);
+    set_math_parameter_value(math_parameter_x_scale,                          math_integer_parameter,   xscale);
+    set_math_parameter_value(math_parameter_y_scale,                          math_integer_parameter,   yscale);
+    set_math_parameter_value(math_parameter_operator_size,                    math_dimension_parameter, operatorsize);
+    set_math_parameter_value(math_parameter_overbar_kern,                     math_dimension_parameter, overbarkern);
+    set_math_parameter_value(math_parameter_overbar_rule,                     math_dimension_parameter, overbarrule);
+    set_math_parameter_value(math_parameter_overbar_vgap,                     math_dimension_parameter, overbarvgap);
+    set_math_parameter_value(math_parameter_underbar_kern,                    math_dimension_parameter, underbarkern);
+    set_math_parameter_value(math_parameter_underbar_rule,                    math_dimension_parameter, underbarrule);
+    set_math_parameter_value(math_parameter_underbar_vgap,                    math_dimension_parameter, underbarvgap);
+    set_math_parameter_value(math_parameter_radical_kern,                     math_dimension_parameter, radicalkern);
+    set_math_parameter_value(math_parameter_radical_rule,                     math_dimension_parameter, radicalrule);
+    set_math_parameter_value(math_parameter_radical_vgap,                     math_dimension_parameter, radicalvgap);
+    set_math_parameter_value(math_parameter_radical_degree_before,            math_dimension_parameter, radicaldegreebefore);
+    set_math_parameter_value(math_parameter_radical_degree_after,             math_dimension_parameter, radicaldegreeafter);
+    set_math_parameter_value(math_parameter_radical_degree_raise,             math_integer_parameter,   radicaldegreeraise);
+    set_math_parameter_value(math_parameter_radical_extensible_after,         math_dimension_parameter, radicalextensibleafter);
+    set_math_parameter_value(math_parameter_radical_extensible_before,        math_dimension_parameter, radicalextensiblebefore);
+    set_math_parameter_value(math_parameter_stack_vgap,                       math_dimension_parameter, stackvgap);
+    set_math_parameter_value(math_parameter_stack_num_up,                     math_dimension_parameter, stacknumup);
+    set_math_parameter_value(math_parameter_stack_denom_down,                 math_dimension_parameter, stackdenomdown);
+    set_math_parameter_value(math_parameter_fraction_rule,                    math_dimension_parameter, fractionrule);
+    set_math_parameter_value(math_parameter_fraction_num_vgap,                math_dimension_parameter, fractionnumvgap);
+    set_math_parameter_value(math_parameter_fraction_num_up,                  math_dimension_parameter, fractionnumup);
+    set_math_parameter_value(math_parameter_fraction_denom_vgap,              math_dimension_parameter, fractiondenomvgap);
+    set_math_parameter_value(math_parameter_fraction_denom_down,              math_dimension_parameter, fractiondenomdown);
+    set_math_parameter_value(math_parameter_fraction_del_size,                math_dimension_parameter, fractiondelsize);
+    set_math_parameter_value(math_parameter_skewed_fraction_hgap,             math_dimension_parameter, skewedfractionhgap);
+    set_math_parameter_value(math_parameter_skewed_fraction_vgap,             math_dimension_parameter, skewedfractionvgap);
+    set_math_parameter_value(math_parameter_limit_above_vgap,                 math_dimension_parameter, limitabovevgap);
+    set_math_parameter_value(math_parameter_limit_above_bgap,                 math_dimension_parameter, limitabovebgap);
+    set_math_parameter_value(math_parameter_limit_above_kern,                 math_dimension_parameter, limitabovekern);
+    set_math_parameter_value(math_parameter_limit_below_vgap,                 math_dimension_parameter, limitbelowvgap);
+    set_math_parameter_value(math_parameter_limit_below_bgap,                 math_dimension_parameter, limitbelowbgap);
+    set_math_parameter_value(math_parameter_limit_below_kern,                 math_dimension_parameter, limitbelowkern);
+    set_math_parameter_value(math_parameter_nolimit_sup_factor,               math_dimension_parameter, nolimitsupfactor);
+    set_math_parameter_value(math_parameter_nolimit_sub_factor,               math_dimension_parameter, nolimitsubfactor);
+    set_math_parameter_value(math_parameter_under_delimiter_vgap,             math_dimension_parameter, underdelimitervgap);
+    set_math_parameter_value(math_parameter_under_delimiter_bgap,             math_dimension_parameter, underdelimiterbgap);
+    set_math_parameter_value(math_parameter_over_delimiter_vgap,              math_dimension_parameter, overdelimitervgap);
+    set_math_parameter_value(math_parameter_over_delimiter_bgap,              math_dimension_parameter, overdelimiterbgap);
+    set_math_parameter_value(math_parameter_subscript_shift_drop,             math_dimension_parameter, subshiftdrop);
+    set_math_parameter_value(math_parameter_superscript_shift_drop,           math_dimension_parameter, supshiftdrop);
+    set_math_parameter_value(math_parameter_subscript_shift_down,             math_dimension_parameter, subshiftdown);
+    set_math_parameter_value(math_parameter_subscript_superscript_shift_down, math_dimension_parameter, subsupshiftdown);
+    set_math_parameter_value(math_parameter_subscript_top_max,                math_dimension_parameter, subtopmax);
+    set_math_parameter_value(math_parameter_superscript_shift_up,             math_dimension_parameter, supshiftup);
+    set_math_parameter_value(math_parameter_superscript_bottom_min,           math_dimension_parameter, supbottommin);
+    set_math_parameter_value(math_parameter_superscript_subscript_bottom_max, math_dimension_parameter, supsubbottommax);
+    set_math_parameter_value(math_parameter_subscript_superscript_vgap,       math_dimension_parameter, subsupvgap);
+    set_math_parameter_value(math_parameter_space_before_script,              math_dimension_parameter, spacebeforescript);
+    set_math_parameter_value(math_parameter_space_between_script,             math_dimension_parameter, spacebetweenscript);
+    set_math_parameter_value(math_parameter_space_after_script,               math_dimension_parameter, spaceafterscript);
+    set_math_parameter_value(math_parameter_connector_overlap_min,            math_dimension_parameter, connectoroverlapmin);
 
     /*tex
 
@@ -396,158 +427,166 @@ void lmt_initialize_interface(void)
 
     */
 
-    set_math_parameter_value(math_parameter_extra_superscript_shift,            math_dimen_parameter,  extrasuperscriptshift);
-    set_math_parameter_value(math_parameter_extra_subscript_shift,              math_dimen_parameter,  extrasubscriptshift);
-    set_math_parameter_value(math_parameter_extra_superprescript_shift,         math_dimen_parameter,  extrasuperprescriptshift);
-    set_math_parameter_value(math_parameter_extra_subprescript_shift,           math_dimen_parameter,  extrasubprescriptshift);
+    set_math_parameter_value(math_parameter_extra_superscript_shift,            math_dimension_parameter,  extrasuperscriptshift);
+    set_math_parameter_value(math_parameter_extra_subscript_shift,              math_dimension_parameter,  extrasubscriptshift);
+    set_math_parameter_value(math_parameter_extra_superprescript_shift,         math_dimension_parameter,  extrasuperprescriptshift);
+    set_math_parameter_value(math_parameter_extra_subprescript_shift,           math_dimension_parameter,  extrasubprescriptshift);
 
-    set_math_parameter_value(math_parameter_prime_raise,                        math_int_parameter,    primeraise);
-    set_math_parameter_value(math_parameter_prime_raise_composed,               math_int_parameter,    primeraisecomposed);
-    set_math_parameter_value(math_parameter_prime_shift_up,                     math_dimen_parameter,  primeshiftup);
-    set_math_parameter_value(math_parameter_prime_shift_drop,                   math_dimen_parameter,  primeshiftdrop);
-    set_math_parameter_value(math_parameter_prime_space_after,                  math_dimen_parameter,  primespaceafter);
-    set_math_parameter_value(math_parameter_prime_width,                        math_int_parameter,    primewidth);
+    set_math_parameter_value(math_parameter_prime_raise,                        math_integer_parameter,    primeraise);
+    set_math_parameter_value(math_parameter_prime_raise_composed,               math_integer_parameter,    primeraisecomposed);
+    set_math_parameter_value(math_parameter_prime_shift_up,                     math_dimension_parameter,  primeshiftup);
+    set_math_parameter_value(math_parameter_prime_shift_drop,                   math_dimension_parameter,  primeshiftdrop);
+    set_math_parameter_value(math_parameter_prime_space_after,                  math_dimension_parameter,  primespaceafter);
+    set_math_parameter_value(math_parameter_prime_width,                        math_integer_parameter,    primewidth);
 
-    set_math_parameter_value(math_parameter_rule_height,                        math_dimen_parameter,  ruleheight);
-    set_math_parameter_value(math_parameter_rule_depth,                         math_dimen_parameter,  ruledepth);
+    set_math_parameter_value(math_parameter_rule_height,                        math_dimension_parameter,  ruleheight);
+    set_math_parameter_value(math_parameter_rule_depth,                         math_dimension_parameter,  ruledepth);
 
-    set_math_parameter_value(math_parameter_superscript_shift_distance,         math_dimen_parameter,  superscriptshiftdistance);
-    set_math_parameter_value(math_parameter_subscript_shift_distance,           math_dimen_parameter,  subscriptshiftdistance);
-    set_math_parameter_value(math_parameter_superprescript_shift_distance,      math_dimen_parameter,  presuperscriptshiftdistance);
-    set_math_parameter_value(math_parameter_subprescript_shift_distance,        math_dimen_parameter,  presubscriptshiftdistance);
+    set_math_parameter_value(math_parameter_superscript_shift_distance,         math_dimension_parameter,  superscriptshiftdistance);
+    set_math_parameter_value(math_parameter_subscript_shift_distance,           math_dimension_parameter,  subscriptshiftdistance);
+    set_math_parameter_value(math_parameter_superprescript_shift_distance,      math_dimension_parameter,  presuperscriptshiftdistance);
+    set_math_parameter_value(math_parameter_subprescript_shift_distance,        math_dimension_parameter,  presubscriptshiftdistance);
 
-    set_math_parameter_value(math_parameter_extra_superscript_space,            math_dimen_parameter,  extrasuperscriptspace);
-    set_math_parameter_value(math_parameter_extra_subscript_space,              math_dimen_parameter,  extrasubscriptspace);
-    set_math_parameter_value(math_parameter_extra_superprescript_space,         math_dimen_parameter,  extrasuperprescriptspace);
-    set_math_parameter_value(math_parameter_extra_subprescript_space,           math_dimen_parameter,  extrasubprescriptspace);
+    set_math_parameter_value(math_parameter_extra_superscript_space,            math_dimension_parameter,  extrasuperscriptspace);
+    set_math_parameter_value(math_parameter_extra_subscript_space,              math_dimension_parameter,  extrasubscriptspace);
+    set_math_parameter_value(math_parameter_extra_superprescript_space,         math_dimension_parameter,  extrasuperprescriptspace);
+    set_math_parameter_value(math_parameter_extra_subprescript_space,           math_dimension_parameter,  extrasubprescriptspace);
 
-    set_math_parameter_value(math_parameter_skewed_delimiter_tolerance,         math_dimen_parameter,  skeweddelimitertolerance);
+    set_math_parameter_value(math_parameter_superscript_snap,                   math_dimension_parameter,  superscriptsnap);
+    set_math_parameter_value(math_parameter_subscript_snap,                     math_dimension_parameter,  subscriptsnap);
 
-    set_math_parameter_value(math_parameter_accent_top_shift_up,                math_dimen_parameter,  accenttopshiftup);
-    set_math_parameter_value(math_parameter_accent_bottom_shift_down,           math_dimen_parameter,  accentbottomshiftdown);
-    set_math_parameter_value(math_parameter_accent_top_overshoot,               math_int_parameter,    accenttopovershoot);
-    set_math_parameter_value(math_parameter_accent_bottom_overshoot,            math_int_parameter,    accentbottomovershoot);
-    set_math_parameter_value(math_parameter_accent_superscript_drop,            math_dimen_parameter,  accentsuperscriptdrop);
-    set_math_parameter_value(math_parameter_accent_superscript_percent,         math_int_parameter,    accentsuperscriptpercent);
-    set_math_parameter_value(math_parameter_accent_extend_margin,               math_int_parameter,    accentextendmargin);
-    set_math_parameter_value(math_parameter_flattened_accent_top_shift_up,      math_dimen_parameter,  flattenedaccenttopshiftup);
-    set_math_parameter_value(math_parameter_flattened_accent_bottom_shift_down, math_dimen_parameter,  flattenedaccentbottomshiftdown);
+    set_math_parameter_value(math_parameter_skewed_delimiter_tolerance,         math_dimension_parameter,  skeweddelimitertolerance);
 
-    set_math_parameter_value(math_parameter_delimiter_percent,                  math_int_parameter,    delimiterpercent);
-    set_math_parameter_value(math_parameter_delimiter_shortfall,                math_dimen_parameter,  delimitershortfall);
-    set_math_parameter_value(math_parameter_delimiter_extend_margin,            math_dimen_parameter,  delimiterextendmargin);
+    set_math_parameter_value(math_parameter_accent_top_shift_up,                math_dimension_parameter,  accenttopshiftup);
+    set_math_parameter_value(math_parameter_accent_bottom_shift_down,           math_dimension_parameter,  accentbottomshiftdown);
+    set_math_parameter_value(math_parameter_accent_top_overshoot,               math_integer_parameter,    accenttopovershoot);
+    set_math_parameter_value(math_parameter_accent_bottom_overshoot,            math_integer_parameter,    accentbottomovershoot);
+    set_math_parameter_value(math_parameter_accent_superscript_drop,            math_dimension_parameter,  accentsuperscriptdrop);
+    set_math_parameter_value(math_parameter_accent_superscript_percent,         math_integer_parameter,    accentsuperscriptpercent);
+    set_math_parameter_value(math_parameter_accent_extend_margin,               math_integer_parameter,    accentextendmargin);
+    set_math_parameter_value(math_parameter_flattened_accent_top_shift_up,      math_dimension_parameter,  flattenedaccenttopshiftup);
+    set_math_parameter_value(math_parameter_flattened_accent_bottom_shift_down, math_dimension_parameter,  flattenedaccentbottomshiftdown);
 
-    set_math_parameter_value(math_parameter_over_line_variant,                  math_style_parameter,  overlinevariant);
-    set_math_parameter_value(math_parameter_under_line_variant,                 math_style_parameter,  underlinevariant);
-    set_math_parameter_value(math_parameter_over_delimiter_variant,             math_style_parameter,  overdelimitervariant);
-    set_math_parameter_value(math_parameter_under_delimiter_variant,            math_style_parameter,  underdelimitervariant);
-    set_math_parameter_value(math_parameter_delimiter_over_variant,             math_style_parameter,  delimiterovervariant);
-    set_math_parameter_value(math_parameter_delimiter_under_variant,            math_style_parameter,  delimiterundervariant);
-    set_math_parameter_value(math_parameter_h_extensible_variant,               math_style_parameter,  hextensiblevariant);
-    set_math_parameter_value(math_parameter_v_extensible_variant,               math_style_parameter,  vextensiblevariant);
-    set_math_parameter_value(math_parameter_fraction_variant,                   math_style_parameter,  fractionvariant);
-    set_math_parameter_value(math_parameter_radical_variant,                    math_style_parameter,  radicalvariant);
-    set_math_parameter_value(math_parameter_degree_variant,                     math_style_parameter,  degreevariant);
-    set_math_parameter_value(math_parameter_accent_variant,                     math_style_parameter,  accentvariant);
-    set_math_parameter_value(math_parameter_top_accent_variant,                 math_style_parameter,  topaccentvariant);
-    set_math_parameter_value(math_parameter_bottom_accent_variant,              math_style_parameter,  bottomaccentvariant);
-    set_math_parameter_value(math_parameter_overlay_accent_variant,             math_style_parameter,  overlayaccentvariant);
-    set_math_parameter_value(math_parameter_numerator_variant,                  math_style_parameter,  numeratorvariant);
-    set_math_parameter_value(math_parameter_denominator_variant,                math_style_parameter,  denominatorvariant);
-    set_math_parameter_value(math_parameter_superscript_variant,                math_style_parameter,  superscriptvariant);
-    set_math_parameter_value(math_parameter_subscript_variant,                  math_style_parameter,  subscriptvariant);
-    set_math_parameter_value(math_parameter_prime_variant,                      math_style_parameter,  primevariant);
-    set_math_parameter_value(math_parameter_stack_variant,                      math_style_parameter,  stackvariant);
+    set_math_parameter_value(math_parameter_delimiter_percent,                  math_integer_parameter,    delimiterpercent);
+    set_math_parameter_value(math_parameter_delimiter_shortfall,                math_dimension_parameter,  delimitershortfall);
+    set_math_parameter_value(math_parameter_delimiter_extend_margin,            math_dimension_parameter,  delimiterextendmargin);
+
+    set_math_parameter_value(math_parameter_over_line_variant,                  math_style_parameter,      overlinevariant);
+    set_math_parameter_value(math_parameter_under_line_variant,                 math_style_parameter,      underlinevariant);
+    set_math_parameter_value(math_parameter_over_delimiter_variant,             math_style_parameter,      overdelimitervariant);
+    set_math_parameter_value(math_parameter_under_delimiter_variant,            math_style_parameter,      underdelimitervariant);
+    set_math_parameter_value(math_parameter_delimiter_over_variant,             math_style_parameter,      delimiterovervariant);
+    set_math_parameter_value(math_parameter_delimiter_under_variant,            math_style_parameter,      delimiterundervariant);
+    set_math_parameter_value(math_parameter_h_extensible_variant,               math_style_parameter,      hextensiblevariant);
+    set_math_parameter_value(math_parameter_v_extensible_variant,               math_style_parameter,      vextensiblevariant);
+    set_math_parameter_value(math_parameter_fraction_variant,                   math_style_parameter,      fractionvariant);
+    set_math_parameter_value(math_parameter_radical_variant,                    math_style_parameter,      radicalvariant);
+    set_math_parameter_value(math_parameter_degree_variant,                     math_style_parameter,      degreevariant);
+    set_math_parameter_value(math_parameter_accent_variant,                     math_style_parameter,      accentvariant);
+    set_math_parameter_value(math_parameter_top_accent_variant,                 math_style_parameter,      topaccentvariant);
+    set_math_parameter_value(math_parameter_bottom_accent_variant,              math_style_parameter,      bottomaccentvariant);
+    set_math_parameter_value(math_parameter_overlay_accent_variant,             math_style_parameter,      overlayaccentvariant);
+    set_math_parameter_value(math_parameter_numerator_variant,                  math_style_parameter,      numeratorvariant);
+    set_math_parameter_value(math_parameter_denominator_variant,                math_style_parameter,      denominatorvariant);
+    set_math_parameter_value(math_parameter_superscript_variant,                math_style_parameter,      superscriptvariant);
+    set_math_parameter_value(math_parameter_subscript_variant,                  math_style_parameter,      subscriptvariant);
+    set_math_parameter_value(math_parameter_prime_variant,                      math_style_parameter,      primevariant);
+    set_math_parameter_value(math_parameter_stack_variant,                      math_style_parameter,      stackvariant);
 
     lmt_interface.math_font_parameter_values = lmt_aux_allocate_value_info(math_parameter_last_code + 1);
 
     # define set_math_font_parameter(n, t) lmt_interface.math_font_parameter_values[n] = (value_info) { .lua = lua_key_index(n), .name = lua_key(n), .type = t }
 
-    set_math_font_parameter(ScriptPercentScaleDown,                   math_int_parameter);
-    set_math_font_parameter(ScriptScriptPercentScaleDown,             math_int_parameter);
-    set_math_font_parameter(DelimitedSubFormulaMinHeight,             math_dimen_parameter);
-    set_math_font_parameter(DisplayOperatorMinHeight,                 math_dimen_parameter);
-    set_math_font_parameter(MathLeading,                              math_dimen_parameter);
-    set_math_font_parameter(AxisHeight,                               math_dimen_parameter);
-    set_math_font_parameter(AccentBaseHeight,                         math_dimen_parameter);
-    set_math_font_parameter(AccentBaseDepth,                          math_dimen_parameter);
-    set_math_font_parameter(FlattenedAccentBaseHeight,                math_dimen_parameter);
-    set_math_font_parameter(FlattenedAccentBaseDepth,                 math_dimen_parameter);
-    set_math_font_parameter(SubscriptShiftDown,                       math_dimen_parameter);
-    set_math_font_parameter(SubscriptTopMax,                          math_dimen_parameter);
-    set_math_font_parameter(SubscriptBaselineDropMin,                 math_dimen_parameter);
-    set_math_font_parameter(SuperscriptShiftUp,                       math_dimen_parameter);
-    set_math_font_parameter(SuperscriptShiftUpCramped,                math_dimen_parameter);
-    set_math_font_parameter(SuperscriptBottomMin,                     math_dimen_parameter);
-    set_math_font_parameter(SuperscriptBaselineDropMax,               math_dimen_parameter);
-    set_math_font_parameter(SubSuperscriptGapMin,                     math_dimen_parameter);
-    set_math_font_parameter(SuperscriptBottomMaxWithSubscript,        math_dimen_parameter);
-    set_math_font_parameter(SpaceBeforeScript,                        math_dimen_parameter);
-    set_math_font_parameter(SpaceAfterScript,                         math_dimen_parameter);
-    set_math_font_parameter(UpperLimitGapMin,                         math_dimen_parameter);
-    set_math_font_parameter(UpperLimitBaselineRiseMin,                math_dimen_parameter);
-    set_math_font_parameter(LowerLimitGapMin,                         math_dimen_parameter);
-    set_math_font_parameter(LowerLimitBaselineDropMin,                math_dimen_parameter);
-    set_math_font_parameter(StackTopShiftUp,                          math_dimen_parameter);
-    set_math_font_parameter(StackTopDisplayStyleShiftUp,              math_dimen_parameter);
-    set_math_font_parameter(StackBottomShiftDown,                     math_dimen_parameter);
-    set_math_font_parameter(StackBottomDisplayStyleShiftDown,         math_dimen_parameter);
-    set_math_font_parameter(StackGapMin,                              math_dimen_parameter);
-    set_math_font_parameter(StackDisplayStyleGapMin,                  math_dimen_parameter);
-    set_math_font_parameter(StretchStackTopShiftUp,                   math_dimen_parameter);
-    set_math_font_parameter(StretchStackBottomShiftDown,              math_dimen_parameter);
-    set_math_font_parameter(StretchStackGapAboveMin,                  math_dimen_parameter);
-    set_math_font_parameter(StretchStackGapBelowMin,                  math_dimen_parameter);
-    set_math_font_parameter(FractionNumeratorShiftUp,                 math_dimen_parameter);
-    set_math_font_parameter(FractionNumeratorDisplayStyleShiftUp,     math_dimen_parameter);
-    set_math_font_parameter(FractionDenominatorShiftDown,             math_dimen_parameter);
-    set_math_font_parameter(FractionDenominatorDisplayStyleShiftDown, math_dimen_parameter);
-    set_math_font_parameter(FractionNumeratorGapMin,                  math_dimen_parameter);
-    set_math_font_parameter(FractionNumeratorDisplayStyleGapMin,      math_dimen_parameter);
-    set_math_font_parameter(FractionRuleThickness,                    math_dimen_parameter);
-    set_math_font_parameter(FractionDenominatorGapMin,                math_dimen_parameter);
-    set_math_font_parameter(FractionDenominatorDisplayStyleGapMin,    math_dimen_parameter);
-    set_math_font_parameter(SkewedFractionHorizontalGap,              math_dimen_parameter);
-    set_math_font_parameter(SkewedFractionVerticalGap,                math_dimen_parameter);
-    set_math_font_parameter(OverbarVerticalGap,                       math_dimen_parameter);
-    set_math_font_parameter(OverbarRuleThickness,                     math_dimen_parameter);
-    set_math_font_parameter(OverbarExtraAscender,                     math_dimen_parameter);
-    set_math_font_parameter(UnderbarVerticalGap,                      math_dimen_parameter);
-    set_math_font_parameter(UnderbarRuleThickness,                    math_dimen_parameter);
-    set_math_font_parameter(UnderbarExtraDescender,                   math_dimen_parameter);
-    set_math_font_parameter(RadicalVerticalGap,                       math_dimen_parameter);
-    set_math_font_parameter(RadicalDisplayStyleVerticalGap,           math_dimen_parameter);
-    set_math_font_parameter(RadicalRuleThickness,                     math_dimen_parameter);
-    set_math_font_parameter(RadicalExtraAscender,                     math_dimen_parameter);
-    set_math_font_parameter(RadicalKernBeforeDegree,                  math_dimen_parameter);
-    set_math_font_parameter(RadicalKernAfterDegree,                   math_dimen_parameter);
-    set_math_font_parameter(RadicalDegreeBottomRaisePercent,          math_int_parameter);
-    set_math_font_parameter(RadicalKernAfterExtensible,               math_dimen_parameter);
-    set_math_font_parameter(RadicalKernBeforeExtensible,              math_dimen_parameter);
-    set_math_font_parameter(MinConnectorOverlap,                      math_dimen_parameter);
-    set_math_font_parameter(SubscriptShiftDownWithSuperscript,        math_dimen_parameter);
-    set_math_font_parameter(FractionDelimiterSize,                    math_dimen_parameter);
-    set_math_font_parameter(FractionDelimiterDisplayStyleSize,        math_dimen_parameter);
-    set_math_font_parameter(NoLimitSubFactor,                         math_int_parameter);
-    set_math_font_parameter(NoLimitSupFactor,                         math_int_parameter);
-    set_math_font_parameter(PrimeRaisePercent,                        math_int_parameter);
-    set_math_font_parameter(PrimeRaiseComposedPercent,                math_int_parameter);
-    set_math_font_parameter(PrimeShiftUp,                             math_dimen_parameter);
-    set_math_font_parameter(PrimeShiftUpCramped,                      math_dimen_parameter);
-    set_math_font_parameter(PrimeBaselineDropMax,                     math_dimen_parameter);
-    set_math_font_parameter(PrimeSpaceAfter,                          math_dimen_parameter);
-    set_math_font_parameter(PrimeWidthPercent,                        math_int_parameter);
-    set_math_font_parameter(SkewedDelimiterTolerance,                 math_dimen_parameter);
-    set_math_font_parameter(AccentTopShiftUp,                         math_dimen_parameter);
-    set_math_font_parameter(AccentBottomShiftDown,                    math_dimen_parameter);
-    set_math_font_parameter(AccentTopOvershoot,                       math_int_parameter);
-    set_math_font_parameter(AccentBottomOvershoot,                    math_int_parameter);
-    set_math_font_parameter(AccentSuperscriptDrop,                    math_dimen_parameter);
-    set_math_font_parameter(AccentSuperscriptPercent,                 math_int_parameter);
-    set_math_font_parameter(AccentExtendMargin,                       math_dimen_parameter);
-    set_math_font_parameter(FlattenedAccentTopShiftUp,                math_dimen_parameter);
-    set_math_font_parameter(FlattenedAccentBottomShiftDown,           math_dimen_parameter);
-    set_math_font_parameter(DelimiterPercent,                         math_int_parameter);
-    set_math_font_parameter(DelimiterShortfall,                       math_dimen_parameter);
-    set_math_font_parameter(DelimiterExtendMargin,                    math_dimen_parameter);
+    set_math_font_parameter(ScriptPercentScaleDown,                   math_integer_parameter);
+    set_math_font_parameter(ScriptScriptPercentScaleDown,             math_integer_parameter);
+    set_math_font_parameter(DelimitedSubFormulaMinHeight,             math_dimension_parameter);
+    set_math_font_parameter(DisplayOperatorMinHeight,                 math_dimension_parameter);
+    set_math_font_parameter(MathLeading,                              math_dimension_parameter);
+    set_math_font_parameter(AxisHeight,                               math_dimension_parameter);
+    set_math_font_parameter(AccentBaseHeight,                         math_dimension_parameter);
+    set_math_font_parameter(AccentBaseDepth,                          math_dimension_parameter);
+    set_math_font_parameter(FlattenedAccentBaseHeight,                math_dimension_parameter);
+    set_math_font_parameter(FlattenedAccentBaseDepth,                 math_dimension_parameter);
+    set_math_font_parameter(SubscriptShiftDown,                       math_dimension_parameter);
+    set_math_font_parameter(SubscriptTopMax,                          math_dimension_parameter);
+    set_math_font_parameter(SubscriptBaselineDropMin,                 math_dimension_parameter);
+    set_math_font_parameter(SuperscriptShiftUp,                       math_dimension_parameter);
+    set_math_font_parameter(SuperscriptShiftUpCramped,                math_dimension_parameter);
+    set_math_font_parameter(SuperscriptBottomMin,                     math_dimension_parameter);
+    set_math_font_parameter(SuperscriptBaselineDropMax,               math_dimension_parameter);
+    set_math_font_parameter(SubSuperscriptGapMin,                     math_dimension_parameter);
+    set_math_font_parameter(SuperscriptBottomMaxWithSubscript,        math_dimension_parameter);
+    set_math_font_parameter(SpaceBeforeScript,                        math_dimension_parameter);
+    set_math_font_parameter(SpaceBetweenScript,                       math_dimension_parameter);
+    set_math_font_parameter(SpaceAfterScript,                         math_dimension_parameter);
+    set_math_font_parameter(UpperLimitGapMin,                         math_dimension_parameter);
+    set_math_font_parameter(UpperLimitBaselineRiseMin,                math_dimension_parameter);
+    set_math_font_parameter(LowerLimitGapMin,                         math_dimension_parameter);
+    set_math_font_parameter(LowerLimitBaselineDropMin,                math_dimension_parameter);
+    set_math_font_parameter(StackTopShiftUp,                          math_dimension_parameter);
+    set_math_font_parameter(StackTopDisplayStyleShiftUp,              math_dimension_parameter);
+    set_math_font_parameter(StackBottomShiftDown,                     math_dimension_parameter);
+    set_math_font_parameter(StackBottomDisplayStyleShiftDown,         math_dimension_parameter);
+    set_math_font_parameter(StackGapMin,                              math_dimension_parameter);
+    set_math_font_parameter(StackDisplayStyleGapMin,                  math_dimension_parameter);
+    set_math_font_parameter(StretchStackTopShiftUp,                   math_dimension_parameter);
+    set_math_font_parameter(StretchStackBottomShiftDown,              math_dimension_parameter);
+    set_math_font_parameter(StretchStackGapAboveMin,                  math_dimension_parameter);
+    set_math_font_parameter(StretchStackGapBelowMin,                  math_dimension_parameter);
+    set_math_font_parameter(FractionNumeratorShiftUp,                 math_dimension_parameter);
+    set_math_font_parameter(FractionNumeratorDisplayStyleShiftUp,     math_dimension_parameter);
+    set_math_font_parameter(FractionDenominatorShiftDown,             math_dimension_parameter);
+    set_math_font_parameter(FractionDenominatorDisplayStyleShiftDown, math_dimension_parameter);
+    set_math_font_parameter(FractionNumeratorGapMin,                  math_dimension_parameter);
+    set_math_font_parameter(FractionNumeratorDisplayStyleGapMin,      math_dimension_parameter);
+    set_math_font_parameter(FractionRuleThickness,                    math_dimension_parameter);
+    set_math_font_parameter(FractionDenominatorGapMin,                math_dimension_parameter);
+    set_math_font_parameter(FractionDenominatorDisplayStyleGapMin,    math_dimension_parameter);
+    set_math_font_parameter(SkewedFractionHorizontalGap,              math_dimension_parameter);
+    set_math_font_parameter(SkewedFractionVerticalGap,                math_dimension_parameter);
+    set_math_font_parameter(OverbarVerticalGap,                       math_dimension_parameter);
+    set_math_font_parameter(OverbarRuleThickness,                     math_dimension_parameter);
+    set_math_font_parameter(OverbarExtraAscender,                     math_dimension_parameter);
+    set_math_font_parameter(UnderbarVerticalGap,                      math_dimension_parameter);
+    set_math_font_parameter(UnderbarRuleThickness,                    math_dimension_parameter);
+    set_math_font_parameter(UnderbarExtraDescender,                   math_dimension_parameter);
+    set_math_font_parameter(RadicalVerticalGap,                       math_dimension_parameter);
+    set_math_font_parameter(RadicalDisplayStyleVerticalGap,           math_dimension_parameter);
+    set_math_font_parameter(RadicalRuleThickness,                     math_dimension_parameter);
+    set_math_font_parameter(RadicalExtraAscender,                     math_dimension_parameter);
+    set_math_font_parameter(RadicalKernBeforeDegree,                  math_dimension_parameter);
+    set_math_font_parameter(RadicalKernAfterDegree,                   math_dimension_parameter);
+    set_math_font_parameter(RadicalDegreeBottomRaisePercent,          math_integer_parameter);
+    set_math_font_parameter(RadicalKernAfterExtensible,               math_dimension_parameter);
+    set_math_font_parameter(RadicalKernBeforeExtensible,              math_dimension_parameter);
+    set_math_font_parameter(MinConnectorOverlap,                      math_dimension_parameter);
+    set_math_font_parameter(SuperscriptSnap,                          math_dimension_parameter);
+    set_math_font_parameter(SubscriptSnap,                            math_dimension_parameter);
+    set_math_font_parameter(SubscriptShiftDownWithSuperscript,        math_dimension_parameter);
+    set_math_font_parameter(FractionDelimiterSize,                    math_dimension_parameter);
+    set_math_font_parameter(FractionDelimiterDisplayStyleSize,        math_dimension_parameter);
+    set_math_font_parameter(NoLimitSubFactor,                         math_integer_parameter);
+    set_math_font_parameter(NoLimitSupFactor,                         math_integer_parameter);
+    set_math_font_parameter(PrimeRaisePercent,                        math_integer_parameter);
+    set_math_font_parameter(PrimeRaiseComposedPercent,                math_integer_parameter);
+    set_math_font_parameter(PrimeShiftUp,                             math_dimension_parameter);
+    set_math_font_parameter(PrimeShiftUpCramped,                      math_dimension_parameter);
+    set_math_font_parameter(PrimeBaselineDropMax,                     math_dimension_parameter);
+    set_math_font_parameter(PrimeSpaceAfter,                          math_dimension_parameter);
+    set_math_font_parameter(PrimeWidthPercent,                        math_integer_parameter);
+    set_math_font_parameter(SkewedDelimiterTolerance,                 math_dimension_parameter);
+    set_math_font_parameter(AccentTopShiftUp,                         math_dimension_parameter);
+    set_math_font_parameter(AccentBottomShiftDown,                    math_dimension_parameter);
+    set_math_font_parameter(AccentTopOvershoot,                       math_integer_parameter);
+    set_math_font_parameter(AccentBottomOvershoot,                    math_integer_parameter);
+    set_math_font_parameter(AccentSuperscriptDrop,                    math_dimension_parameter);
+    set_math_font_parameter(AccentSuperscriptPercent,                 math_integer_parameter);
+    set_math_font_parameter(AccentExtendMargin,                       math_dimension_parameter);
+    set_math_font_parameter(FlattenedAccentTopShiftUp,                math_dimension_parameter);
+    set_math_font_parameter(FlattenedAccentBottomShiftDown,           math_dimension_parameter);
+    set_math_font_parameter(DelimiterPercent,                         math_integer_parameter);
+    set_math_font_parameter(DelimiterShortfall,                       math_dimension_parameter);
+    set_math_font_parameter(DelimiterDisplayPercent,                  math_integer_parameter);
+    set_math_font_parameter(DelimiterDisplayShortfall,                math_dimension_parameter);
+    set_math_font_parameter(DelimiterExtendMargin,                    math_dimension_parameter);
 }

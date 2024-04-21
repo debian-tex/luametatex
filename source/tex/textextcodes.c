@@ -47,21 +47,18 @@ static void tex_aux_initialize_catcodes(void)
     lmt_catcode_state.catcode_max = 0;
     tex_aux_allocate_catcodes();
     lmt_catcode_state.catcode_valid[0] = 1;
-    lmt_catcode_state.catcode_heads[0] = sa_new_tree(CATCODESTACK, 1, item);
+    lmt_catcode_state.catcode_heads[0] = sa_new_tree(catcode_sparse_identifier, CATCODESTACK, 1, item);
 }
 
 void tex_set_cat_code(int h, int n, halfword v, int gl)
 {
     sa_tree_item item = { .uint_value = CATCODEDEFAULTS };
     sa_tree tree = lmt_catcode_state.catcode_heads[h];
-//    if (h > lmt_catcode_state.catcode_max) {
-//        lmt_catcode_state.catcode_max = h;
-//    }
     if (! tree) {
-if (h > lmt_catcode_state.catcode_max) {
-    lmt_catcode_state.catcode_max = h;
-}
-        tree = sa_new_tree(CATCODESTACK, 1, item);
+        if (h > lmt_catcode_state.catcode_max) {
+            lmt_catcode_state.catcode_max = h;
+        }
+        tree = sa_new_tree(catcode_sparse_identifier, CATCODESTACK, 1, item);
         lmt_catcode_state.catcode_heads[h] = tree;
     }
     sa_set_item_1(tree, n, v, gl);
@@ -71,14 +68,11 @@ halfword tex_get_cat_code(int h, int n)
 {
     sa_tree_item item = { .uint_value = CATCODEDEFAULTS };
     sa_tree tree = lmt_catcode_state.catcode_heads[h];
-//    if (h > lmt_catcode_state.catcode_max) {
-//        lmt_catcode_state.catcode_max = h;
-//    }
     if (! tree) {
-if (h > lmt_catcode_state.catcode_max) {
-    lmt_catcode_state.catcode_max = h;
-}
-        tree = sa_new_tree(CATCODESTACK, 1, item);
+        if (h > lmt_catcode_state.catcode_max) {
+            lmt_catcode_state.catcode_max = h;
+        }
+        tree = sa_new_tree(catcode_sparse_identifier, CATCODESTACK, 1, item);
         lmt_catcode_state.catcode_heads[h] = tree;
     }
     return sa_return_item_1(tree, n);
@@ -92,6 +86,18 @@ void tex_unsave_cat_codes(int h, int gl)
     for (int k = 0; k <= lmt_catcode_state.catcode_max; k++) {
         if (lmt_catcode_state.catcode_heads[k]) {
             sa_restore_stack(lmt_catcode_state.catcode_heads[k], gl);
+        }
+    }
+}
+
+void tex_restore_cat_codes(int h, int level)
+{
+    if (h > lmt_catcode_state.catcode_max) {
+        lmt_catcode_state.catcode_max = h;
+    }
+    for (int k = 0; k <= lmt_catcode_state.catcode_max; k++) {
+        if (lmt_catcode_state.catcode_heads[k]) {
+            sa_reinit_stack(lmt_catcode_state.catcode_heads[k], level);
         }
     }
 }
@@ -216,7 +222,7 @@ static void tex_aux_free_catcodes(void)
 # define UCCODEDEFAULT    0
 
 # define SFCODESTACK      8
-# define SFCODEDEFAULT 1000
+# define SFCODEDEFAULT    scaling_factor
 
 # define HCCODESTACK      8
 # define HCCODEDEFAULT    0
@@ -247,8 +253,7 @@ static luscode_state_info lmt_luscode_state = {
 
 void tex_set_lc_code(int n, halfword v, int gl)
 {
-    sa_tree_item item;
-    item.int_value = v;
+    sa_tree_item item = { .int_value = v };
     sa_set_item_4(lmt_luscode_state.lccode_head, n, item, gl);
 }
 
@@ -264,9 +269,8 @@ static void tex_aux_unsave_lccodes(int gl)
 
 static void tex_aux_initialize_lccodes(void)
 {
-    sa_tree_item item;
-    item.int_value = LCCODEDEFAULT;
-    lmt_luscode_state.lccode_head = sa_new_tree(LCCODESTACK, 4, item);
+    sa_tree_item item = {.int_value = LCCODEDEFAULT };
+    lmt_luscode_state.lccode_head = sa_new_tree(lccode_sparse_identifier, LCCODESTACK, 4, item);
 }
 
 static void tex_aux_dump_lccodes(dumpstream f)
@@ -292,8 +296,7 @@ static void tex_aux_free_lccodes(void)
 
 void tex_set_uc_code(int n, halfword v, int gl)
 {
-    sa_tree_item item;
-    item.int_value = v;
+    sa_tree_item item = { .int_value = v };
     sa_set_item_4(lmt_luscode_state.uccode_head, n, item, gl);
 }
 
@@ -310,7 +313,7 @@ static void tex_aux_unsave_uccodes(int gl)
 static void tex_aux_initialize_uccodes(void)
 {
     sa_tree_item item = { .int_value = UCCODEDEFAULT };
-    lmt_luscode_state.uccode_head = sa_new_tree(UCCODESTACK, 4, item);
+    lmt_luscode_state.uccode_head = sa_new_tree(uccode_sparse_identifier, UCCODESTACK, 4, item);
 }
 
 static void tex_aux_dump_uccodes(dumpstream f)
@@ -336,8 +339,7 @@ static void tex_aux_free_uccodes(void)
 
 void tex_set_sf_code(int n, halfword v, int gl)
 {
-    sa_tree_item item;
-    item.int_value = v;
+    sa_tree_item item = { .int_value = v };
     sa_set_item_4(lmt_luscode_state.sfcode_head, n, item, gl);
 }
 
@@ -354,7 +356,7 @@ static void tex_aux_unsave_sfcodes(int gl)
 static void tex_aux_initialize_sfcodes(void)
 {
     sa_tree_item item = { .int_value = SFCODEDEFAULT };
-    lmt_luscode_state.sfcode_head = sa_new_tree(SFCODESTACK, 4, item);
+    lmt_luscode_state.sfcode_head = sa_new_tree(sfcode_sparse_identifier, SFCODESTACK, 4, item);
 }
 
 static void tex_aux_dump_sfcodes(dumpstream f)
@@ -380,8 +382,7 @@ static void tex_aux_free_sfcodes(void)
 
 void tex_set_hc_code(int n, halfword v, int gl)
 {
-    sa_tree_item item;
-    item.int_value = v;
+    sa_tree_item item = { .int_value = v };
     sa_set_item_4(lmt_luscode_state.hccode_head, n, item, gl);
 }
 
@@ -398,7 +399,7 @@ static void tex_aux_unsave_hccodes(int gl)
 static void tex_aux_initialize_hccodes(void)
 {
     sa_tree_item item = { .int_value = HCCODEDEFAULT };
-    lmt_luscode_state.hccode_head = sa_new_tree(HCCODESTACK, 4, item);
+    lmt_luscode_state.hccode_head = sa_new_tree(hccode_sparse_identifier, HCCODESTACK, 4, item);
 }
 
 static void tex_aux_dump_hccodes(dumpstream f)
@@ -438,7 +439,7 @@ static void tex_aux_unsave_hmcodes(int gl)
 static void tex_aux_initialize_hmcodes(void)
 {
     sa_tree_item item = { .int_value = HMCODEDEFAULT };
-    lmt_luscode_state.hmcode_head = sa_new_tree(HMCODESTACK, 1, item);
+    lmt_luscode_state.hmcode_head = sa_new_tree(hmcode_sparse_identifier, HMCODESTACK, 1, item);
 }
 
 static void tex_aux_dump_hmcodes(dumpstream f)
@@ -477,7 +478,7 @@ static void tex_aux_unsave_amcodes(int gl)
 static void tex_aux_initialize_amcodes(void)
 {
     sa_tree_item item = { .int_value = AMCODEDEFAULT };
-    lmt_luscode_state.amcode_head = sa_new_tree(AMCODESTACK, 1, item);
+    lmt_luscode_state.amcode_head = sa_new_tree(amcode_sparse_identifier, AMCODESTACK, 1, item);
 }
 
 static void tex_aux_dump_amcodes(dumpstream f)
@@ -517,7 +518,7 @@ void tex_set_hj_code(int h, int n, halfword v, int gl)
         sa_tree_item item = { .int_value = HJCODEDEFAULT };
         sa_tree tree = lmt_language_state.languages[h]->hjcode_head;
         if (! tree) {
-            tree = sa_new_tree(HJCODESTACK, 4, item);
+            tree = sa_new_tree(hjcode_sparse_identifier, HJCODESTACK, 4, item);
             lmt_language_state.languages[h]->hjcode_head = tree;
         }
         if (tree) {
@@ -660,3 +661,100 @@ void tex_initialize_xx_codes(void)
  /* set_hc_code(0x002D, 0x002D, level_one); */
  /* set_hc_code(0x2010, 0x2010, level_one); */
 }
+
+void tex_run_case_shift(halfword code)
+{
+    int upper = code == upper_case_code;
+    halfword l = tex_scan_toks_normal(0, NULL);
+    halfword p = token_link(l);
+    while (p) {
+        halfword t = token_info(p);
+        if (t < cs_token_flag) {
+            halfword c = t % cs_offset_value;
+            halfword i = upper ? tex_get_uc_code(c) : tex_get_lc_code(c);
+            if (i) {
+                set_token_info(p, t - c + i);
+            }
+        } else if (tex_is_active_cs(cs_text(t - cs_token_flag))) {
+            halfword c = active_cs_value(cs_text(t - cs_token_flag));
+            halfword i = upper ? tex_get_uc_code(c) : tex_get_lc_code(c);
+            if (i) {
+                set_token_info(p, tex_active_to_cs(i, 1) + cs_token_flag);
+            }
+        }
+        p = token_link(p);
+    }
+    if (token_link(l)) {
+        tex_begin_backed_up_list(token_link(l));
+    }
+    tex_put_available_token(l);
+}
+
+/*tex
+    Maybe some day: |sparse_identifier|, |fontchar_identifier|, |mathfont_identifier| and/or 
+    |mathparam_identifier|.
+*/
+
+void tex_show_code_stack()
+{
+    sa_tree head = NULL;
+    tex_get_token();
+    switch (cur_cmd) { 
+        case define_char_code_cmd:
+            switch (cur_chr) {
+                case amcode_charcode: 
+                    head = lmt_luscode_state.amcode_head; 
+                    break;
+                case catcode_charcode: 
+                    if (cat_code_table_par >= 0 && cat_code_table_par < max_n_of_catcode_tables) {
+                        head = lmt_catcode_state.catcode_heads[cat_code_table_par];
+                    }
+                    break;   
+                case delcode_charcode: 
+                case extdelcode_charcode: 
+                    /* maybe */
+                    break;
+                case hccode_charcode: 
+                    head = lmt_luscode_state.hccode_head; 
+                    break;    
+                case hmcode_charcode: 
+                    head = lmt_luscode_state.hmcode_head; 
+                    break;    
+                case lccode_charcode: 
+                    head = lmt_luscode_state.lccode_head; 
+                    break;    
+                case mathcode_charcode:
+                case extmathcode_charcode: 
+                    /* maybe */
+                    break;
+                case sfcode_charcode     : 
+                    head = lmt_luscode_state.sfcode_head; 
+                    break;    
+                case uccode_charcode     : 
+                    head = lmt_luscode_state.uccode_head; 
+                    break;    
+            }
+            break;
+        case internal_integer_cmd: 
+            switch (cur_chr) {
+                case cat_code_table_code:
+                    if (cat_code_table_par >= 0 && cat_code_table_par < max_n_of_catcode_tables) {
+                        head = lmt_catcode_state.catcode_heads[cat_code_table_par];
+                    }
+            }
+            break;
+        case hyphenation_cmd:
+            switch (cur_chr) {
+                case hjcode_code: 
+                    if (language_par >= 0 && language_par <= lmt_language_state.language_data.top) {
+                        head = lmt_language_state.languages[language_par]->hjcode_head;
+                    }
+                    break;
+            }
+            break;
+    }
+    if (head) {
+        sa_show_stack(head);
+    }
+}
+

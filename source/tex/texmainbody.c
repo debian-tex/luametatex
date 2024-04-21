@@ -304,6 +304,7 @@ void tex_main_body(void)
 
     if (lmt_main_state.run_state == initializing_state) {
         tex_initialize_languages();
+        tex_initialize_units();
     }
 
     lmt_main_state.ready_already = output_enabled_state;
@@ -367,7 +368,7 @@ void tex_main_body(void)
             tex_any_string_start(fln); /* experiment, see context lmtx */
         }
         if (ptr) {
-            tex_start_input(ptr);
+            tex_start_input(ptr, null);
         } else if (! fln) {
             tex_emergency_message("startup error", "no input found, quitting");
             tex_emergency_exit();
@@ -375,11 +376,11 @@ void tex_main_body(void)
     }
 
     /*tex 
-        We assume that |ignore_depth_criterium_par| is unchanged. If needed we can always do 
+        We assume that |ignore_depth_criterion_par| is unchanged. If needed we can always do 
         this: 
     */
 
- /* cur_list.prev_depth = ignore_depth_criterium_par; */
+ /* cur_list.prev_depth = ignore_depth_criterion_par; */
 
     /*tex Ready to go, so come to life. */
 

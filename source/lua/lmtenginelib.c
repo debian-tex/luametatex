@@ -222,7 +222,7 @@ static void enginelib_show_version_info(void)
         "\n"
         "Functionality : level " LMT_TOSTRING(luametatex_development_id) "\n"
         "Support       : " luametatex_support_address "\n"
-        "Copyright     : The Lua(Meta)TeX Team(s) (2005-2023+)\n"
+        "Copyright     : The Lua(Meta)TeX Team(s) (2005-2024+)\n"
         "\n"
         "The LuaMetaTeX project is related to ConTeXt development. This macro package\n"
         "tightly integrates TeX and MetaPost in close cooperation with Lua. Updates will\n"
@@ -314,6 +314,7 @@ static void enginelib_show_credits(void)
         "  avl        : Richard (adapted a bit to fit in)\n"
         "  hjn        : Raph Levien (derived from TeX's hyphenator, but adapted again)\n"
         "  softposit  : S. H. Leong (Cerlane)\n"
+        "  potrace    : Peter Selinger\n"
         "\n"
         "The code base contains more names and references. Some libraries are partially adapted or\n"
         "have been replaced. The MetaPost library has additional functionality, some of which is\n"
@@ -404,8 +405,7 @@ static void enginelib_check_option(char **options, int i)
     }
     if (*n == '\0') {
         return;
-    }
-    {
+    } else {
         char *v = strchr(n, '=');
         size_t l = (int) (v ? (v - n) : strlen(n));
         lmt_environment_state.flag = lmt_memory_malloc(l + 1);
@@ -469,8 +469,7 @@ static void enginelib_parse_options(void)
         i++;
         if (! lmt_environment_state.flag) {
             continue;
-        }
-        if (strcmp(lmt_environment_state.flag, "luaonly") == 0) {
+        } else if (strcmp(lmt_environment_state.flag, "luaonly") == 0) {
             lmt_engine_state.lua_only = 1;
             lmt_environment_state.luatex_lua_offset = i;
             lmt_engine_state.lua_init = 1;
@@ -901,6 +900,7 @@ static const luaL_Reg lmt_libs_extra_function_list[] = {
     { "xcomplex", luaopen_xcomplex },
     { "xdecimal", luaopen_xdecimal },
     { "posit",    luaopen_posit    },
+    { "potrace",  luaopen_potrace  },
     { NULL,       NULL             },
 };
 
@@ -995,9 +995,18 @@ static void enginelib_disable_loadlib(lua_State *L)
     lua_settop(L, top);
 }
 
+/*tex
+    The seed is new but makeseed needs a state before we have a state. Maybe it relates 
+    to multiple states with the same hash. Anyway, we can decide on zero at some point 
+    which brings us back to predictable 'ordering', not that it matters much because 
+    we adapted when coming from 5.2 already. 
+*/
+
 void lmt_initialize(void)
 {
-    lua_State *L = lua_newstate(enginelib_aux_luaalloc, NULL);
+    lua_State *L = NULL;
+    int seed = luaL_makeseed(L); /* maybe we will default to the luametatex version number */
+    L = lua_newstate(enginelib_aux_luaalloc, NULL, seed);
     if (L) {
         /*tex By default we use the generational garbage collector. */
         lua_gc(L, LUA_GCGEN, 0, 0);

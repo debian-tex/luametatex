@@ -2587,6 +2587,7 @@ mp_hex_operation,               /* operation code for |hex| */
 mp_ASCII_operation,             /* operation code for |ASCII| */
 mp_char_operation,              /* operation code for |char| */
 mp_length_operation,            /* operation code for |length| */
+mp_no_length_operation,         /* operation code for |nolength| */
 mp_turning_operation,           /* operation code for |turningnumber| */
 mp_color_model_operation,       /* operation code for |colormodel| */
 mp_path_part_operation,         /* operation code for |pathpart| */
@@ -2666,6 +2667,12 @@ mp_path_point_operation,        /* operation code for |pathpoint| */
 mp_path_precontrol_operation,   /* operation code for |pathprecontrol| */
 mp_path_postcontrol_operation,  /* operation code for |pathpostcontrol| */
 mp_path_direction_operation,    /* operation code for |pathdirection| */
+mp_path_state_operation,        /* operation code for |pathstate| */
+mp_path_index_operation,        /* operation code for |pathindex| */
+mp_path_lastindex_operation,    /* operation code for |pathlastindex| */
+mp_path_length_operation,       /* operation code for |pathlength| */
+mp_path_first_operation,        /* operation code for |pathfirst| */
+mp_path_last_operation,         /* operation code for |pathlast| */
 mp_pen_offset_operation,        /* operation code for |penoffset| */
 mp_arc_time_operation,          /* operation code for |arctime| */
 mp_arc_point_operation,         /* operation code for |arcpoint| */
@@ -2708,6 +2715,7 @@ static const char *mp_op_string (int c)
             case mp_ASCII_operation            : return "ASCII";
             case mp_char_operation             : return "char";
             case mp_length_operation           : return "length";
+            case mp_no_length_operation        : return "nolength";
             case mp_turning_operation          : return "turningnumber";
             case mp_x_part_operation           : return "xpart";
             case mp_y_part_operation           : return "ypart";
@@ -2799,6 +2807,12 @@ static const char *mp_op_string (int c)
             case mp_path_precontrol_operation  : return "pathprecontrol";
             case mp_path_postcontrol_operation : return "pathpostcontrol";
             case mp_path_direction_operation   : return "pathdirection";
+            case mp_path_state_operation       : return "pathstate";
+            case mp_path_index_operation       : return "pathindex";
+            case mp_path_lastindex_operation   : return "pathlastindex";
+            case mp_path_length_operation      : return "pathlength";
+            case mp_path_first_operation       : return "pathfirst";
+            case mp_path_last_operation        : return "pathlast";
             case mp_pen_offset_operation       : return "penoffset";
             case mp_arc_time_operation         : return "arctime";
             case mp_arc_point_operation        : return "arcpoint";
@@ -4263,8 +4277,8 @@ static mp_node mp_do_get_attribute_head (MP mp, mp_value_node A)
 
 static mp_node mp_do_get_subscr_head (MP mp, mp_value_node A)
 {
-    return A->subscr_head;
     (void) mp;
+    return A->subscr_head;
 }
 
 static void mp_do_set_attribute_head (MP mp, mp_value_node A, mp_node d)
@@ -5829,6 +5843,8 @@ static mp_knot mp_new_knot (MP mp)
     new_number(q->left_y);
     new_number(q->right_x);
     new_number(q->right_y);
+    mp_knotstate(q) = mp_regular_knot;
+    mp_originator(q) = mp_regular_knot;
     return q;
 }
 
@@ -6167,7 +6183,10 @@ if (mp_right_type(p) >= mp_given_knot) {
     while ((mp_left_type(q) == mp_open_knot) && (mp_right_type(q) == mp_open_knot)) {
         q = mp_next_knot(q);
     }
-    @<Fill in the control information between consecutive breakpoints |p| and |q|@>
+    /*tex Some variables are defined, and we want to avoid compiler warnings. */
+    {
+        @<Fill in the control information between consecutive breakpoints |p| and |q|@>
+    }
 } else if (mp_right_type(p) == mp_endpoint_knot) {
     @<Give reasonable values for the unused control points between |p| and~|q|@>
 }
@@ -7256,8 +7275,8 @@ solving path choices
 
 static int out_of_range (MP mp, double a)
 {
-    (void) mp;
     mp_number t;
+    (void) mp;
     new_number_from_double(mp, t, fabs(a));
     if (number_greaterequal(t, inf_t)) {
         free_number(t);
@@ -11036,13 +11055,13 @@ static void mp_box_ends (MP mp, mp_knot p, mp_knot pp, mp_edge_header_node h)
         mp_number d;        /* a factor for adjusting the length of |(dx,dy)| */
         mp_number z;        /* a coordinate being tested against the bounding box */
         mp_number xx, yy;   /* the extreme pen vertex in the |(dx,dy)| direction */
+        mp_knot q = mp_next_knot(p); /* a knot node adjacent to knot |p| */
         new_fraction(dx);
         new_fraction(dy);
         new_number(xx);
         new_number(yy);
         new_number(z);
         new_number(d);
-        mp_knot q = mp_next_knot(p); /* a knot node adjacent to knot |p| */
         while (1) {
             @<Make |(dx,dy)| the final direction for the path segment from |q| to~|p|; set~|d|@>
             pyth_add(d, dx, dy);
@@ -14008,8 +14027,8 @@ structures have to match.
 @c
 inline static mp_node do_get_dep_info (MP mp, mp_value_node p)
 {
-    (void) mp;
     mp_node d;
+    (void) mp;
     d = p->parent; /* half of the |value| field in a |dependent| variable */
     return d;
 }
@@ -15122,8 +15141,8 @@ static void mp_ring_delete (MP mp, mp_node p);
 @ @c
 void mp_ring_delete (MP mp, mp_node p)
 {
-    (void) mp;
     mp_node q = mp_get_value_node(p);
+    (void) mp;
     if (q != NULL && q != p) {
         while (mp_get_value_node(q) != p) {
             q = mp_get_value_node(q);
@@ -17983,9 +18002,9 @@ static void mp_scan_text_arg (MP mp, mp_sym l_delim, mp_sym r_delim);
 void mp_scan_text_arg (MP mp, mp_sym l_delim, mp_sym r_delim)
 {
     int balance = 1; /* excess of |l_delim| over |r_delim| */
+    mp_node p = mp->hold_head; /* list tail */
     mp->warning_info = l_delim;
     mp->scanner_status = mp_absorbing_state;
-    mp_node p = mp->hold_head; /* list tail */
     mp->hold_head->link = NULL;
     while (1) {
         get_t_next(mp);
@@ -18645,12 +18664,20 @@ void mp_resume_iteration (MP mp)
     mp_node p, q; /* link registers */
     p = mp->loop_ptr->type;
     if (p == MP_PROGRESSION_FLAG) {
+        /*
         mp_set_cur_exp_value_number(mp, &(mp->loop_ptr->value));
         if ((number_positive(mp->loop_ptr->step_size) && number_greater(cur_exp_value_number, mp->loop_ptr->final_value))
          || (number_negative(mp->loop_ptr->step_size) && number_less   (cur_exp_value_number, mp->loop_ptr->final_value))) {
             mp_stop_iteration(mp);
             return;
         }
+        */
+        if ((number_positive(mp->loop_ptr->step_size) && number_greater(mp->loop_ptr->value, mp->loop_ptr->final_value))
+         || (number_negative(mp->loop_ptr->step_size) && number_less   (mp->loop_ptr->value, mp->loop_ptr->final_value))) {
+            mp_stop_iteration(mp);
+            return;
+        }
+        mp_set_cur_exp_value_number(mp, &(mp->loop_ptr->value));
         mp->cur_exp.type = mp_known_type;
         /* make |q| an |expr| argument */
         q = mp_stash_cur_exp(mp);
@@ -21425,8 +21452,7 @@ static void mp_scan_expression (MP mp)
         if (cur_cmd >= mp_min_expression_command) {
             if ((cur_cmd != mp_equals_command) || (my_var_flag != mp_assignment_command)) {
                 mp_node cc = NULL;
-                mp_sym mac_name;   /* token defined with |tertiarydef| */
-                mac_name = NULL;
+                mp_sym mac_name = NULL;   /* token defined with |tertiarydef| */
                 mp_node p = mp_stash_cur_exp(mp);
                 int d = cur_cmd;
                 int c = cur_mod;
@@ -21711,6 +21737,8 @@ static int mp_scan_path (MP mp)
         /* Splice independent paths together */
         if (dd == mp_tolerant_concat_operation || dd == mp_tolerant_append_operation) {
             mp_number dx, dy;
+            new_number(dx);
+            new_number(dy);
             set_number_from_subtraction(dx, path_q->x_coord, pp->x_coord);
             set_number_from_subtraction(dy, path_q->y_coord, pp->y_coord);
             number_abs(dx);
@@ -21724,6 +21752,8 @@ static int mp_scan_path (MP mp)
                 number_clone(path_q->right_y, dy);
             }
             dd = dd == mp_tolerant_concat_operation ? mp_concatenate_operation : mp_just_append_operation;
+            free_number(dx);
+            free_number(dy);
         }
         if (dd == mp_just_append_operation) {
             mp_left_type(pp) = mp_explicit_knot;
@@ -22089,6 +22119,8 @@ mp_primitive(mp, "char", mp_unary_command, mp_char_operation);
 @:char_}{|char| primitive@>
 mp_primitive(mp, "length", mp_unary_command, mp_length_operation);
 @:length_}{|length| primitive@>
+mp_primitive(mp, "nolength", mp_unary_command, mp_no_length_operation);
+@:length_}{|nolength| primitive@>
 mp_primitive(mp, "turningnumber", mp_unary_command, mp_turning_operation);
 @:turning_number_}{|turningnumber| primitive@>
 mp_primitive(mp, "xpart", mp_unary_command, mp_x_part_operation);
@@ -22244,6 +22276,18 @@ mp_primitive(mp, "pathpostcontrol", mp_nullary_command, mp_path_postcontrol_oper
 @:pathpostcontrol_}{|pathpostcontrol| primitive@>
 mp_primitive(mp, "pathdirection", mp_nullary_command, mp_path_direction_operation);
 @:pathdirection_}{|pathdirection| primitive@>
+mp_primitive(mp, "pathstate", mp_nullary_command, mp_path_state_operation);
+@:pathdirection_}{|pathstate| primitive@>
+mp_primitive(mp, "pathindex", mp_nullary_command, mp_path_index_operation);
+@:pathdirection_}{|pathindex| primitive@>
+mp_primitive(mp, "pathlastindex", mp_nullary_command, mp_path_lastindex_operation);
+@:pathdirection_}{|pathlastindex| primitive@>
+mp_primitive(mp, "pathlength", mp_nullary_command, mp_path_length_operation);
+@:pathdirection_}{|pathlength| primitive@>
+mp_primitive(mp, "pathfirst", mp_nullary_command, mp_path_first_operation);
+@:pathdirection_}{|pathfirst| primitive@>
+mp_primitive(mp, "pathlast", mp_nullary_command, mp_path_last_operation);
+@:pathdirection_}{|pathlast| primitive@>
 mp_primitive(mp, "penoffset", mp_of_binary_command, mp_pen_offset_operation);
 @:pen_offset_}{|penoffset| primitive@>
 mp_primitive(mp, "arctime", mp_of_binary_command, mp_arc_time_operation);
@@ -22305,10 +22349,10 @@ case mp_and_command:
     return mp_op_string((int) m);
 
 @ @<Declarations@>=
-static void push_of_path_result (MP mp, int what, mp_knot p);
+static void push_of_path_result (MP mp, int what, mp_knot p, mp_number i, mp_number n);
 
 @ @c
-static void push_of_path_result (MP mp, int what, mp_knot p)
+static void push_of_path_result (MP mp, int what, mp_knot p, mp_number i, mp_number n)
 {
     switch (what) {
         case 0:
@@ -22348,6 +22392,51 @@ static void push_of_path_result (MP mp, int what, mp_knot p)
                 mp_pair_value(mp, &x, &y);
                 free_number(x);
                 free_number(y);
+            }
+            break;
+        case 4:
+            {
+                mp_value expr;
+                memset(&expr, 0, sizeof(mp_value));
+                new_number(expr.data.n);
+                set_number_from_int(expr.data.n, mp_knotstate(p));
+                mp_flush_cur_exp(mp, expr);
+            }
+            break;
+        case 5:
+            {
+                mp_value expr;
+                memset(&expr, 0, sizeof(mp_value));
+                set_number_from_subtraction(expr.data.n, i, unity_t);
+                mp_flush_cur_exp(mp, expr);
+            }
+            break;
+        case 6:
+            {
+                mp_value expr;
+                memset(&expr, 0, sizeof(mp_value));
+                number_clone(expr.data.n, n);
+                mp_flush_cur_exp(mp, expr);
+            }
+            break;
+        case 7:
+            {
+                mp_value expr;
+                memset(&expr, 0, sizeof(mp_value));
+                set_number_from_addition(expr.data.n, n, unity_t);
+                mp_flush_cur_exp(mp, expr);
+            }
+            break;
+        case 8: /* first */
+            {
+                mp->cur_exp.type = mp_boolean_type;
+                mp_set_cur_exp_value_boolean(mp, number_equal(i, unity_t) ? mp_true_operation : mp_false_operation);
+            }
+            break;
+        case 9: /* last */
+            {
+                mp->cur_exp.type = mp_boolean_type;
+                mp_set_cur_exp_value_boolean(mp, number_greater(i, n) ? mp_true_operation : mp_false_operation);
             }
             break;
     }
@@ -22402,8 +22491,14 @@ static void mp_do_nullary (MP mp, int c)
         case mp_path_precontrol_operation:
         case mp_path_postcontrol_operation:
         case mp_path_direction_operation:
+        case mp_path_state_operation:
+        case mp_path_index_operation:
+        case mp_path_lastindex_operation:
+        case mp_path_length_operation:
+        case mp_path_first_operation:
+        case mp_path_last_operation:
             if (mp->loop_ptr && mp->loop_ptr->point != NULL) {
-                push_of_path_result(mp, c - mp_path_point_operation, mp->loop_ptr->point);
+                push_of_path_result(mp, c - mp_path_point_operation, mp->loop_ptr->point, mp->loop_ptr->value, mp->loop_ptr->final_value);
             } else {
                 mp_pair_value(mp, &zero_t, &zero_t);
             }
@@ -22796,6 +22891,7 @@ static void mp_do_unary (MP mp, int c)
                         memset(&expr, 0, sizeof(mp_value));
                         new_number(expr.data.n);
                         number_clone(expr.data.n, unity_t);
+                        /* Kind of weird, this multiply: */
                         number_multiply_int(expr.data.n, (int) cur_exp_str->len);
                         mp_flush_cur_exp(mp, expr);
                         break;
@@ -22837,6 +22933,27 @@ static void mp_do_unary (MP mp, int c)
                     } else {
                         mp_bad_unary(mp, c);
                     }
+                    break;
+            }
+            break;
+        case mp_no_length_operation:
+            /* For now only support paths/ */
+            switch (mp->cur_exp.type) {
+                case mp_path_type:
+                    {
+                        mp_value expr;
+                        memset(&expr, 0, sizeof(mp_value));
+                        new_number(expr.data.n);
+                        mp_path_no_length(mp, &expr.data.n);
+                        mp_flush_cur_exp(mp, expr);
+                        mp->cur_exp.type = mp_boolean_type;
+                        break;
+                    }
+                case mp_string_type:
+                case mp_known_type:
+                case mp_picture_type:
+                default:
+                    mp_bad_unary(mp, c);
                     break;
             }
             break;
@@ -23178,7 +23295,7 @@ static void mp_do_unary (MP mp, int c)
                             p = mp_prev_knot(p);
                         }
                     }
-                    push_of_path_result(mp, c - mp_delta_point_operation, p);
+                    push_of_path_result(mp, c - mp_delta_point_operation, p, mp->loop_ptr->value, mp->loop_ptr->final_value);
                 }
             } else {
                 mp_bad_unary(mp, c);
@@ -23758,6 +23875,7 @@ mean that scaled outperforms double manyfold while decimal is always way slower.
 
 @<Declarations@>=
 static void mp_path_length (MP mp, mp_number *n);
+static void mp_path_no_length (MP mp, mp_number *n);
 
 @ @<Declare unary action...@>=
 static void mp_path_length (MP mp, mp_number *n)
@@ -23769,6 +23887,11 @@ static void mp_path_length (MP mp, mp_number *n)
         ++l;
     } while (p != cur_exp_knot);
     set_number_from_int(*n, l);
+}
+
+static void mp_path_no_length (MP mp, mp_number *n)
+{
+    set_number_from_boolean(*n, mp_next_knot(cur_exp_knot) == cur_exp_knot ? mp_true_operation : mp_false_operation);
 }
 
 static void mp_picture_length (MP mp, mp_number *n)
@@ -25212,9 +25335,9 @@ static void mp_do_binary (MP mp, mp_node p, int c)
                 mp_pair_to_path(mp);
             }
             if ((mp->cur_exp.type == mp_path_type) && p->type == mp_pair_type) {
+                mp_node q = mp_get_value_node(p);
                 memset(&new_expr, 0, sizeof(mp_value));
                 new_number(new_expr.data.n);
-                mp_node q = mp_get_value_node(p);
                 mp_get_subarc_length(mp, &new_expr.data.n, cur_exp_knot, &(mp_get_value_number(mp_x_part(q))), &(mp_get_value_number(mp_y_part(q))));
                 mp_flush_cur_exp(mp, new_expr);
             } else {
@@ -26745,7 +26868,7 @@ static void mp_find_point (MP mp, mp_number *v_orig, int c)
         p = mp_next_knot(p);
     }
     /* Set the current expression to the desired path coordinates */
-    push_of_path_result(mp, c - mp_point_operation, p);
+    push_of_path_result(mp, c - mp_point_operation, p, zero_t, zero_t);
     free_number(v);
     free_number(n);
 }
