@@ -12,4 +12,6 @@ Command to build the source tree from git could be:
 gbp buildpackage --git-upstream-tag=upstream/2.10.08+ds --git-no-create-orig \
 --git-export-dir=/tmp --git-builder=/bin/true --git-no-pbuilder --git-no-purge 
 
+Similar procedure for luametatex_2.11.01+really2.11.01+ds
+
  -- Hilmar Preusse <hille42@web.de>  Wed, 06 Mar 2024 23:19:06 +0100
