@@ -22,7 +22,7 @@ Forward: Patch is specific to Debian
 -endif()
 --- luametatex.orig/CMakeLists.txt
 +++ luametatex/CMakeLists.txt
-@@ -28,7 +28,7 @@
+@@ -33,7 +33,7 @@
  # nice (the smaller as runner the better). After all, we don't load external (Lua) libraries 
  # anyway. 
  
