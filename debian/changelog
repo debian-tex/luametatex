@@ -1,3 +1,9 @@
+luametatex (2.11.02+ds-3) UNRELEASED; urgency=medium
+
+  * Link dynamically with mimalloc.
+
+ -- Hilmar Preusse <hille42@web.de>  Sat, 18 May 2024 12:10:25 +0200
+
 luametatex (2.11.02+ds-2) experimental; urgency=medium
 
   * Add patches from upstream to fix build failures on arches, where

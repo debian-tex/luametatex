@@ -3,9 +3,9 @@ Author: Hilmar Preusse <hille42@web.de>
 Last-Update: 2023-04-17
 Forward: Patch is specific to Debian
 
---- luametatex-2.10.07.orig/CMakeLists.txt
-+++ luametatex-2.10.07/CMakeLists.txt
-@@ -245,7 +245,7 @@
+--- luametatex.orig/CMakeLists.txt
++++ luametatex/CMakeLists.txt
+@@ -262,7 +262,7 @@
      add_definitions(-DLUAMETATEX_USE_MIMALLOC=1)
    # add_definitions(-DMIMALLOC_RESET_DELAY=250)
    # set(luametatex_use_mimalloc 1)
