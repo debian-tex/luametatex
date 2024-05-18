@@ -1,3 +1,8 @@
+Description: Link with libatomic on some arches.
+Author: Hilmar Preusse <hille42@web.de>
+Last-Update: 2024-02-21
+Forwarded: not needed.
+
 --- luametatex.orig/cmake/luametatex.cmake
 +++ luametatex/cmake/luametatex.cmake
 @@ -1,3 +1,13 @@

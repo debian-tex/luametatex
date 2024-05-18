@@ -1,7 +1,7 @@
 Description: Do not strip binary after build.
 Author: Hilmar Preusse <hille42@web.de>
 Last-Update: 2023-04-17
-Forward: Patch is specific to Debian
+Forwarded: not-needed
 
 --- luametatex.orig/cmake/luametatex.cmake
 +++ luametatex/cmake/luametatex.cmake
