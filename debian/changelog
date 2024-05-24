@@ -1,11 +1,11 @@
-luametatex (2.11.02+ds-3) UNRELEASED; urgency=medium
+luametatex (2.11.02+ds-3) experimental; urgency=medium
 
   * Link dynamically with mimalloc.
   * Patch handling:
     - adding, fixing DEP-3 headers
     - removing obsolete patch
 
- -- Hilmar Preusse <hille42@web.de>  Sat, 18 May 2024 12:10:25 +0200
+ -- Hilmar Preusse <hille42@web.de>  Fri, 24 May 2024 22:35:07 +0200
 
 luametatex (2.11.02+ds-2) experimental; urgency=medium
 
