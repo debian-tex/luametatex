@@ -15,7 +15,7 @@ Vcs-Git: https://github.com/debian-tex/luametatex.git
 
 Package: luametatex
 Architecture: any
-Breaks: context (<< 2024.04.01.20240428)
+Breaks: context (<< 2024)
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
