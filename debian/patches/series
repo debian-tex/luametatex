@@ -1,5 +1,5 @@
 dynamic_linking.diff
 no_strip.diff
 link_atomic.diff
-146f9d2333bc0aeed1593dc659b17e65b38a33e7.patch
-cc3c14f2ed374f908e60a3bf29c1dff84fc8cfc2.patch
+#146f9d2333bc0aeed1593dc659b17e65b38a33e7.patch
+#cc3c14f2ed374f908e60a3bf29c1dff84fc8cfc2.patch

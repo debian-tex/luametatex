@@ -1,8 +1,10 @@
-luametatex (2.11.02+really2.11.01+ds-1) UNRELEASED; urgency=medium
+luametatex (2.11.02+really2.11.01+ds-1) unstable; urgency=medium
 
-  * 
+  * The version/snapshot of ConTeXt in Debian does to fit to ltmx
+    2.11.02, downgrade to 2.11.01 again (Closes: #1072682).
+  * Disable patches for mimalloc.
 
- -- Hilmar Preusse <hille42@web.de>  Wed, 12 Jun 2024 23:31:21 +0200
+ -- Hilmar Preusse <hille42@web.de>  Sat, 15 Jun 2024 23:25:01 +0200
 
 luametatex (2.11.02+ds-4) unstable; urgency=medium
 
