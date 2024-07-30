@@ -2,7 +2,7 @@ Source: luametatex
 Section: tex
 Priority: optional
 Maintainer: Debian TeX Task Force <debian-tex-maint@lists.debian.org>
-Uploaders: Hilmar Preusse <hille42@web.de>
+Uploaders: Hilmar Preuße <hille42@debian.org>
 Rules-Requires-Root: no
 Build-Depends:
  debhelper-compat (= 13),
