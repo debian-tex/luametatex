@@ -36,7 +36,7 @@
     have the |text_control_base_ligaturing| and |text_control_base_kerning| bits set. 
 */
 
-inline static halfword tex_aux_discretionary_node(halfword target, int location)
+static inline halfword tex_aux_discretionary_node(halfword target, int location)
 {
     switch (location) {
         case pre_break_code : return disc_pre_break_node(target); 
@@ -46,7 +46,7 @@ inline static halfword tex_aux_discretionary_node(halfword target, int location)
     }
 }
 
-inline static int tex_aux_same_font_properties(halfword a, halfword b) // also in kern 
+static inline int tex_aux_same_font_properties(halfword a, halfword b) // also in kern 
 {
     return node_type(a) == glyph_node && node_type(b) == glyph_node 
      && glyph_font(a)    == glyph_font(b)
@@ -55,7 +55,7 @@ inline static int tex_aux_same_font_properties(halfword a, halfword b) // also i
      && glyph_scale(a)   == glyph_scale(b);
 }
 
-inline static int tex_aux_apply_base_kerning(halfword n)
+static inline int tex_aux_apply_base_kerning(halfword n)
 {
     if (glyph_protected(n)) {
         return 0;
@@ -69,7 +69,7 @@ inline static int tex_aux_apply_base_kerning(halfword n)
     }
 }
 
-inline static int tex_aux_apply_base_ligaturing(halfword n)
+static inline int tex_aux_apply_base_ligaturing(halfword n)
 {
     if (glyph_protected(n)) {
         return 0;
@@ -85,22 +85,22 @@ inline static int tex_aux_apply_base_ligaturing(halfword n)
 
 /* */
 
-inline static scaled tex_aux_font_x_scaled(scaled v)
+static inline scaled tex_aux_font_x_scaled(scaled v)
 {
     return v ? scaledround(0.000001 * (glyph_scale_par ? glyph_scale_par : 1000) * (glyph_x_scale_par ? glyph_x_scale_par : 1000) * v) : 0;
 }
 
-inline static scaled tex_aux_font_y_scaled(scaled v)
+static inline scaled tex_aux_font_y_scaled(scaled v)
 {
     return v ? scaledround(0.000001 * (glyph_scale_par ? glyph_scale_par : 1000) * (glyph_y_scale_par ? glyph_y_scale_par : 1000) * v) : 0;
 }
 
-inline static scaled tex_aux_glyph_x_scaled(halfword g, scaled v)
+static inline scaled tex_aux_glyph_x_scaled(halfword g, scaled v)
 {
     return v ? scaledround(0.000001 * (glyph_scale(g) ? glyph_scale(g) : 1000) * (glyph_x_scale(g) ? glyph_x_scale(g) : 1000) * v) : 0;
 }
 
-inline static scaled tex_aux_glyph_y_scaled(halfword g, scaled v)
+static inline scaled tex_aux_glyph_y_scaled(halfword g, scaled v)
 {
     return v ? scaledround(0.000001 * (glyph_scale(g) ? glyph_scale(g) : 1000) * (glyph_y_scale(g) ? glyph_y_scale(g) : 1000) * v) : 0;
 }
@@ -117,11 +117,12 @@ font_state_info lmt_font_state = {
         .size      = memory_data_unset,
         .step      = stp_font_size,
         .allocated = 0,
-        .itemsize  = 1,
+        .itemsize  = sizeof(texfont *),
         .top       = 0,
         .ptr       = 0,
         .initial   = memory_data_unset,
         .offset    = 0,
+        .extra     = 0, 
     },
 };
 
@@ -138,7 +139,7 @@ void tex_initialize_fonts(void)
             tmp[i] = NULL;
         }
         lmt_font_state.fonts = tmp;
-        lmt_font_state.font_data.allocated += lmt_font_state.font_data.minimum * sizeof(texfont *);
+        lmt_font_state.font_data.allocated = lmt_font_state.font_data.minimum;
         lmt_font_state.font_data.top = lmt_font_state.font_data.minimum;
         lmt_font_state.font_data.ptr = -1; /* we need to end up with id zero first */
         tex_create_null_font();
@@ -166,7 +167,7 @@ int tex_new_font_id(void)
                 tmp[i] = NULL;
             }
             lmt_font_state.fonts = tmp;
-            lmt_font_state.font_data.allocated += ((size_t) top - lmt_font_state.font_data.top) * sizeof(texfont *);
+            lmt_font_state.font_data.allocated = top;
             lmt_font_state.font_data.top = top;
             lmt_font_state.font_data.ptr += 1;
             return lmt_font_state.font_data.ptr;
@@ -214,7 +215,7 @@ void tex_set_font_parameters(halfword f, int index)
         int size = (index + 2) * (int) sizeof(int);
         int *list = lmt_memory_realloc(font_parameter_base(f), (size_t) size);
         if (list) {
-            lmt_font_state.font_data.allocated += (index - i + 1) * (int) sizeof(scaled);
+            lmt_font_state.font_data.extra += (index - i + 1) * (int) sizeof(scaled);
             font_parameter_base(f) = list;
             font_parameter_count(f) = index;
             while (i < index) {
@@ -239,7 +240,7 @@ int tex_new_font(void)
         if (tf) {
             sa_tree_item sa_value = { 0 };
             int id = tex_new_font_id();
-            lmt_font_state.font_data.allocated += size;
+            lmt_font_state.font_data.extra += size;
             lmt_font_state.fonts[id] = tf;
             set_font_name(id, NULL);
             set_font_original(id, NULL);
@@ -257,7 +258,7 @@ int tex_new_font(void)
                 tex_set_font_parameter(id, i, 0);
             }
             /*tex character info zero is reserved for |notdef|. The stack size 1, default item value 0. */
-            tf->characters = sa_new_tree(fontchar_sparse_identifier, 1, 4, sa_value);
+            tf->characters = sa_new_tree(fontchar_sparse_identifier, 1, 1, 4, sa_value);
             tf->chardata = ci;
             tf->chardata_size = 1;
             tf->weight = 1.0;
@@ -274,7 +275,7 @@ void tex_font_malloc_charinfo(halfword f, int index)
     int size = (glyph + index) * sizeof(charinfo);
     charinfo *data = lmt_memory_realloc(lmt_font_state.fonts[f]->chardata , (size_t) size);
     if (data) {
-        lmt_font_state.font_data.allocated += index * sizeof(charinfo);
+        lmt_font_state.font_data.extra += index * sizeof(charinfo);
         lmt_font_state.fonts[f]->chardata = data;
         memset(&data[glyph], 0, (size_t) index * sizeof(charinfo));
         lmt_font_state.fonts[f]->chardata_size += index;
@@ -316,7 +317,7 @@ void tex_char_malloc_mathinfo(charinfo *ci)
             set_charinfo_bottom_left_math_kern_array(ci, NULL);
             lmt_memory_free(ci->math);
         } else {
-            lmt_font_state.font_data.allocated += size;
+            lmt_font_state.font_data.extra += size;
         }
         ci->math = mi;
     } else {
@@ -324,7 +325,7 @@ void tex_char_malloc_mathinfo(charinfo *ci)
     }
 }
 
-inline int aux_find_charinfo_id(halfword f, int c) 
+static inline int aux_find_charinfo_id(halfword f, int c) 
 {
     sa_tree_item item; 
     sa_get_item_4(lmt_font_state.fonts[f]->characters, c, &item);
@@ -334,9 +335,10 @@ inline int aux_find_charinfo_id(halfword f, int c)
 charinfo *tex_get_charinfo(halfword f, int c)
 {
     if (proper_char_index(f, c)) {
-        sa_tree_item item; 
+        sa_tree_item item;
+        int glyph; 
         sa_get_item_4(lmt_font_state.fonts[f]->characters, c, &item);
-        int glyph = (int) item.int_value;
+        glyph = (int) item.int_value;
         if (! glyph) {
             sa_tree_item sa_value = { 0 };
             int tglyph = ++lmt_font_state.fonts[f]->chardata_count;
@@ -355,7 +357,7 @@ charinfo *tex_get_charinfo(halfword f, int c)
             int size = sizeof(charinfo);
             charinfo *ci = lmt_memory_calloc(1, (size_t) size);
             if (ci) {
-                lmt_font_state.font_data.allocated += size;
+                lmt_font_state.font_data.extra += size;
                 set_font_left_boundary(f, ci);
             } else {
                 tex_overflow_error("font", size);
@@ -367,7 +369,7 @@ charinfo *tex_get_charinfo(halfword f, int c)
             int size = sizeof(charinfo);
             charinfo *ci = lmt_memory_calloc(1, (size_t) size);
             if (ci) {
-                lmt_font_state.font_data.allocated += size;
+                lmt_font_state.font_data.extra += size;
                 set_font_right_boundary(f, ci);
             } else {
                 tex_overflow_error("font", size);
@@ -397,10 +399,16 @@ static charinfo *tex_aux_char_info(halfword f, int c)
     return &(lmt_font_state.fonts[f]->chardata[0]);
 }
 
-static scaled tex_aux_font_weight_done(halfword f, scaled v)
+// static scaled tex_aux_font_weight_done(halfword f, scaled v)
+// {
+//  // return v ? lround(65.536 * v * (double) lmt_font_state.fonts[f]->design_size / (double) lmt_font_state.fonts[f]->size) : 0;
+//     return v ? lround(v * lmt_font_state.fonts[f]->weight) : 0;
+// }
+
+static scaled tex_aux_glyph_weight_done(halfword g)
 {
- // return v ? lround(65.536 * v * (double) lmt_font_state.fonts[f]->design_size / (double) lmt_font_state.fonts[f]->size) : 0;
-    return v ? lround(v * lmt_font_state.fonts[f]->weight) : 0;
+    return glyph_weight(g) && tex_has_glyph_option(g, glyph_option_weight_less) 
+        ? 0 : lround(glyph_weight(g) * lmt_font_state.fonts[glyph_font(g)]->weight);
 }
 
 void tex_char_process(halfword f, int c) 
@@ -459,7 +467,7 @@ int tex_math_char_exists(halfword f, int c, int size)
     a little.
 */
 
-int tex_get_math_char(halfword f, int c, int size, scaled *scale, int direction)
+int tex_get_math_char(halfword f, int c, int size, scaled *scale, scaled *xscale, scaled *yscale, scaled *weight, int direction)
 {
     int id = aux_find_charinfo_id(f, c);
     texfont *tf = lmt_font_state.fonts[f];
@@ -501,8 +509,17 @@ int tex_get_math_char(halfword f, int c, int size, scaled *scale, int direction)
     }
     if (scale) {
         *scale = tex_get_math_font_scale(f, size);
+        *xscale = tex_get_math_font_x_scale(f, size);
+        *yscale = tex_get_math_font_y_scale(f, size);
+        *weight = tex_get_math_font_weight(f, size);
         if (! *scale) {
             *scale = scaling_factor;
+        }
+        if (! *xscale) {
+            *xscale = scaling_factor;
+        }
+        if (! *yscale) {
+            *yscale = scaling_factor;
         }
     }
     return c;
@@ -676,7 +693,7 @@ void tex_set_font_math_parameters(halfword f, int b)
         size_t size = ((size_t) b + 2) * sizeof(scaled);
         scaled *data = lmt_memory_realloc(font_math_parameter_base(f), size);
         if (data) {
-            lmt_font_state.font_data.allocated += (int) (((size_t) b - i + 1) * sizeof(scaled));
+            lmt_font_state.font_data.extra += (int) (((size_t) b - i + 1) * sizeof(scaled));
             font_math_parameter_base(f) = data;
             font_math_parameter_count(f) = b;
             while (i < b) {
@@ -855,32 +872,6 @@ halfword tex_checked_font_adjust(halfword adjust_spacing, halfword adjust_spacin
     lmt_font_state.adjust_shrink = 0;
     lmt_font_state.adjust_stretch = 0;
     return adjust_spacing;
-}
-
-/*tex This returns the multiple of |font_step(f)| that is nearest to |e|. */
-
-int tex_fix_expand_value(halfword f, int e)
-{
-    int max_expand, neg;
-    if (e == 0) {
-        return 0;
-    } else if (e < 0) {
-        e = -e;
-        neg = 1;
-        max_expand = font_max_shrink(f);
-    } else {
-        neg = 0;
-        max_expand = font_max_stretch(f);
-    }
-    if (e > max_expand) {
-        e = max_expand;
-    } else {
-        int step = font_step(f);
-        if (e % step > 0) {
-            e = step * tex_round_xn_over_d(e, 1, step);
-        }
-    }
-    return neg ? -e : e;
 }
 
 int tex_read_font_info(char *cnom, scaled s)
@@ -1671,7 +1662,7 @@ int tex_tex_def_font(int a)
         lmt_fileio_state.name_in_progress = 1;
         if (tex_scan_keyword("at")) {
             /*tex Put the positive 'at' size into |s|. */
-            s = tex_scan_dimension(0, 0, 0, 0, NULL);
+            s = tex_scan_dimension(0, 0, 0, 0, NULL, NULL);
             if ((s <= 0) || (s >= 0x8000000)) { 
                 tex_handle_error(
                     normal_error_type,
@@ -1683,7 +1674,7 @@ int tex_tex_def_font(int a)
                 s = 10 * unity;
             }
         } else if (tex_scan_keyword("scaled")) {
-            s = tex_scan_integer(0, NULL);
+            s = tex_scan_integer(0, NULL, NULL);
             if ((s <= 0) || (s > 0x8000)) {
                 tex_handle_error(
                     normal_error_type,
@@ -1707,22 +1698,29 @@ int tex_tex_def_font(int a)
 }
 
 /*tex
+
     When \TEX\ wants to typeset a character that doesn't exist, the character node is not created;
     thus the output routine can assume that characters exist when it sees them. The following
-    procedure prints a warning message unless the user has suppressed it.
+    procedure prints a warning message unless the user has suppressed it. When this feature was 
+    extended in \LUATEX\ (2025) that was a good moment to get rid of the one occasion where we did
+    not yet use the callback but the message instead (in math because then we really need the 
+    character). Contrary to \LUATEX\ we never error because the backend where all is resolved can 
+    do that if needed. 
+
 */
 
-void tex_char_warning(halfword f, int c)
+void tex_missing_character(halfword n, halfword f, halfword c, halfword where) 
 {
-    if (tracing_lost_chars_par > 0) {
-        /*tex saved value of |tracing_online| */
+    int callback_id = lmt_callback_defined(missing_character_callback);
+    if (callback_id > 0) {
+        lmt_run_callback(lmt_lua_state.lua_instance, callback_id, "dNdd->", where, n, f, c);
+    } else if (tracing_lost_chars_par > 0) { 
         int old_setting = tracing_online_par;
-        /*tex index to current digit; we assume that $0\L n<16^{22}$ */
         if (tracing_lost_chars_par > 1) {
             tracing_online_par = 1;
         }
         tex_begin_diagnostic();
-        tex_print_format("[font: missing character, character %c (%U), font '%s']", c, c, font_name(f));
+        tex_print_format("[font: missing character, character %c (%U), font '%s', location %i]", c, c, font_name(f), where);
         tex_end_diagnostic();
         tracing_online_par = old_setting;
     }
@@ -1985,33 +1983,33 @@ scaled tex_char_inner_y_offset_from_font(halfword f, halfword c)
 scaled tex_char_width_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    return tex_aux_glyph_x_scaled(g, ci->width + 2 * tex_aux_font_weight_done(glyph_font(g),glyph_weight(g)));
+    return tex_aux_glyph_x_scaled(g, ci->width + 2 * tex_aux_glyph_weight_done(g));
 }
 
 scaled tex_char_height_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    return tex_aux_glyph_y_scaled(g, ci->height + (has_charinfo_tag(ci,below_baseline_tag) ? 0 : tex_aux_font_weight_done(glyph_font(g),glyph_weight(g))));
+    return tex_aux_glyph_y_scaled(g, ci->height + (has_charinfo_tag(ci,below_baseline_tag) ? 0 : tex_aux_glyph_weight_done(g)));
 }
 
 scaled tex_char_depth_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    return tex_aux_glyph_y_scaled(g, ci->depth + (has_charinfo_tag(ci,above_baseline_tag) ? 0 : tex_aux_font_weight_done(glyph_font(g),glyph_weight(g))));
+    return tex_aux_glyph_y_scaled(g, ci->depth + (has_charinfo_tag(ci,above_baseline_tag) ? 0 : tex_aux_glyph_weight_done(g)));
 }
 
 scaled tex_char_total_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    scaled ht = ci->height + (has_charinfo_tag(ci,below_baseline_tag) ? 0 : tex_aux_font_weight_done(glyph_font(g),glyph_weight(g)));
-    scaled dp = ci->depth + (has_charinfo_tag(ci,above_baseline_tag) ? 0 : tex_aux_font_weight_done(glyph_font(g),glyph_weight(g)));
+    scaled ht = ci->height + (has_charinfo_tag(ci,below_baseline_tag) ? 0 : tex_aux_glyph_weight_done(g));
+    scaled dp = ci->depth + (has_charinfo_tag(ci,above_baseline_tag) ? 0 : tex_aux_glyph_weight_done(g));
     return tex_aux_glyph_y_scaled(g, (ht > 0 ? ht : 0) + (dp > 0 ? dp : 0)); /* so not progression */
 }
 
 scaled tex_char_italic_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
- // return tex_aux_glyph_x_scaled(g, ci->italic + tex_aux_font_weight_done(glyph_font(g),glyph_weight(g)));
+ // return tex_aux_glyph_x_scaled(g, ci->italic + tex_aux_glyph_weight_done(g));
     return tex_aux_glyph_x_scaled(g, ci->italic);
 }
 
@@ -2019,7 +2017,7 @@ scaledkrn tex_char_corner_kerns_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
     if (ci->math) { 
-        scaled w = tex_aux_font_weight_done(glyph_font(g),glyph_weight(g));
+        scaled w = tex_aux_glyph_weight_done(g);
         return (scaledkrn) { 
             .bl = ci->math->bottom_left_kern  ? tex_aux_glyph_y_scaled(g, ci->math->bottom_left_kern  + w) : 0,
             .br = ci->math->bottom_right_kern ? tex_aux_glyph_y_scaled(g, ci->math->bottom_right_kern + w) : 0,
@@ -2034,13 +2032,13 @@ scaledkrn tex_char_corner_kerns_from_glyph(halfword g)
 scaled tex_char_left_protrusion_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_quality_char_info(glyph_font(g), glyph_character(g));
-    return ci ? tex_aux_glyph_x_scaled(g, ci->leftprotrusion + tex_aux_font_weight_done(glyph_font(g),glyph_weight(g))) : 0;
+    return ci ? tex_aux_glyph_x_scaled(g, ci->leftprotrusion + tex_aux_glyph_weight_done(g)) : 0;
 }
 
 scaled tex_char_right_protrusion_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_quality_char_info(glyph_font(g), glyph_character(g));
-    return ci ? tex_aux_glyph_x_scaled(g, ci->rightprotrusion + tex_aux_font_weight_done(glyph_font(g),glyph_weight(g))) : 0;
+    return ci ? tex_aux_glyph_x_scaled(g, ci->rightprotrusion + tex_aux_glyph_weight_done(g)) : 0;
 }
 
 // halfword tex_char_options_from_glyph(halfword g)
@@ -2062,7 +2060,7 @@ scaled tex_char_right_protrusion_from_glyph(halfword g)
 scaledwhd tex_char_whd_from_glyph(halfword g)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    scaled w = tex_aux_font_weight_done(glyph_font(g),glyph_weight(g));
+    scaled w = tex_aux_glyph_weight_done(g);
     return (scaledwhd) {
         .wd = tex_aux_glyph_x_scaled(g, ci->width  + w * 2),
         .ht = tex_aux_glyph_y_scaled(g, ci->height + (has_charinfo_tag(ci,below_baseline_tag) ? 0 : w)),
@@ -2090,7 +2088,7 @@ scaled tex_calculated_char_width(halfword f, halfword c, halfword ex)
 scaled tex_calculated_glyph_width(halfword g, halfword ex)
 {
     charinfo *ci = tex_aux_char_info(glyph_font(g), glyph_character(g));
-    scaled wd = tex_aux_glyph_x_scaled(g, ci->width + 2 * tex_aux_font_weight_done(glyph_font(g),glyph_weight(g)));
+    scaled wd = tex_aux_glyph_x_scaled(g, ci->width + 2 * tex_aux_glyph_weight_done(g));
     return ex ? tex_round_xn_over_d(wd, scaling_factor + ex, scaling_factor) : wd;
 }
 
@@ -2162,17 +2160,6 @@ void tex_set_font_original(halfword f, const char *s)
     set_font_original(f, s ? lmt_memory_strdup(s) : NULL);
 }
 
-// scaled tex_get_math_font_scale(halfword f, halfword size)
-// {
-//     scaled scale = scaling_factor;
-//     switch (size) {
-//         case 2: scale = lmt_font_state.fonts[f]->mathscales[2] ? lmt_font_state.fonts[f]->mathscales[2] : glyph_scriptscript_scale_par; break;
-//         case 1: scale = lmt_font_state.fonts[f]->mathscales[1] ? lmt_font_state.fonts[f]->mathscales[1] : glyph_script_scale_par;       break;
-//         case 0: scale = lmt_font_state.fonts[f]->mathscales[0] ? lmt_font_state.fonts[f]->mathscales[0] : glyph_text_scale_par;         break;
-//     }
-//     return scale ? scale : scaling_factor;
-// 
-
 scaled tex_get_math_font_scale(halfword f, halfword size)
 {
     scaled scale;
@@ -2184,6 +2171,72 @@ scaled tex_get_math_font_scale(halfword f, halfword size)
     scale = scaledround(0.001 * (double) scale);
     return scale ? scale : scaling_factor;
 }
+
+scaled tex_get_math_font_x_scale(halfword f, halfword size)
+{
+    scaled scale;
+    switch (size) {
+        case  2: scale = (lmt_font_state.fonts[f]->mathxscales[2] ? lmt_font_state.fonts[f]->mathxscales[2] : scaling_factor) * glyph_scriptscript_scale_par; break;
+        case  1: scale = (lmt_font_state.fonts[f]->mathxscales[1] ? lmt_font_state.fonts[f]->mathxscales[1] : scaling_factor) * glyph_script_scale_par;       break;
+        default: scale = (lmt_font_state.fonts[f]->mathxscales[0] ? lmt_font_state.fonts[f]->mathxscales[0] : scaling_factor) * glyph_text_scale_par;         break;
+    }
+    scale = scaledround(0.001 * (double) scale);
+    return scale ? scale : scaling_factor;
+}
+
+scaled tex_get_math_font_y_scale(halfword f, halfword size)
+{
+    scaled scale;
+    switch (size) {
+        case  2: scale = (lmt_font_state.fonts[f]->mathyscales[2] ? lmt_font_state.fonts[f]->mathyscales[2] : scaling_factor) * glyph_scriptscript_scale_par; break;
+        case  1: scale = (lmt_font_state.fonts[f]->mathyscales[1] ? lmt_font_state.fonts[f]->mathyscales[1] : scaling_factor) * glyph_script_scale_par;       break;
+        default: scale = (lmt_font_state.fonts[f]->mathyscales[0] ? lmt_font_state.fonts[f]->mathyscales[0] : scaling_factor) * glyph_text_scale_par;         break;
+    }
+    scale = scaledround(0.001 * (double) scale);
+    return scale ? scale : scaling_factor;
+}
+
+scaled tex_get_math_font_weight(halfword f, halfword size)
+{
+    switch (size) {
+        case  2: return lmt_font_state.fonts[f]->mathweights[2];
+        case  1: return lmt_font_state.fonts[f]->mathweights[1];
+        default: return lmt_font_state.fonts[f]->mathweights[0];
+    }
+}
+
+// scaled tex_raw_math_font_scale(halfword f, halfword size)
+// {
+//     scaled scale;
+//     switch (size) {
+//         case  2: scale = (lmt_font_state.fonts[f]->mathscales[2] ? lmt_font_state.fonts[f]->mathscales[2] : scaling_factor) * glyph_scriptscript_scale_par; break;
+//         case  1: scale = (lmt_font_state.fonts[f]->mathscales[1] ? lmt_font_state.fonts[f]->mathscales[1] : scaling_factor) * glyph_script_scale_par;       break;
+//         default: scale = (lmt_font_state.fonts[f]->mathscales[0] ? lmt_font_state.fonts[f]->mathscales[0] : scaling_factor) * glyph_text_scale_par;         break;
+//     }
+//     return scale ? scale : scaling_factor * scaling_factor;
+// }
+// 
+// scaled tex_raw_math_font_x_scale(halfword f, halfword size)
+// {
+//     scaled scale;
+//     switch (size) {
+//         case  2: scale = (lmt_font_state.fonts[f]->mathxscales[2] ? lmt_font_state.fonts[f]->mathxscales[2] : scaling_factor) * glyph_scriptscript_scale_par; break;
+//         case  1: scale = (lmt_font_state.fonts[f]->mathxscales[1] ? lmt_font_state.fonts[f]->mathxscales[1] : scaling_factor) * glyph_script_scale_par;       break;
+//         default: scale = (lmt_font_state.fonts[f]->mathxscales[0] ? lmt_font_state.fonts[f]->mathxscales[0] : scaling_factor) * glyph_text_scale_par;         break;
+//     }
+//     return scale ? scale : scaling_factor * scaling_factor;
+// }
+// 
+// scaled tex_raw_math_font_y_scale(halfword f, halfword size)
+// {
+//     scaled scale;
+//     switch (size) {
+//         case  2: scale = (lmt_font_state.fonts[f]->mathyscales[2] ? lmt_font_state.fonts[f]->mathyscales[2] : scaling_factor) * glyph_scriptscript_scale_par; break;
+//         case  1: scale = (lmt_font_state.fonts[f]->mathyscales[1] ? lmt_font_state.fonts[f]->mathyscales[1] : scaling_factor) * glyph_script_scale_par;       break;
+//         default: scale = (lmt_font_state.fonts[f]->mathyscales[0] ? lmt_font_state.fonts[f]->mathyscales[0] : scaling_factor) * glyph_text_scale_par;         break;
+//     }
+//     return scale ? scale : scaling_factor * scaling_factor;
+// }
 
 scaled tex_get_math_font_factor(halfword size)
 {

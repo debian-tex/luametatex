@@ -38,6 +38,11 @@ typedef enum spec_units {
     no_unit,
     pt_unit,
     mu_unit,
+ // fi_unit,    /* todo */
+ // fil_unit,
+ // fill_unit,
+ // filll_unit,
+ // filll_unit,
 } spec_units;
 
 /*tex
@@ -70,6 +75,7 @@ extern void        tex_print_cs_name          (halfword p);                    /
 extern void        tex_print_str              (const char *s);
 extern void        tex_print_str_esc          (const char *s);
 extern void        tex_print_posit            (halfword d); 
+extern void        tex_print_posit_5          (halfword d); 
 extern void        tex_print_dimension        (scaled d, int unit);            /*tex prints a dimension with pt */
 extern void        tex_print_sparse_dimension (scaled d, int unit);            /*tex prints a dimension with pt */
 extern void        tex_print_unit             (int unit);                      /*tex prints a glue component */
@@ -110,6 +116,13 @@ static inline int tex_is_active_cs(strnumber s)
         return (ss[0] == active_first) && (ss[1] == active_second) && (ss[2] == active_third);
     } else {
         return 0;
+    }
+}
+
+static inline void tex_aux_show_group_count(int n)
+{
+    for (int i = 1; i <= n; i++) {
+        tex_print_str("{}");
     }
 }
 

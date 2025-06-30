@@ -20,7 +20,7 @@
 ** may have any of these metamethods. (First access that fails after the
 ** clearing will set the bit again.)
 */
-#define invalidateTMcache(t)	((t)->flags &= ~maskflags)
+#define invalidateTMcache(t)	((t)->flags &= cast_byte(~maskflags))
 
 
 /*
@@ -47,20 +47,21 @@
 
 
 #define luaH_fastgeti(t,k,res,tag) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k); \
-    if ((u - 1u < h->alimit)) { \
-      tag = *getArrTag(h,(u)-1u); \
+  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
+    if ((u < h->asize)) { \
+      tag = *getArrTag(h, u); \
       if (!tagisempty(tag)) { farr2val(h, u, tag, res); }} \
-    else { tag = luaH_getint(h, u, res); }}
+    else { tag = luaH_getint(h, (k), res); }}
 
 
 #define luaH_fastseti(t,k,val,hres) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k); \
-    if ((u - 1u < h->alimit)) { \
-      lu_byte *tag = getArrTag(h,(u)-1u); \
-      if (tagisempty(*tag)) hres = ~cast_int(u); \
-      else { fval2arr(h, u, tag, val); hres = HOK; }} \
-    else { hres = luaH_psetint(h, u, val); }}
+  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
+    if ((u < h->asize)) { \
+      lu_byte *tag = getArrTag(h, u); \
+      if (checknoTM(h->metatable, TM_NEWINDEX) || !tagisempty(*tag)) \
+        { fval2arr(h, u, tag, val); hres = HOK; } \
+      else hres = ~cast_int(u); } \
+    else { hres = luaH_psetint(h, k, val); }}
 
 
 /* results from pset */
@@ -82,41 +83,55 @@
 ** in the array part, the encoding is (~array index), a negative value.
 ** The value HNOTATABLE is used by the fast macros to signal that the
 ** value being indexed is not a table.
+** (The size for the array part is limited by the maximum power of two
+** that fits in an unsigned integer; that is INT_MAX+1. So, the C-index
+** ranges from 0, which encodes to -1, to INT_MAX, which encodes to
+** INT_MIN. The size of the hash part is limited by the maximum power of
+** two that fits in a signed integer; that is (INT_MAX+1)/2. So, it is
+** safe to add HFIRSTNODE to any index there.)
 */
 
 
 /*
 ** The array part of a table is represented by an inverted array of
 ** values followed by an array of tags, to avoid wasting space with
-** padding.  The 'array' pointer points to the junction of the two
-** arrays, so that values are indexed with negative indices and tags
-** with non-negative indices.
+** padding. In between them there is an unsigned int, explained later.
+** The 'array' pointer points between the two arrays, so that values are
+** indexed with negative indices and tags with non-negative indices.
 
-                     Values                      Tags
-        --------------------------------------------------------
-         ...  |   Value 1     |   Value 0     |0|1|...
-        --------------------------------------------------------
-                                               ^ t->array
+             Values                              Tags
+  --------------------------------------------------------
+  ...  |   Value 1     |   Value 0     |unsigned|0|1|...
+  --------------------------------------------------------
+                                       ^ t->array
 
 ** All accesses to 't->array' should be through the macros 'getArrTag'
 ** and 'getArrVal'.
 */
 
-/* Computes the address of the tag for the abstract index 'k' */
-#define getArrTag(t,k)	(cast(lu_byte*, (t)->array) + (k))
+/* Computes the address of the tag for the abstract C-index 'k' */
+#define getArrTag(t,k)	(cast(lu_byte*, (t)->array) + sizeof(unsigned) + (k))
 
-/* Computes the address of the value for the abstract index 'k' */
+/* Computes the address of the value for the abstract C-index 'k' */
 #define getArrVal(t,k)	((t)->array - 1 - (k))
 
 
 /*
-** Move TValues to/from arrays, using Lua indices
+** The unsigned between the two arrays is used as a hint for #t;
+** see luaH_getn. It is stored there to avoid wasting space in
+** the structure Table for tables with no array part.
+*/
+#define lenhint(t)	cast(unsigned*, (t)->array)
+
+
+/*
+** Move TValues to/from arrays, using C indices
 */
 #define arr2obj(h,k,val)  \
-  ((val)->tt_ = *getArrTag(h,(k)-1u), (val)->value_ = *getArrVal(h,(k)-1u))
+  ((val)->tt_ = *getArrTag(h,(k)), (val)->value_ = *getArrVal(h,(k)))
 
 #define obj2arr(h,k,val)  \
-  (*getArrTag(h,(k)-1u) = (val)->tt_, *getArrVal(h,(k)-1u) = (val)->value_)
+  (*getArrTag(h,(k)) = (val)->tt_, *getArrVal(h,(k)) = (val)->value_)
 
 
 /*
@@ -125,21 +140,19 @@
 ** precomputed tag value or address as an extra argument.
 */
 #define farr2val(h,k,tag,res)  \
-  ((res)->tt_ = tag, (res)->value_ = *getArrVal(h,(k)-1u))
+  ((res)->tt_ = tag, (res)->value_ = *getArrVal(h,(k)))
 
 #define fval2arr(h,k,tag,val)  \
-  (*tag = (val)->tt_, *getArrVal(h,(k)-1u) = (val)->value_)
+  (*tag = (val)->tt_, *getArrVal(h,(k)) = (val)->value_)
 
 
-LUAI_FUNC int luaH_get (Table *t, const TValue *key, TValue *res);
-LUAI_FUNC int luaH_getshortstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC int luaH_getstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC int luaH_getint (Table *t, lua_Integer key, TValue *res);
+LUAI_FUNC lu_byte luaH_get (Table *t, const TValue *key, TValue *res);
+LUAI_FUNC lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res);
+LUAI_FUNC lu_byte luaH_getstr (Table *t, TString *key, TValue *res);
+LUAI_FUNC lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res);
 
 /* Special get for metamethods */
 LUAI_FUNC const TValue *luaH_Hgetshortstr (Table *t, TString *key);
-
-LUAI_FUNC TString *luaH_getstrkey (Table *t, TString *key);
 
 LUAI_FUNC int luaH_psetint (Table *t, lua_Integer key, TValue *val);
 LUAI_FUNC int luaH_psetshortstr (Table *t, TString *key, TValue *val);
@@ -157,10 +170,10 @@ LUAI_FUNC Table *luaH_new (lua_State *L);
 LUAI_FUNC void luaH_resize (lua_State *L, Table *t, unsigned nasize,
                                                     unsigned nhsize);
 LUAI_FUNC void luaH_resizearray (lua_State *L, Table *t, unsigned nasize);
+LUAI_FUNC lu_mem luaH_size (Table *t);
 LUAI_FUNC void luaH_free (lua_State *L, Table *t);
 LUAI_FUNC int luaH_next (lua_State *L, Table *t, StkId key);
 LUAI_FUNC lua_Unsigned luaH_getn (Table *t);
-LUAI_FUNC unsigned luaH_realasize (const Table *t);
 
 
 #if defined(LUA_DEBUG)

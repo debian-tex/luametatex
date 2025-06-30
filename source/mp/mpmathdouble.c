@@ -55,7 +55,7 @@ even.
 
 */
 
-inline static double mp_double_make_fraction (double p, double q) { 
+static inline double mp_double_make_fraction (double p, double q) { 
  // return (p / q) * fraction_multiplier; 
     return p == 0.0 ? 0.0 : (p / q) * fraction_multiplier; 
 }
@@ -63,12 +63,12 @@ inline static double mp_double_make_fraction (double p, double q) {
 // printf("%f %f %f %f\n",p,q,p*q,(p * q) / fraction_multiplier);
 // -4096.000000 0.000000 -0.000000 -0.000000
 
-inline static double mp_double_take_fraction(double p, double q) { 
+static inline double mp_double_take_fraction(double p, double q) { 
  // return (p * q) / fraction_multiplier; 
     return p == 0.0 ? 0.0 : q == 0.0 ? 0.0 : (p * q) / fraction_multiplier; 
 }
 
-inline static double mp_double_make_scaled(double p, double q) { 
+static inline double mp_double_make_scaled(double p, double q) { 
  // return p / q; 
     return p == 0.0 ? 0.0 : p / q; 
 }
@@ -729,13 +729,17 @@ static void mp_double_n_arg(MP mp, mp_number *ret, mp_number *x_orig, mp_number 
         }
     */
     if (x_orig->data.dval == 0.0 && y_orig->data.dval == 0.0) {
-        mp_error(
-            mp,
-            "angle(0,0) is taken as zero",
-            "The 'angle' between two identical points is undefined. I'm zeroing this one.\n"
-            "Proceed, with fingers crossed."
-        );
-        ret->data.dval = 0;
+        if (internal_value(mp_default_zero_angle_internal).data.dval < 0) {
+            mp_error(
+                mp,
+                "angle(0,0) is taken as zero",
+                "The 'angle' between two identical points is undefined. I'm zeroing this one.\n"
+                "Proceed, with fingers crossed."
+            );
+            ret->data.dval = internal_value(mp_default_zero_angle_internal).data.dval;
+        } else { 
+            ret->data.dval = 0;
+        }
     } else {
         ret->type = mp_angle_type;
         ret->data.dval = atan2(y_orig->data.dval, x_orig->data.dval) * (180.0 / PI) * angle_multiplier;

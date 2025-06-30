@@ -48,6 +48,7 @@ hash_state_info lmt_hash_state = {
         .ptr       = 0,
         .initial   = 0,
         .offset    = 0, // eqtb_size,
+        .extra     = 0, 
     },
     .eqtb_data = {
         .minimum   = min_hash_size,
@@ -60,6 +61,7 @@ hash_state_info lmt_hash_state = {
         .ptr       = 0,
         .initial   = 0,
         .offset    = 0,
+        .extra     = 0, 
     },
     .eqtb        = NULL,
     .no_new_cs   = 1,
@@ -145,7 +147,7 @@ static int tex_aux_room_in_hash(void)
             lmt_hash_state.hash = hash;
             lmt_hash_state.eqtb = eqtb;
             /*tex
-                This is not really needed because we now dp this when a new id is created which
+                This is not really needed because we now do this when a new id is created which
                 is a better place anyway. But we play safe and still do it:
             */
             for (int i = lmt_hash_state.hash_data.top + 1; i <= size; i++) {
@@ -184,7 +186,7 @@ static int tex_aux_room_in_hash(void)
 
 */
 
-inline static halfword tex_aux_compute_hash(const char *j, unsigned l)
+static inline halfword tex_aux_compute_hash(const char *j, unsigned l)
 {
     halfword h = (unsigned const char) j[0];
     for (unsigned k = 1; k < l; k++) {
@@ -193,7 +195,7 @@ inline static halfword tex_aux_compute_hash(const char *j, unsigned l)
     return h;
 }
 
-inline static halfword tex_aux_compute_prim(const char *j, unsigned l)
+static inline halfword tex_aux_compute_prim(const char *j, unsigned l)
 {
     halfword h = (unsigned const char) j[0];
     for (unsigned k = 1; k < l; k++) {
@@ -323,15 +325,15 @@ void tex_dump_hashtable(dumpstream f)
 {
     dump_int(f, lmt_hash_state.eqtb_data.top);
     lmt_hash_state.eqtb_data.ptr = frozen_control_sequence - 1 - lmt_hash_state.eqtb_data.top + lmt_hash_state.hash_data.ptr;
-    /* the root entries, i.e. the direct hash slots */
+    /*tex The root entries, i.e. the direct hash slots, these are sparse. */
     for (halfword p = hash_base; p <= lmt_hash_state.eqtb_data.top; p++) {
         if (cs_text(p)) {
             dump_int(f, p);
-            dump_int(f, lmt_hash_state.hash[p]);
+            dump_mem(f, lmt_hash_state.hash[p]);
             ++lmt_hash_state.eqtb_data.ptr;
         }
     }
-    /* the chain entries, i.e. the follow up list slots => eqtb */
+    /*tex The chain entries, these are not sparse. */
     dump_things(f, lmt_hash_state.hash[lmt_hash_state.eqtb_data.top + 1], special_sequence_base - lmt_hash_state.eqtb_data.top);
     if (lmt_hash_state.hash_data.ptr > 0) {
         dump_things(f, lmt_hash_state.hash[eqtb_size + 1], lmt_hash_state.hash_data.ptr);
@@ -348,7 +350,7 @@ void tex_undump_hashtable(dumpstream f)
             halfword q;
             undump_int(f, q);
             if (q >= (p + 1) && q <= lmt_hash_state.eqtb_data.top) {
-                undump_int(f, lmt_hash_state.hash[q]);
+                undump_mem(f, lmt_hash_state.hash[q]);
                 p = q;
             } else {
                 goto BAD;
@@ -458,10 +460,10 @@ void tex_primitive(int cmd_origin, const char *str, singleword cmd, halfword chr
 
 */
 
-static halfword tex_aux_insert_id(halfword p, const unsigned char *j, unsigned int l)
+static halfword tex_aux_insert_id(halfword p, const unsigned char *str, unsigned int l)
 {
     if (cs_text(p) > 0) {
-     RESTART:
+      RESTART:
         if (lmt_hash_state.hash_data.ptr < lmt_hash_state.hash_data.allocated) {
             ++lmt_hash_state.hash_data.ptr;
             cs_next(p) = lmt_hash_state.hash_data.ptr + eqtb_size;
@@ -486,7 +488,7 @@ static halfword tex_aux_insert_id(halfword p, const unsigned char *j, unsigned i
             p = lmt_hash_state.eqtb_data.top;
         }
     }
-    cs_text(p) = tex_push_string(j, l);
+    cs_text(p) = tex_push_string(str, l);
     copy_eqtb_entry(p, undefined_control_sequence);
     ++lmt_hash_state.eqtb_data.ptr;
     return p;
@@ -542,6 +544,27 @@ halfword tex_id_locate_only(int j, int l)
         }
     }
     return undefined_control_sequence;
+}
+
+int tex_id_locate_steps(const char *cs)
+{
+    if (cs) { 
+        unsigned int l = (unsigned) strlen(cs);
+        halfword p = tex_aux_compute_hash(cs, l) + hash_base;
+        int steps = 0;
+        while (p) {
+            strnumber s = cs_text(p);
+            ++steps;
+            if ((s > 0) && (str_length(s) == l) && memcmp(str_string(s), cs, l) == 0) {            
+                return steps;
+            } else {
+                p = cs_next(p);
+            }
+        }
+        return -steps;
+    } else { 
+        return 0; 
+    }
 }
 
 /*tex
@@ -683,10 +706,12 @@ static void tex_aux_print_chr_cmd(const char *s, halfword cmd, halfword chr)
 
 /*tex |\TEX82| Didn't print the |cmd,idx| information, but it may be useful. */
 
-static void tex_aux_prim_cmd_chr(quarterword cmd, halfword chr)
+static void tex_aux_prim_cmd_chr(quarterword cmd, halfword idx, int is_chr)
 {
     if (cmd <= last_visible_cmd) {
-        int idx = chr - lmt_primitive_state.prim_data[cmd].offset;
+        if (is_chr) {
+            idx -= lmt_primitive_state.prim_data[cmd].offset;
+        }
         if (idx >= 0 && idx < lmt_primitive_state.prim_data[cmd].subids) {
             if (lmt_primitive_state.prim_data[cmd].names && lmt_primitive_state.prim_data[cmd].names[idx]) {
                 tex_print_tex_str_esc(lmt_primitive_state.prim_data[cmd].names[idx]);
@@ -723,6 +748,9 @@ void tex_print_cmd_flags(halfword cs, halfword cmd, int flags, int escaped)
 {
     if (flags) {
         flags = eq_flag(cs);
+        if (eq_level(cs) == level_one) { 
+            (escaped ? tex_print_str_esc : tex_print_str)("global "); 
+        }
         if (is_frozen   (flags)) { (escaped ? tex_print_str_esc : tex_print_str)("frozen "   ); }
         if (is_permanent(flags)) { (escaped ? tex_print_str_esc : tex_print_str)("permanent "); }
         if (is_immutable(flags)) { (escaped ? tex_print_str_esc : tex_print_str)("immutable "); }
@@ -791,7 +819,7 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             break;
         case if_test_cmd:
             if (chr <= last_if_test_code) {
-                tex_aux_prim_cmd_chr(cmd, chr);
+                tex_aux_prim_cmd_chr(cmd, chr, 1);
             } else {
                 tex_aux_show_lua_call("luacondition", chr - last_if_test_code);
             }
@@ -833,21 +861,21 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_str("macro");
             break;
         case internal_toks_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_toks_cmd:
             tex_print_str_esc("toks");
             tex_print_int(register_toks_number(chr));
             break;
         case internal_integer_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_integer_cmd:
             tex_print_str_esc("count");
             tex_print_int(register_integer_number(chr));
             break;
         case internal_attribute_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_attribute_cmd:
             tex_print_str_esc("attribute");
@@ -858,24 +886,24 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_int(register_posit_number(chr));
             break;
         case internal_posit_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case internal_dimension_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_dimension_cmd:
             tex_print_str_esc("dimen");
             tex_print_int(register_dimension_number(chr));
             break;
         case internal_glue_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_glue_cmd:
             tex_print_str_esc("skip");
             tex_print_int(register_glue_number(chr));
             break;
         case internal_muglue_cmd:
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
         case register_muglue_cmd:
             tex_print_str_esc("muskip");
@@ -887,10 +915,6 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             break;
         case integer_cmd:
             tex_print_str("integer ");
-            tex_print_int(chr);
-            break;
-        case index_cmd:
-            tex_print_str("parameter ");
             tex_print_int(chr);
             break;
         case dimension_cmd:
@@ -909,6 +933,20 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_str("mugluespec ");
             tex_print_spec(chr, mu_unit);
             break;
+        case index_cmd:
+            tex_print_str("parameter ");
+            tex_print_int(chr);
+            break;
+# if (match_experiment)
+case integer_reference_cmd:
+    tex_print_str(node_token_flagged(chr) ? "large" : "small");
+    tex_print_str(" integer reference");
+    break;
+case dimension_reference_cmd:
+    tex_print_str(node_token_flagged(chr) ? "large" : "small");
+    tex_print_str(" dimension reference");
+    break;
+# endif 
         case mathspec_cmd:
             switch (node_subtype(chr)) {
                 case tex_mathcode:
@@ -924,14 +962,34 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             tex_print_mathspec(chr);
             break;
         case fontspec_cmd:
-            {
-                /* We don't check for validity here. */
-                tex_print_str("fontspec ");
-                tex_print_fontspec(chr);
+            /* We don't check for validity here. */
+            tex_print_str("fontspec ");
+            tex_print_fontspec(chr);
+            break;
+        case specificationspec_cmd:
+            /* Mo need now for more details. */
+            tex_print_str("specification ");
+            if (chr) {
+                switch (node_subtype(chr)) {
+                    case integer_list_code:
+                        tex_print_str_esc("count");
+                        break;
+                    case dimension_list_code:
+                        tex_print_str_esc("dimen");
+                        break;
+                    case posit_list_code:
+                        tex_print_str_esc("posit");
+                        break;
+                    default:
+                        tex_aux_prim_cmd_chr(specification_cmd, node_subtype(chr), 0);
+                        break;
+                }
+            } else { 
+                tex_print_str("<unset>");
             }
             break;
         case deep_frozen_end_template_cmd:
-            /*tex Kind of special: |chr| points to |null_list). */
+            /*tex Kind of special: |chr| points to |null_list|. */
             tex_print_str_esc("endtemplate");
             break;
         case deep_frozen_dont_expand_cmd:
@@ -947,7 +1005,7 @@ void tex_print_cmd_chr(singleword cmd, halfword chr)
             break;
         default:
             /*tex These are most commands, actually. Todo: local boxes*/
-            tex_aux_prim_cmd_chr(cmd, chr);
+            tex_aux_prim_cmd_chr(cmd, chr, 1);
             break;
     }
 }

@@ -30,17 +30,17 @@ dir_state_info lmt_dir_state = {
 
 /*tex The next two are used by the linebreak routine; they could be macros. */
 
-inline static halfword tex_aux_push_dir_node(halfword p, halfword d)
+static inline halfword tex_aux_push_dir_node(halfword p, halfword d)
 {
     halfword n = tex_copy_node(d);
     node_next(n) = p;
     return n;
 }
 
-inline static halfword tex_aux_pop_dir_node(halfword p)
+static inline halfword tex_aux_pop_dir_node(halfword p)
 {
     halfword n = node_next(p);
-    tex_flush_node(p);
+    tex_flush_node(p); /* they can have attributes */
     return n;
 }
 
@@ -144,7 +144,7 @@ void tex_initialize_directions(void)
 
 void tex_cleanup_directions(void)
 {
-    tex_flush_node(lmt_dir_state.text_dir_ptr); /* tex_free_node(lmt_dir_state.text_dir_ptr, dir_node_size) */
+    tex_flush_node(lmt_dir_state.text_dir_ptr); /* they can have attributes */
 }
 
 halfword tex_new_dir(quarterword subtype, halfword direction)
@@ -192,7 +192,7 @@ void tex_pop_text_dir_ptr(void)
     if (dir_level(text_dir_ptr) == cur_level) { // maybe > and whole chain 
         /*tex we remove from the head */
         halfword text_dir_tmp = node_next(text_dir_ptr);
-        tex_flush_node(text_dir_ptr);
+        tex_flush_node(text_dir_ptr); /* they can have attributes */
         lmt_dir_state.text_dir_ptr = text_dir_tmp;
     }
     if (tracing_direction_lists) {

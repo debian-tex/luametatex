@@ -40,6 +40,7 @@ string_pool_info lmt_string_pool_state = {
         .ptr       = 0,
         .initial   = 0,
         .offset    = cs_offset_value,
+        .extra     = 0, 
     },
     .string_body_data      = {
         .minimum   = min_body_size,
@@ -52,6 +53,7 @@ string_pool_info lmt_string_pool_state = {
         .ptr       = memory_data_unset,
         .initial   = 0,
         .offset    = 0,
+        .extra     = 0, 
     },
     .reserved              = 0,
     .string_max_length     = 0,
@@ -82,7 +84,7 @@ string_pool_info lmt_string_pool_state = {
 # define initial_temp_string_slots  256
 # define reserved_temp_string_slots   2
 
-inline static void tex_aux_increment_pool_string(int n)
+static inline void tex_aux_increment_pool_string(int n)
 {
     lmt_string_pool_state.string_body_data.allocated += n;
     if (lmt_string_pool_state.string_body_data.allocated > lmt_string_pool_state.string_body_data.size) {
@@ -90,7 +92,7 @@ inline static void tex_aux_increment_pool_string(int n)
     }
 }
 
-inline static void tex_aux_decrement_pool_string(int n)
+static inline void tex_aux_decrement_pool_string(int n)
 {
     lmt_string_pool_state.string_body_data.allocated -= n;
 }
@@ -173,7 +175,7 @@ void tex_initialize_string_pool(void)
     if (size && nullstring) {
         lmt_string_pool_state.string_pool[0].s = nullstring;
         nullstring[0] = '\0';
-        lmt_string_pool_state.string_pool_data.ptr += 1;
+        lmt_string_pool_state.string_pool_data.ptr++;
         tex_reset_cur_string();
     } else {
         tex_overflow_error("pool", size);
@@ -463,7 +465,7 @@ char *tex_makecstring(int s)
 */
 
 /*tex 
-    I might eventually replace this because in qite some calls we know that we knwo that we have
+    I might eventually replace this because in quite some calls we know that we knwo that we have
     a pointer in string space. We can kin dof predict in what cases we are below |cs_offset_value|
     anyway. 
 */
@@ -503,6 +505,14 @@ void tex_compact_string_pool(void)
     tex_print_format("max string length %i, ", max_length);
 }
 
+/*tex 
+    For short strings we use 0xFF as signal for -1. When we reload a zero length string is 
+    also allocated. 
+*/
+
+# define max_short_string 250
+# define no_short_string  255
+
 void tex_dump_string_pool(dumpstream f)
 {
     int n_of_strings = lmt_string_pool_state.string_pool_data.ptr - cs_offset_value;
@@ -514,16 +524,11 @@ void tex_dump_string_pool(dumpstream f)
     dump_via_int(f, n_of_strings);
     dump_via_int(f, max_length);
     dump_via_int(f, total_length);
-    if (max_length > 0 && max_length < 126) {
+    if (max_length > 0 && max_length < max_short_string) {
         /*tex We only have short strings. */
         for (int j = 0; j < n_of_strings; j++) {
-            int l = (int) lmt_string_pool_state.string_pool[j].l;
-            char c;
-            if (! lmt_string_pool_state.string_pool[j].s) {
-                l = -1;
-            }
-            c = (char) l;
-            dump_things(f, c, 1);
+            unsigned char l = lmt_string_pool_state.string_pool[j].s ? (unsigned char) lmt_string_pool_state.string_pool[j].l : no_short_string;
+            dump_uchar(f, l);
             if (l > 0) {
                 dump_things(f, *lmt_string_pool_state.string_pool[j].s, l);
             }
@@ -531,10 +536,7 @@ void tex_dump_string_pool(dumpstream f)
     } else {
         /*tex We also have long strings. */
         for (int j = 0; j < n_of_strings; j++) {
-            int l = (int) lmt_string_pool_state.string_pool[j].l;
-            if (! lmt_string_pool_state.string_pool[j].s) {
-                l = -1;
-            }
+            int l = lmt_string_pool_state.string_pool[j].s ? (int) lmt_string_pool_state.string_pool[j].l : -1;
             dump_int(f, l);
             if (l > 0) {
                 dump_things(f, *lmt_string_pool_state.string_pool[j].s, l);
@@ -557,39 +559,39 @@ void tex_undump_string_pool(dumpstream f)
     lmt_string_pool_state.string_max_length = max_length;
     tex_initialize_string_mem();
     {
-        int a = 0;
-        int compact = max_length > 0 && max_length < 126;
+        int allocated = 0;
+        int compact = max_length > 0 && max_length < max_short_string;
         for (int j = 0; j < n_of_strings; j++) {
-            int x;
+            int l;
             if (compact) {
                 /*tex We only have short strings. */
-                char c;
-                undump_things(f, c, 1);
-                x = c;
+                unsigned char sl;
+                undump_uchar(f, sl);
+                l = (sl == no_short_string) ? -1 : sl;
             } else {
                 /*tex We also have long strings. */
-                undump_int(f, x);
+                undump_int(f, l);
             }
-            if (x >= 0) {
+            if (l >= 0) {
                 /* we can overflow reserved_string_slots */
-                int n = x + 1;
+                int n = l + 1;
                 unsigned char *s = aux_allocate_clear_array(sizeof(unsigned char), n, reserved_string_slots);
                 if (s) {
                     lmt_string_pool_state.string_pool[j].s = s;
-                    undump_things(f, s[0], x);
-                    s[x] = '\0';
-                    a += n;
+                    undump_things(f, s[0], l);
+                    s[l] = '\0';
+                    allocated += n;
                 } else {
                     tex_overflow_error("string pool", n);
-                    x = 0;
+                    l = 0;
                 }
             } else {
-                x = 0;
+                l = 0;
             }
-            lmt_string_pool_state.string_pool[j].l = x;
+            lmt_string_pool_state.string_pool[j].l = l;
         }
-        lmt_string_pool_state.string_body_data.allocated = a;
-        lmt_string_pool_state.string_body_data.initial = a;
+        lmt_string_pool_state.string_body_data.allocated = allocated;
+        lmt_string_pool_state.string_body_data.initial = allocated;
     }
 }
 
