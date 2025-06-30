@@ -327,7 +327,6 @@ typedef struct MP_options {
     int                make_text_id;
     int                open_file_id;
     int                interaction;
-    int                extensions;
     int                random_seed;
     int                math_mode;
     char              *job_name;
@@ -642,10 +641,11 @@ typedef enum mp_name_type_type {
     mp_scaled_operation,            /* operation code for |scaled| */
     mp_shifted_operation,           /* operation code for |shifted| */
     mp_transformed_operation,       /* operation code for |transformed| */
-    mp_uncycled_operation,          /* operation code for |uncycled| */
     mp_x_scaled_operation,          /* operation code for |xscaled| */
     mp_y_scaled_operation,          /* operation code for |yscaled| */
     mp_z_scaled_operation,          /* operation code for |zscaled| */
+    mp_xy_scaled_operation,         /* operation code for |xyscaled| */
+    mp_uncycled_operation,          /* operation code for |uncycled| */
     mp_intertimes_operation,        /* operation code for |intersectiontimes| */
     mp_intertimes_list_operation,   /* operation code for |intersectiontimeslist| */
     mp_double_dot_operation,        /* operation code for improper |..| */
@@ -1081,6 +1081,7 @@ typedef enum mp_given_internal {
     mp_stacking_internal,
     mp_miterlimit_internal,          /* controls miter length as in \ps */
     mp_warning_check_internal,       /* controls error message when variable value is large */
+    mp_default_zero_angle_internal,   
     mp_true_corners_internal,        /* positive to make |llcorner| etc. ignore |setbounds| */
     mp_default_color_model_internal, /* the default color model for unspecified items */
     mp_restore_clip_color_internal,
@@ -1210,7 +1211,6 @@ typedef struct MP_instance {
     /*  */
     int                 less_digits; 
     int                 interaction;
-    int                 extensions;
     int                 random_seed;
     int                 math_mode;
     /*  */
@@ -1754,10 +1754,24 @@ typedef struct mp_if_node_data {
 
 typedef struct mp_if_node_data *mp_if_node;
 
+typedef enum mp_expression_scan_types {
+    mp_expression_scan_code,
+    mp_primary_scan_code,
+    mp_secondary_scan_code,
+    mp_tertiary_scan_code,
+} mp_expression_scan_types;
+
+typedef enum mp_internal_action_types {
+    mp_initialize_internal_code,
+    mp_save_internal_code, 
+    mp_restore_internal_code, 
+ // mp_tracing_internal_code, 
+} mp_internal_action_types; 
+
 /* mp header stuff */
 
 extern void             mp_print_e_str                (MP mp, const char *s);
-//extern void             mp_print_e_chr                (MP mp, unsigned char k);
+//     void             mp_print_e_chr                (MP mp, unsigned char k);
 extern void             mp_show_context               (MP mp);
 extern void             mp_error                      (MP mp, const char *msg, const char *hlp);
 extern void             mp_warn                       (MP mp, const char *msg);
@@ -1853,4 +1867,3 @@ extern void            *mp_memory_reallocate          (void *p, size_t size);
 extern void             mp_memory_free                (void *p);
 
 # endif
-

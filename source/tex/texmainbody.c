@@ -62,7 +62,7 @@
     % Version 3.14159 allowed fontmemsize to change; bulletproofing (March 1995).
     % Version 3.141592 fixed \xleaders, glueset, weird alignments (December 2002).
     % Version 3.1415926 was a general cleanup with minor fixes (February 2008).
-    % Succesive versions have been checked and if needed fixes havebeen applied.
+    % Succesive versions have been checked and if needed fixes have been applied.
     \stoptyping
 
     Although considerable effort has been expended to make the \LUATEX\ program correct and
@@ -249,9 +249,11 @@ void tex_main_body(void)
     tex_engine_set_memory_data("savesize",          &lmt_save_state.save_stack_data);
     tex_engine_set_memory_data("stringsize",        &lmt_string_pool_state.string_pool_data);
     tex_engine_set_memory_data("tokensize",         &lmt_token_memory_state.tokens_data);
+    tex_engine_set_memory_data("mvlsize",           &lmt_mvl_state.mvl_data);
 
     tex_initialize_fileio_state();
     tex_initialize_nest_state();
+    tex_initialize_mvl_state();
     tex_initialize_save_stack();
     tex_initialize_input_state();
 
@@ -360,8 +362,11 @@ void tex_main_body(void)
 
     tex_initialize_directions();
 
-    fitness_demerits_par = tex_default_fitness_demerits(); /* can be in format */
-    par_passes_par = null;                                 /* can be in format */
+    if (! fitness_classes_par) {
+        fitness_classes_par = tex_default_fitness_classes(); 
+    }
+    par_passes_par = null;
+    par_passes_exception_par = null;
 
     {
         char *ptr = tex_engine_input_filename();
@@ -583,6 +588,7 @@ static void final_cleanup(int dump)
             tex_flush_node_list(lmt_packaging_state.split_discards_head);
             if (lmt_page_builder_state.last_glue != max_halfword) {
                 tex_flush_node(lmt_page_builder_state.last_glue);
+                lmt_page_builder_state.last_glue = max_halfword;
             }
             for (int i = 0; i <= lmt_insert_state.insert_data.ptr; i++) {
                 tex_wipe_insert(i);

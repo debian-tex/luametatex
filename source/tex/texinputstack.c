@@ -17,6 +17,7 @@ input_state_info lmt_input_state = {
         .ptr       = 0,
         .initial   = memory_data_unset,
         .offset    = 0,
+        .extra     = 0, 
     },
     .in_stack         = NULL,
     .in_stack_data    = {
@@ -30,6 +31,7 @@ input_state_info lmt_input_state = {
         .ptr       = 0,
         .initial   = memory_data_unset,
         .offset    = 0,
+        .extra     = 0, 
     },
     .parameter_stack      = NULL,
     .parameter_stack_data = {
@@ -43,6 +45,7 @@ input_state_info lmt_input_state = {
         .ptr       = 0,
         .initial   = memory_data_unset,
         .offset    = 0,
+        .extra     = 0, 
     },
     .cur_input      = { 0 },
     .input_line     = 0,
@@ -184,15 +187,15 @@ static bool tex_aux_room_on_parameter_stack(void) /* quite similar to save_stack
 void tex_copy_to_parameter_stack(halfword *pstack, int n)
 {
     if (tex_aux_room_on_parameter_stack()) {
-if (n == 1) { 
-        lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[0];
-//} else if (n == 2) { 
-//        lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[0];
-//        lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[1];
-} else { 
-        memcpy(&lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr], pstack, n * sizeof(halfword));
-        lmt_input_state.parameter_stack_data.ptr += n;
-}
+        if (n == 1) { 
+            lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[0];
+     // } else if (n == 2) { 
+     //        lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[0];
+     //        lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr++] = pstack[1];
+        } else { 
+            memcpy(&lmt_input_state.parameter_stack[lmt_input_state.parameter_stack_data.ptr], pstack, n * sizeof(halfword));
+            lmt_input_state.parameter_stack_data.ptr += n;
+        }
     }
 }
 
@@ -486,7 +489,10 @@ void tex_set_trick_count(void)
 
     We don't care too much if we stay a bit too much below the max error_line even if we have more
     room on the line. If length is really an issue then any length is. After all one can set the
-    length larger.
+    length larger. 
+
+    This is not the nicest looking output so at some day I might spend some time on a variant that 
+    is a bit more helpful. 
 
 */
 
@@ -518,7 +524,7 @@ static void tex_aux_print_valid_utf8(int q)
 void tex_show_context(void)
 {
     int context_lines = -1; /*tex Number of contexts shown so far, less one: */
-    bool bottom_line = false;    /*tex Have we reached the final context to be shown? */
+    bool bottom_line = false; /*tex Have we reached the final context to be shown? */
     lmt_input_state.base_ptr = lmt_input_state.input_stack_data.ptr;
     lmt_input_state.input_stack[lmt_input_state.base_ptr] = lmt_input_state.cur_input;
     while (1) {
@@ -655,7 +661,7 @@ void tex_show_context(void)
 
 */
 
-inline static void tex_aux_push_input(void)
+static inline void tex_aux_push_input(void)
 {
     if (tex_aux_room_on_input_stack()) {
         lmt_input_state.input_stack[lmt_input_state.input_stack_data.ptr] = lmt_input_state.cur_input;
@@ -665,7 +671,7 @@ inline static void tex_aux_push_input(void)
     }
 }
 
-inline static void tex_aux_pop_input(void)
+static inline void tex_aux_pop_input(void)
 {
     lmt_input_state.cur_input = lmt_input_state.input_stack[--lmt_input_state.input_stack_data.ptr];
 }
@@ -847,9 +853,9 @@ void tex_end_token_list(void)
                     int ptr = lmt_input_state.parameter_stack_data.ptr;
                     int start = lmt_input_state.cur_input.parameter_start;
                     while (ptr > start) {
-                        --ptr;
-                        if (lmt_input_state.parameter_stack[ptr]) {
+                        if (lmt_input_state.parameter_stack[--ptr]) {
                             tex_flush_token_list(lmt_input_state.parameter_stack[ptr]);
+                         // lmt_input_state.parameter_stack[ptr] = null;
                         }
                     }
                     lmt_input_state.parameter_stack_data.ptr = start;
@@ -912,6 +918,7 @@ void tex_cleanup_input_state(void)
                         while (ptr > start) {
                             if (lmt_input_state.parameter_stack[--ptr]) {
                                 tex_flush_token_list(lmt_input_state.parameter_stack[ptr]);
+                             // lmt_input_state.parameter_stack[ptr] = null;
                             }
                         }
                         lmt_input_state.parameter_stack_data.ptr = start;

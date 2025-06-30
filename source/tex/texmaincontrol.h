@@ -51,7 +51,7 @@ extern void     tex_you_cant_error                  (const char *helpinfo);
 extern void     tex_off_save                        (void);
 
 extern halfword tex_local_scan_box                  (void);
-extern void     tex_box_end                         (int boxcontext, halfword boxnode, scaled shift, halfword mainclass, halfword slot, halfword callback);
+extern void     tex_box_end                         (int boxcontext, halfword boxnode, scaled shift, halfword mainclass, halfword slot, halfword callback, halfword leaders);
 
 extern void     tex_get_r_token                     (void);
 
@@ -82,7 +82,7 @@ extern halfword tex_expand_iterator                 (halfword tok);
 extern void     tex_show_discretionary_group        (void);
 extern int      tex_show_discretionary_record       (void);
 
-inline int valid_parameter_reference(int r) 
+static inline int valid_parameter_reference(int r) 
 {
     switch (r) {
         case I_token_l: case I_token_o: // iterator
@@ -103,7 +103,7 @@ inline int valid_parameter_reference(int r)
     }
 }
 
-inline int valid_iterator_reference(int r) 
+static inline int valid_iterator_reference(int r) 
 {
     switch (r) {
         case I_token_l: case I_token_o: // iterator

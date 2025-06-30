@@ -57,6 +57,7 @@ lmt_interface_info lmt_interface = {
     .math_parameter_values     = NULL,
     .field_type_values         = NULL,
     .node_data                 = NULL,
+    .par_data                  = NULL, 
     .command_names             = NULL,
 } ;
 
@@ -135,6 +136,8 @@ void lmt_initialize_interface(void)
     set_par_context_value(align_par_context,       align);
     set_par_context_value(no_align_par_context,    noalign);
     set_par_context_value(span_par_context,        span);
+    set_par_context_value(math_par_context,        math);
+    set_par_context_value(lua_par_context,         lua);
     set_par_context_value(reset_par_context,       reset);
 
     lmt_interface.page_context_values = lmt_aux_allocate_value_info(triggered_page_context);
@@ -176,19 +179,19 @@ void lmt_initialize_interface(void)
     set_alignment_context_value(package_pass_alignment_context,  package);
     set_alignment_context_value(wrapup_pass_alignment_context,   wrapup);
 
-    lmt_interface.break_context_values = lmt_aux_allocate_value_info(wrapup_show_breaks_context);
+    lmt_interface.line_break_context_values = lmt_aux_allocate_value_info(wrapup_line_break_context);
 
-    # define set_break_context_value(n,k) lmt_interface.break_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
+    # define set_break_context_value(n,k) lmt_interface.line_break_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
 
-    set_break_context_value(initialize_show_breaks_context, initialize);
-    set_break_context_value(start_show_breaks_context,      start);
-    set_break_context_value(list_show_breaks_context,       list); 
-    set_break_context_value(stop_show_breaks_context,       stop);
-    set_break_context_value(collect_show_breaks_context,    collect);
-    set_break_context_value(line_show_breaks_context,       line);
-    set_break_context_value(delete_show_breaks_context,     delete);
-    set_break_context_value(report_show_breaks_context,     report); 
-    set_break_context_value(wrapup_show_breaks_context,     wrapup);
+    set_break_context_value(initialize_line_break_context, initialize);
+    set_break_context_value(start_line_break_context,      start);
+    set_break_context_value(list_line_break_context,       list); 
+    set_break_context_value(stop_line_break_context,       stop);
+    set_break_context_value(collect_line_break_context,    collect);
+    set_break_context_value(line_line_break_context,       line);
+    set_break_context_value(delete_line_break_context,     delete);
+    set_break_context_value(report_line_break_context,     report); 
+    set_break_context_value(wrapup_line_break_context,     wrapup);
 
     lmt_interface.build_context_values = lmt_aux_allocate_value_info(wrapup_show_build_context);
 
@@ -201,6 +204,17 @@ void lmt_initialize_interface(void)
     set_build_context_value(move_show_build_context,       move);
     set_build_context_value(fireup_show_build_context,     fireup);
     set_build_context_value(wrapup_show_build_context,     wrapup);
+
+    lmt_interface.vsplit_context_values = lmt_aux_allocate_value_info(wrapup_show_vsplit_context);
+
+    # define set_vsplit_context_value(n,k) lmt_interface.vsplit_context_values[n] = (value_info) { .lua = lua_key_index(k), .name = lua_key(k), .id = n }
+
+    set_vsplit_context_value(initialize_show_vsplit_context, initialize);
+    set_vsplit_context_value(continue_show_vsplit_context,   continue);
+    set_vsplit_context_value(check_show_vsplit_context,      check);
+    set_vsplit_context_value(quit_show_vsplit_context,       quit);
+    set_vsplit_context_value(wrapup_show_vsplit_context,     wrapup);
+
 
     lmt_interface.par_trigger_values = lmt_aux_allocate_value_info(vrule_char_par_trigger);
 
@@ -437,15 +451,9 @@ void lmt_initialize_interface(void)
     set_math_parameter_value(math_parameter_prime_shift_up,                     math_dimension_parameter,  primeshiftup);
     set_math_parameter_value(math_parameter_prime_shift_drop,                   math_dimension_parameter,  primeshiftdrop);
     set_math_parameter_value(math_parameter_prime_space_after,                  math_dimension_parameter,  primespaceafter);
-    set_math_parameter_value(math_parameter_prime_width,                        math_integer_parameter,    primewidth);
 
     set_math_parameter_value(math_parameter_rule_height,                        math_dimension_parameter,  ruleheight);
     set_math_parameter_value(math_parameter_rule_depth,                         math_dimension_parameter,  ruledepth);
-
-    set_math_parameter_value(math_parameter_superscript_shift_distance,         math_dimension_parameter,  superscriptshiftdistance);
-    set_math_parameter_value(math_parameter_subscript_shift_distance,           math_dimension_parameter,  subscriptshiftdistance);
-    set_math_parameter_value(math_parameter_superprescript_shift_distance,      math_dimension_parameter,  presuperscriptshiftdistance);
-    set_math_parameter_value(math_parameter_subprescript_shift_distance,        math_dimension_parameter,  presubscriptshiftdistance);
 
     set_math_parameter_value(math_parameter_extra_superscript_space,            math_dimension_parameter,  extrasuperscriptspace);
     set_math_parameter_value(math_parameter_extra_subscript_space,              math_dimension_parameter,  extrasubscriptspace);

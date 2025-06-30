@@ -82,7 +82,8 @@
     2.10.08 : close to BachoTeX 2023 
     2.10.09 : evolved in May/June 2023 (math & text linebreak experiments) 
     2.10.10 : around the ctx 2023 meeting 
-    2.10.11 : till the end of 2024 
+    2.10.11 : first half of 2024
+    2.10.12 : around the ctx 2024 meeting
 
     At some point the \CONTEXT\ group will be responsible for guaranteeing that the official version
     is what comes with \CONTEXT\ and that long term support and stabilty is guaranteed and that no 
@@ -90,17 +91,23 @@
 
     Hans Hagen
 
+    PS. Does anyone use (lib)cerf? If so, should I strip it a bit? 
+    PS. Maybe use the Lua randomizer.
+
 */
 
 # include "tex/textypes.h"
 
-# define luametatex_version          2
-# define luametatex_revision         11
-# define luametatex_release          02
-# define luametatex_version_string   "2.11.02"
-# define luametatex_version_number   211.2
-# define luametatex_development_id   20240512
+/*tex Currently LUAC_FORMAT is set to 5 awaiting an official version bump. */
 
+# define luametatex_majorversion     2
+# define luametatex_minorversion     11
+# define luametatex_version          211
+# define luametatex_revision         0
+# define luametatex_release          07
+# define luametatex_version_string   "2.11.07"
+# define luametatex_version_number   211.7
+# define luametatex_development_id   20250226
 # define luametatex_name_camelcase   "LuaMetaTeX"
 # define luametatex_name_lowercase   "luametatex"
 # define luametatex_copyright_holder "Taco Hoekwater, Hans Hagen, Wolfgang Schuster & Mikael Sundqvist"
@@ -119,6 +126,8 @@
 */
 
 typedef struct version_state_info {
+    int         majorversion;
+    int         minorversion; 
     int         version;
     int         revision;
     int         release; 
@@ -131,6 +140,7 @@ typedef struct version_state_info {
     int         luaversionmajor;
     int         luaversionminor;
     int         luaversionrelease;
+    int         luaformat;
     double      luatexversion;
     double      luaversion;
 } version_state_info;
@@ -139,7 +149,7 @@ extern version_state_info lmt_version_state;
 
 /*tex
 
-    This is actually the main headere file. Of course we could split it up and be more explicit in
+    This is actually the main header file. Of course we could split it up and be more explicit in
     other files but this is simple and just works. There is of course some overhead in loading
     headers that are not used, but because compilation is simple and fast I don't care.
 
@@ -190,6 +200,7 @@ extern version_state_info lmt_version_state;
 
 # include "lua.h"
 # include "lauxlib.h"
+# include "lundump.h"
 
 # define LUA_VERSION_STRING ("Lua " LUA_VERSION_MAJOR "." LUA_VERSION_MINOR "." LUA_VERSION_RELEASE)
 
@@ -266,8 +277,12 @@ extern version_state_info lmt_version_state;
 /*tex This is not used (yet) as I don't expect much from it, but \LUA\ has some of it. */
 
 # if defined(__GNUC__)
-#   define lmt_likely(x)   (__builtin_expect(((x) != 0), 1))
-#   define lmt_unlikely(x) (__builtin_expect(((x) != 0), 0))
+    // Lua: 
+ // # define lmt_likely(x)   (__builtin_expect(((x) != 0), 1))
+ // # define lmt_unlikely(x) (__builtin_expect(((x) != 0), 0))
+    // Kernel: 
+    # define lmt_likely(x)   (__builtin_expect(!!(x), 1))
+    # define lmt_unlikely(x) (__builtin_expect(!!(x), 0))
 # else
 #   define lmt_likely(x)   (x)
 #   define lmt_unlikely(x) (x)
@@ -315,9 +330,11 @@ extern version_state_info lmt_version_state;
 # include "tex/texbuildpage.h"
 # include "tex/texmaincontrol.h"
 # include "tex/texdumpdata.h"
-# include "tex/texmainbody.h"
+//include "tex/texmainbody.h"
 # include "tex/texnodes.h"
+# include "tex/texspecifications.h"
 # include "tex/texdirections.h"
+# include "tex/texdiscretionaries.h"
 # include "tex/texlinebreak.h"
 # include "tex/texmath.h"
 # include "tex/texmlist.h"
@@ -325,8 +342,8 @@ extern version_state_info lmt_version_state;
 # include "tex/texprimitive.h"
 # include "tex/texequivalents.h"
 # include "tex/texfont.h"
+# include "tex/texbalance.h"
 # include "tex/texlanguage.h"
-
 # include "lua/lmtcallbacklib.h"
 # include "lua/lmttokenlib.h"
 # include "lua/lmtnodelib.h"

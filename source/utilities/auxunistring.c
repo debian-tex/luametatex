@@ -74,7 +74,6 @@ unsigned aux_str2uni_len(const unsigned char *text, int *len)
     return 0xFFFD;
 }
 
-
 unsigned char *aux_uni2str(unsigned unic)
 {
     unsigned char *buf = lmt_memory_malloc(5);
@@ -135,8 +134,10 @@ char *aux_uni2string(char *utf8_text, unsigned unic)
         *utf8_text++ = (char) (0x80 | ((unic & 0xFC0) >> 6));
         *utf8_text++ = (char) (0x80 | (unic & 0x3F));
     }
-    return (utf8_text);
+    return utf8_text;
 }
+
+/*tex This one could be more efficient because we know a bit more. */
 
 unsigned aux_splitutf2uni(unsigned int *ubuf, const char *utf8buf)
 {
@@ -163,7 +164,7 @@ unsigned aux_splitutf2uni(unsigned int *ubuf, const char *utf8buf)
         }
         ++upt;
     }
-    *upt = '\0';
+    *upt = 0; /*tex We have integers here, so assigning |\0| is a bit misleading. */
     return (unsigned int) (upt - ubuf);
 }
 

@@ -62,39 +62,49 @@
 
 */
 
-typedef halfword fitcriterion[n_of_fitness_values] ;
+typedef halfword fitcriterion[max_n_of_fitness_values] ;
+
+typedef struct break_passes { 
+    int n_of_break_calls;
+    int n_of_first_passes;
+    int n_of_second_passes;
+    int n_of_final_passes;
+    int n_of_specification_passes;
+    int n_of_sub_passes;
+    int n_of_left_twins; 
+    int n_of_right_twins; 
+} break_passes;
 
 typedef struct linebreak_state_info {
     /*tex the |hlist_node| for the last line of the new paragraph */
     halfword     just_box;
     halfword     last_line_fill;
     int          no_shrink_error_yet;
-    int          second_pass;
-    int          final_pass;
     int          threshold;
+    halfword     quality;
+    int          callback_id; 
+    int          obey_hyphenation;
+    int          force_check_hyphenation;
     halfword     adjust_spacing;
     halfword     adjust_spacing_step;
     halfword     adjust_spacing_shrink;
     halfword     adjust_spacing_stretch;
-    int          max_stretch_ratio;
-    int          max_shrink_ratio;
     halfword     current_font_step;
+    scaled       extra_background_stretch;
     halfword     passive;
     halfword     printed_node;
-    halfword     pass_number;
- /* int          auto_breaking; */ /* is gone */
- /* int          math_level;    */ /* was never used */
+    halfword     serial_number;
     scaled       active_width[n_of_glue_amounts];
     scaled       background[n_of_glue_amounts];
     scaled       break_width[n_of_glue_amounts];
     scaled       disc_width[n_of_glue_amounts];
     scaled       fill_width[4];
-    halfword     internal_penalty_interline;
-    halfword     internal_penalty_broken;
+    halfword     internal_interline_penalty;
+    halfword     internal_broken_penalty;
     halfword     internal_left_box;
     scaled       internal_left_box_width;
-    halfword     internal_left_box_init;
-    scaled       internal_left_box_width_init;
+    halfword     internal_left_box_init;       /* hm: |_init| */
+    scaled       internal_left_box_width_init; /* hm: |_init| */
     halfword     internal_right_box;
     scaled       internal_right_box_width;
     scaled       internal_middle_box;
@@ -106,33 +116,64 @@ typedef struct linebreak_state_info {
     scaled       second_width;
     scaled       first_indent;
     scaled       second_indent;
+    scaled       emergency_amount;
+    halfword     emergency_percentage;
+    halfword     emergency_factor;
+    scaled       emergency_width_amount;
+    halfword     emergency_width_extra;
+    scaled       emergency_left_amount;
+    halfword     emergency_left_extra;
+    scaled       emergency_right_amount;
+    halfword     emergency_right_extra;
     halfword     best_bet;
     halfword     fewest_demerits;
     halfword     best_line;
     halfword     actual_looseness;
-    halfword     line_difference;
     int          do_last_line_fit;
     halfword     dir_ptr;
     halfword     warned;
     halfword     calling_back;
-    int          saved_threshold; 
+    int          saved_threshold;   /*tex Saves the value outside inline math. */
+    int          global_threshold;  /*tex Saves the value outside local par states. */
     int          checked_expansion; 
     int          line_break_dir;
+    break_passes passes[n_of_par_context_codes];
+    int          n_of_left_twins;
+    int          n_of_right_twins;
+    int          n_of_double_twins;
+    halfword     internal_par_node;
+    halfword     emergency_left_skip;
+    halfword     emergency_right_skip;
+    int          artificial_encountered; 
+    halfword     inject_after_par;
+    int          current_line_number; 
+    int          has_orphans;
+    int          has_toddlers; /* < 0: not found, == 0: tobechecked, > 0: #found */
 } linebreak_state_info;
 
 extern linebreak_state_info lmt_linebreak_state;
 
-typedef enum linebreak_quality { 
+typedef enum linebreak_quality_states { 
     par_has_glyph    = 0x0001, 
     par_has_disc     = 0x0002, 
-    par_has_space    = 0x0004,
-    par_has_uleader  = 0x0008,
-    par_is_overfull  = 0x0010,
-    par_is_underfull = 0x0020,
-} linebreak_quality;
+    par_has_math     = 0x0004,
+    par_has_space    = 0x0008,
+    par_has_glue     = 0x0010,
+    par_has_uleader  = 0x0020,
+    par_has_factor   = 0x0040,
+    par_has_optional = 0x0100,
+    par_is_overfull  = 0x0200,
+    par_is_underfull = 0x0400,
+} linebreak_quality_states;
+
+# define paragraph_has_text(state)     ((state & par_has_glyph) || (state & par_has_disc))
+# define paragraph_has_math(state)     (state & par_has_math)
+# define paragraph_has_glue(state)     (state & par_has_glue)
+# define paragraph_has_factor(state)   (state & par_has_factor)
+# define paragraph_has_optional(state) (state & par_has_optional)
 
 extern void tex_line_break_prepare (
-    halfword par, 
+    halfword  par, 
     halfword *tail, 
     halfword *parinit_left_skip_glue,
     halfword *parinit_right_skip_glue,
@@ -141,17 +182,18 @@ extern void tex_line_break_prepare (
     halfword *final_line_penalty
 );
 
-extern void tex_check_fitness_demerits(
-    halfword fitnessdemerits
+extern void tex_check_fitness_classes(
+    halfword fitnessclasses
 );
 
-extern halfword tex_default_fitness_demerits(
+extern halfword tex_default_fitness_classes(
     void
 );
 
 extern void tex_line_break (
-    int d, 
-    int line_break_context
+    int group_context,
+    int par_context,
+    int display_math 
 );
 
 extern void tex_initialize_active (
@@ -230,5 +272,32 @@ static inline void tex_append_list(halfword head, halfword tail)
     tex_couple_nodes(cur_list.tail, node_next(head));
     cur_list.tail = tail;
 }
+
+extern void tex_get_line_content_range(
+    halfword  head, 
+    halfword  tail, 
+    halfword *first, 
+    halfword *last
+); 
+
+/*tex Some more shared helpers: */
+
+extern void tex_aux_print_break_node(
+    halfword active, 
+    halfword passive, 
+    int      do_last_line_fit
+);
+
+extern void tex_aux_print_feasible_break(
+    halfword current, 
+    halfword breakpoint, 
+    halfword badness, 
+    halfword penalty, 
+    halfword d, 
+    halfword artificial_demerits, 
+    halfword fit_class, 
+    halfword printed_node
+);
+
 
 # endif

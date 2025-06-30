@@ -120,7 +120,9 @@ typedef struct mathinfo {
         we might want to play with a two dimensional extensible some day. 
     */
     extinfo  *extensible_recipe;        
-    scaled    extensible_italic;         
+    scaled    extensible_italic;        
+    /*tex We could have a list or array here too but gain little.: */
+ /* halfword *variant_list; */
     /*tex These are for specific (script) anchoring. */
     scaled    top_left_kern;
     scaled    bottom_left_kern;
@@ -241,10 +243,6 @@ typedef struct texfont {
     /*tex this controls the engine */
     int         mathcontrol;
     int         textcontrol;
-    /*tex expansion */
-    int         max_shrink;
-    int         max_stretch;
-    int         step;
     /*tex for experimental new thingies */
     int         compactmath;  /* This can go away, just always test. */ 
     /*tex saves calculations */
@@ -260,6 +258,9 @@ typedef struct texfont {
     int         math_parameter_count;
     /* zero is alignment */
     int         mathscales[3];
+    int         mathxscales[3];
+    int         mathyscales[3];
+    int         mathweights[3];
     /*tex special characters, see \TEX book */
     int         hyphen_char;
     int         skew_char;
@@ -294,10 +295,9 @@ extern font_state_info lmt_font_state;
 # define font_textcontrol(a)            lmt_font_state.fonts[a]->textcontrol
 # define font_hyphen_char(a)            lmt_font_state.fonts[a]->hyphen_char
 # define font_skew_char(a)              lmt_font_state.fonts[a]->skew_char
-# define font_max_shrink(a)             (lmt_font_state.adjust_step > 0 ? lmt_font_state.adjust_shrink  : lmt_font_state.fonts[a]->max_shrink)
-# define font_max_stretch(a)            (lmt_font_state.adjust_step > 0 ? lmt_font_state.adjust_stretch : lmt_font_state.fonts[a]->max_stretch)
-# define font_step(a)                   (lmt_font_state.adjust_step > 0 ? lmt_font_state.adjust_step    : lmt_font_state.fonts[a]->step)
 # define font_mathscale(a,b)            lmt_font_state.fonts[a]->mathscales[b]
+# define font_mathxscale(a,b)           lmt_font_state.fonts[a]->mathxscales[b]
+# define font_mathyscale(a,b)           lmt_font_state.fonts[a]->mathyscales[b]
 
 # define set_font_size(a,b)             lmt_font_state.fonts[a]->size = b
 # define set_font_name(a,b)             lmt_font_state.fonts[a]->name = b
@@ -318,6 +318,18 @@ extern font_state_info lmt_font_state;
 # define set_font_scriptsize(a,b)       lmt_font_state.fonts[a]->mathscales[1] = b
 # define set_font_scriptscriptsize(a,b) lmt_font_state.fonts[a]->mathscales[2] = b
 
+# define set_font_x_textsize(a,b)         lmt_font_state.fonts[a]->mathxscales[0] = b
+# define set_font_x_scriptsize(a,b)       lmt_font_state.fonts[a]->mathxscales[1] = b
+# define set_font_x_scriptscriptsize(a,b) lmt_font_state.fonts[a]->mathxscales[2] = b
+
+# define set_font_y_textsize(a,b)         lmt_font_state.fonts[a]->mathyscales[0] = b
+# define set_font_y_scriptsize(a,b)       lmt_font_state.fonts[a]->mathyscales[1] = b
+# define set_font_y_scriptscriptsize(a,b) lmt_font_state.fonts[a]->mathyscales[2] = b
+ 
+# define set_font_textweight(a,b)         lmt_font_state.fonts[a]->mathweights[0] = b
+# define set_font_scriptweight(a,b)       lmt_font_state.fonts[a]->mathweights[1] = b
+# define set_font_scriptscriptweight(a,b) lmt_font_state.fonts[a]->mathweights[2] = b
+
 /*tex
     These are bound to a font. There might be a few more in the future. An example is collapsing
     hyphens. One can do that using (in context speak) tlig feature but actually it is some very
@@ -328,17 +340,18 @@ extern font_state_info lmt_font_state;
 */
 
 typedef enum text_control_codes {
-    text_control_collapse_hyphens = 0x0001,
-    text_control_base_ligaturing  = 0x0002,
-    text_control_base_kerning     = 0x0004,
-    text_control_none_protected   = 0x0008,
-    text_control_has_italics      = 0x0010,
-    text_control_auto_italics     = 0x0020,
+    text_control_collapse_hyphens   = 0x0001,
+    text_control_base_ligaturing    = 0x0002,
+    text_control_base_kerning       = 0x0004,
+    text_control_none_protected     = 0x0008,
+    text_control_has_italics        = 0x0010,
+    text_control_auto_italics       = 0x0020,
+    text_control_replace_apostrophe = 0x0040,
     /* these are private */
-    text_control_quality_set      = 0x0100,
-    text_control_expansion        = 0x0200,
-    text_control_left_protrusion  = 0x0400,
-    text_control_right_protrusion = 0x0800,
+    text_control_quality_set        = 0x0100,
+    text_control_expansion          = 0x0200,
+    text_control_left_protrusion    = 0x0400,
+    text_control_right_protrusion   = 0x0800,
 } text_control_codes;
 
 # define has_font_text_control(f,c)  ((font_textcontrol(f) & c) == c)
@@ -464,7 +477,7 @@ extern charinfo *tex_get_charinfo     (halfword f, int c);
 extern int       tex_char_exists      (halfword f, int c);
 extern void      tex_char_process     (halfword f, int c);
 extern int       tex_math_char_exists (halfword f, int c, int size);
-extern int       tex_get_math_char    (halfword f, int c, int size, scaled *scale, int direction);
+extern int       tex_get_math_char    (halfword f, int c, int size, scaled *scale, scaled *xscale, scaled *ysale, scaled *weight, int direction);
 
 /*tex 
     These used to be small integers, bit 22 upto 31, but now we have a 32 bit set. We actually don't 
@@ -513,7 +526,7 @@ typedef enum char_tag_codes {
 } char_tag_codes;
 
 /*tex
-    These low level setters are not publis and used in helpers. They might become functions
+    These low level setters are not public and used in helpers. They might become functions
     when I feel the need.
 */
 
@@ -712,6 +725,12 @@ typedef enum math_extension_locations {
 } math_extension_locations;
 */
 
+typedef enum missing_character_locations {
+    missing_character_text_glyph  = 0x01,
+    missing_character_math_glyph  = 0x02,
+    missing_character_math_kernel = 0x03,
+} missing_character_locations;
+
 extern halfword      tex_checked_font          (halfword f);
 extern int           tex_is_valid_font         (halfword f);
 extern int           tex_raw_get_kern          (halfword f, int lc, int rc);
@@ -726,7 +745,6 @@ extern void          tex_undump_font_data      (dumpstream f);
 extern void          tex_create_null_font      (void);
 extern void          tex_delete_font           (int id);
 extern int           tex_read_font_info        (char *cnom, scaled s);
-extern int           tex_fix_expand_value      (halfword f, int e);
 
 extern halfword      tex_handle_glyphrun       (halfword head, halfword group, halfword direction);
 extern halfword      tex_handle_ligaturing     (halfword head, halfword tail);
@@ -735,7 +753,7 @@ extern halfword      tex_handle_kerning        (halfword head, halfword tail);
 extern void          tex_set_cur_font          (halfword g, halfword f);
 extern int           tex_tex_def_font          (int a);
 
-extern void          tex_char_warning          (halfword f, int c);
+extern void          tex_missing_character     (halfword n, halfword f, halfword c, halfword where);
 
 extern void          tex_initialize_fonts      (void);
 
@@ -743,6 +761,14 @@ extern void          tex_set_font_name         (halfword f, const char *s);
 extern void          tex_set_font_original     (halfword f, const char *s);
 
 extern scaled        tex_get_math_font_scale   (halfword f, halfword size);
+extern scaled        tex_get_math_font_x_scale (halfword f, halfword size);
+extern scaled        tex_get_math_font_y_scale (halfword f, halfword size);
+extern scaled        tex_get_math_font_weight  (halfword f, halfword size);
+
+//     scaled        tex_raw_math_font_scale   (halfword f, halfword size);
+//     scaled        tex_raw_math_font_x_scale (halfword f, halfword size);
+//     scaled        tex_raw_math_font_y_scale (halfword f, halfword size);
+
 extern scaled        tex_get_math_font_factor  (halfword size);
 
 extern void          tex_run_font_spec         (void);
