@@ -1,8 +1,8 @@
-luametatex (2.11.07+ds-1) UNRELEASED; urgency=medium
+luametatex (2.11.07+ds-1) experimental; urgency=medium
 
   * New upstream version, suitable for TL 2025.
 
- -- Hilmar Preuße <hille42@debian.org>  Mon, 30 Jun 2025 23:23:55 +0200
+ -- Hilmar Preuße <hille42@debian.org>  Tue, 01 Jul 2025 23:36:01 +0200
 
 luametatex (2.11.02+really2.11.01+ds-1) unstable; urgency=medium
 
