@@ -21,4 +21,45 @@ git checkout 0edb7d5eac96e7f5be51194e82a79f932cc63023
 Copy the directory to another one, scroll back "git checkout master" and copy
 subdir "debian" to the new directory and build the source package.
 
+<quote src=https://tug.org/pipermail/tldistro/2025q2/000529.html>
+The tags on GitHub are essentially random (from a downstream
+perspective) and have nothing to do with the binaries that ship in TeX
+Live. The TL25 .iso contains LuaMetaTeX v2.11.07 (which _should_ be
+tagged on GitHub, but isn't), and its source should be available in the
+same place as all the other engines.
+
+But there are often important changes made in intermediate versions, so
+even the version number isn't always enough. The best thing to check is
+the development ID, which you can get from either the binary or the
+source with the following commands:
+
+    $ luametatex --version | grep -oP '(?<=level )\d+'  # Binary
+    $ grep -P '#\s*define\s*luametatex_development_id' luametatex.h" | grep -oP '\d+'  # Source
+
+> I then tried to upgrade to the context files, [...]
+> (same luametatex), but here context does not work at all.
+
+Yes, that won't work at all. Unlike other TeX formats, each ConTeXt
+release depends on an exact version of its engine, LuaMetaTeX. Because
+of this, upgrading LuaMetaTeX or ConTeXt independently of each other is
+rarely going to work properly. But the "context.src" TL package will
+always contain the correct engine source at
+
+    $TEXMFDIST/source/context/base/luametatex-20250609.src.zip
+
+so if you compile from that, everything should work properly.
+
+> which were delivered a few days ago
+
+I took over the ConTeXt packaging in TL a few weeks ago
+
+    https://github.com/gucci-on-fleek/context-packaging
+
+so you might need to make a few changes for repackaging ConTeXt for
+Debian this year. I've added some comments to
+"$TEXMFDIST/web2c/texmfcnf.lua" that should hopefully explain which
+variables you might need to modify, but if it gives you any problems,
+please feel free to email me or open a new issue on the GitHub page.
+</quote>
+
  -- Hilmar Preusse <hille42@web.de>  Wed, 06 Mar 2024 23:19:06 +0100
