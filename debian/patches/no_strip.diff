@@ -1,6 +1,6 @@
 Description: Do not strip binary after build.
 Author: Hilmar Preusse <hille42@web.de>
-Last-Update: 2023-04-17
+Last-Update: 2025-06-30
 Forwarded: not-needed
 
 --- luametatex.orig/cmake/luametatex.cmake
@@ -22,12 +22,12 @@ Forwarded: not-needed
 -endif()
 --- luametatex.orig/CMakeLists.txt
 +++ luametatex/CMakeLists.txt
-@@ -33,7 +33,7 @@
+@@ -35,7 +35,7 @@
  # nice (the smaller as runner the better). After all, we don't load external (Lua) libraries 
  # anyway. 
  
 -set(LMT_STRIP 1)
 +# set(LMT_STRIP 1)
  
- if (MSVC)
- 
+ # When one wants to use Lua libraries, this is needed. But keep in mind that it's not supported, 
+ # so we won't look into issues that could result from that. Getting a matching library is upto 

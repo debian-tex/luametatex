@@ -1,11 +1,11 @@
 Description: Do not build mimalloc as static lib
 Author: Hilmar Preusse <hille42@web.de>
-Last-Update: 2024-05-18
+Last-Update: 2025-06-30
 Forwarded: not-needed
 
 --- luametatex.orig/CMakeLists.txt
 +++ luametatex/CMakeLists.txt
-@@ -262,7 +262,7 @@
+@@ -288,7 +288,7 @@
      add_definitions(-DLUAMETATEX_USE_MIMALLOC=1)
    # add_definitions(-DMIMALLOC_RESET_DELAY=250)
    # set(luametatex_use_mimalloc 1)

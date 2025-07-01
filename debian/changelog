@@ -1,3 +1,9 @@
+luametatex (2.11.07+ds-1) UNRELEASED; urgency=medium
+
+  * New upstream version, suitable for TL 2025.
+
+ -- Hilmar Preuße <hille42@debian.org>  Mon, 30 Jun 2025 23:23:55 +0200
+
 luametatex (2.11.02+really2.11.01+ds-1) unstable; urgency=medium
 
   * The version/snapshot of ConTeXt in Debian does to fit to ltmx
