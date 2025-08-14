@@ -1,0 +1,11 @@
+--- luametatex.orig/CMakeLists.txt
++++ luametatex/CMakeLists.txt
+@@ -278,7 +278,7 @@
+ elseif (CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
+     # no motivation to figure specifics out
+ else()
+-    set(luametatex_use_mimalloc 1)
++    # Not use mimalloc, is RC buggy.
+ endif()
+ 
+ include_directories(${CMAKE_ROOT}/source)
