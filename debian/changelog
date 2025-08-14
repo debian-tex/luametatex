@@ -1,3 +1,9 @@
+luametatex (2.11.07+ds-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Hilmar Preuße <hille42@debian.org>  Thu, 14 Aug 2025 22:35:41 +0200
+
 luametatex (2.11.07+ds-1) experimental; urgency=medium
 
   * New upstream version, suitable for TL 2025.
