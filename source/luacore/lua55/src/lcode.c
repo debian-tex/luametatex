@@ -40,7 +40,10 @@ static int codesJ (FuncState *fs, OpCode o, int sj, int k);
 
 
 /* semantic error */
-l_noret luaK_semerror (LexState *ls, const char *msg) {
+l_noret luaK_semerror (LexState *ls, const char *fmt, ...) {
+  const char *msg;
+  va_list argp;
+  pushvfstring(ls->L, argp, fmt, msg);
   ls->t.token = 0;  /* remove "near <token>" from final message */
   luaX_syntaxerror(ls, msg);
 }
@@ -562,20 +565,20 @@ static int k2proto (FuncState *fs, TValue *key, TValue *v) {
   TValue val;
   Proto *f = fs->f;
   int tag = luaH_get(fs->kcache, key, &val);  /* query scanner table */
-  int k;
   if (!tagisempty(tag)) {  /* is there an index there? */
-    k = cast_int(ivalue(&val));
+    int k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
     lua_assert(ttisfloat(key) || luaV_rawequalobj(&f->k[k], v));
     return k;  /* reuse index */
   }
-  /* constant not found; create a new entry */
-  k = addk(fs, f, v);
-  /* cache it for reuse; numerical value does not need GC barrier;
-     table is not a metatable, so it does not need to invalidate cache */
-  setivalue(&val, k);
-  luaH_set(fs->ls->L, fs->kcache, key, &val);
-  return k;
+  else {  /* constant not found; create a new entry */
+    int k = addk(fs, f, v);
+    /* cache it for reuse; numerical value does not need GC barrier;
+       table is not a metatable, so it does not need to invalidate cache */
+    setivalue(&val, k);
+    luaH_set(fs->ls->L, fs->kcache, key, &val);
+    return k;
+  }
 }
 
 
@@ -601,13 +604,14 @@ static int luaK_intK (FuncState *fs, lua_Integer n) {
 /*
 ** Add a float to list of constants and return its index. Floats
 ** with integral values need a different key, to avoid collision
-** with actual integers. To that, we add to the number its smaller
+** with actual integers. To that end, we add to the number its smaller
 ** power-of-two fraction that is still significant in its scale.
-** For doubles, that would be 1/2^52.
+** (For doubles, the fraction would be 2^-52).
 ** This method is not bulletproof: different numbers may generate the
 ** same key (e.g., very large numbers will overflow to 'inf') and for
-** floats larger than 2^53 the result is still an integer. At worst,
-** this only wastes an entry with a duplicate.
+** floats larger than 2^53 the result is still an integer. For those
+** cases, just generate a new entry. At worst, this only wastes an entry
+** with a duplicate.
 */
 static int luaK_numberK (FuncState *fs, lua_Number r) {
   TValue o, kv;
@@ -622,7 +626,7 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
     const lua_Number k =  r * (1 + q);  /* key */
     lua_Integer ik;
     setfltvalue(&kv, k);  /* key as a TValue */
-    if (!luaV_flttointeger(k, &ik, F2Ieq)) {  /* not an integral value? */
+    if (!luaV_flttointeger(k, &ik, F2Ieq)) {  /* not an integer value? */
       int n = k2proto(fs, &kv, &o);  /* use key */
       if (luaV_rawequalobj(&fs->f->k[n], &o))  /* correct value? */
         return n;
@@ -750,10 +754,11 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
 /*
 ** Convert a VKSTR to a VK
 */
-static void str2K (FuncState *fs, expdesc *e) {
+static int str2K (FuncState *fs, expdesc *e) {
   lua_assert(e->k == VKSTR);
   e->u.info = stringK(fs, e->u.strval);
   e->k = VK;
+  return e->u.info;
 }
 
 
@@ -1304,35 +1309,38 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
 ** values in registers.
 */
 void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
+  int keystr = -1;
   if (k->k == VKSTR)
-    str2K(fs, k);
+    keystr = str2K(fs, k);
   lua_assert(!hasjumps(t) &&
              (t->k == VLOCAL || t->k == VNONRELOC || t->k == VUPVAL));
   if (t->k == VUPVAL && !isKstr(fs, k))  /* upvalue indexed by non 'Kstr'? */
     luaK_exp2anyreg(fs, t);  /* put it in a register */
   if (t->k == VUPVAL) {
     lu_byte temp = cast_byte(t->u.info);  /* upvalue index */
-    lua_assert(isKstr(fs, k));
     t->u.ind.t = temp;  /* (can't do a direct assignment; values overlap) */
-    t->u.ind.idx = cast(short, k->u.info);  /* literal short string */
+    lua_assert(isKstr(fs, k));
+    t->u.ind.idx = cast_short(k->u.info);  /* literal short string */
     t->k = VINDEXUP;
   }
   else {
     /* register index of the table */
     t->u.ind.t = cast_byte((t->k == VLOCAL) ? t->u.var.ridx: t->u.info);
     if (isKstr(fs, k)) {
-      t->u.ind.idx = cast(short, k->u.info);  /* literal short string */
+      t->u.ind.idx = cast_short(k->u.info);  /* literal short string */
       t->k = VINDEXSTR;
     }
     else if (isCint(k)) {  /* int. constant in proper range? */
-      t->u.ind.idx = cast(short, k->u.ival);
+      t->u.ind.idx = cast_short(k->u.ival);
       t->k = VINDEXI;
     }
     else {
-      t->u.ind.idx = cast(short, luaK_exp2anyreg(fs, k));  /* register */
+      t->u.ind.idx = cast_short(luaK_exp2anyreg(fs, k));  /* register */
       t->k = VINDEXED;
     }
   }
+  t->u.ind.keystr = keystr;  /* string index in 'k' */
+  t->u.ind.ro = 0;  /* by default, not read-only */
 }
 
 

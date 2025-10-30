@@ -15,11 +15,13 @@
 #include "lua.h"
 
 
+#define l_numbits(t)	cast_int(sizeof(t) * CHAR_BIT)
+
 /*
 ** 'l_mem' is a signed integer big enough to count the total memory
 ** used by Lua.  (It is signed due to the use of debt in several
-** computations.)  Usually, 'ptrdiff_t' should work, but we use 'long'
-** for 16-bit machines.
+** computations.) 'lu_mem' is a corresponding unsigned type.  Usually,
+** 'ptrdiff_t' should work, but we use 'long' for 16-bit machines.
 */
 #if defined(LUAI_MEM)		/* { external definitions? */
 typedef LUAI_MEM l_mem;
@@ -33,13 +35,19 @@ typedef unsigned long lu_mem;
 #endif				/* } */
 
 #define MAX_LMEM  \
-	cast(l_mem, (cast(lu_mem, 1) << (sizeof(l_mem) * 8 - 1)) - 1)
+	cast(l_mem, (cast(lu_mem, 1) << (l_numbits(l_mem) - 1)) - 1)
 
 
 /* chars used as small naturals (so that 'char' is reserved for characters) */
 typedef unsigned char lu_byte;
 typedef signed char ls_byte;
 
+
+/* Type for thread status/error codes */
+typedef lu_byte TStatus;
+
+/* The C API still uses 'int' for status/error codes */
+#define APIstatus(st)	cast_int(st)
 
 /* maximum value for size_t */
 #define MAX_SIZET	((size_t)(~(size_t)0))
@@ -55,7 +63,7 @@ typedef signed char ls_byte;
 ** floor of the log2 of the maximum signed value for integral type 't'.
 ** (That is, maximum 'n' such that '2^n' fits in the given signed type.)
 */
-#define log2maxs(t)	cast_int(sizeof(t) * 8 - 2)
+#define log2maxs(t)	(l_numbits(t) - 2)
 
 
 /*
@@ -129,13 +137,15 @@ typedef LUAI_UACINT l_uacInt;
 #define cast_voidp(i)	cast(void *, (i))
 #define cast_num(i)	cast(lua_Number, (i))
 #define cast_int(i)	cast(int, (i))
+#define cast_short(i)	cast(short, (i))
 #define cast_uint(i)	cast(unsigned int, (i))
-#define cast_ulong(i)	cast(unsigned long, (i))
 #define cast_byte(i)	cast(lu_byte, (i))
 #define cast_uchar(i)	cast(unsigned char, (i))
 #define cast_char(i)	cast(char, (i))
 #define cast_charp(i)	cast(char *, (i))
 #define cast_sizet(i)	cast(size_t, (i))
+#define cast_Integer(i)	cast(lua_Integer, (i))
+#define cast_Inst(i)	cast(Instruction, (i))
 
 
 /* cast a signed lua_Integer to lua_Unsigned */
@@ -276,6 +286,55 @@ typedef unsigned long l_uint32;
 #define luai_numisnan(a)        (!luai_numeq((a), (a)))
 #endif
 
+
+
+/*
+** lua_numbertointeger converts a float number with an integral value
+** to an integer, or returns 0 if the float is not within the range of
+** a lua_Integer.  (The range comparisons are tricky because of
+** rounding. The tests here assume a two-complement representation,
+** where MININTEGER always has an exact representation as a float;
+** MAXINTEGER may not have one, and therefore its conversion to float
+** may have an ill-defined value.)
+*/
+#define lua_numbertointeger(n,p) \
+  ((n) >= (LUA_NUMBER)(LUA_MININTEGER) && \
+   (n) < -(LUA_NUMBER)(LUA_MININTEGER) && \
+      (*(p) = (LUA_INTEGER)(n), 1))
+
+
+
+/*
+** LUAI_FUNC is a mark for all extern functions that are not to be
+** exported to outside modules.
+** LUAI_DDEF and LUAI_DDEC are marks for all extern (const) variables,
+** none of which to be exported to outside modules (LUAI_DDEF for
+** definitions and LUAI_DDEC for declarations).
+** Elf/gcc (versions 3.2 and later) mark them as "hidden" to optimize
+** access when Lua is compiled as a shared library. Not all elf targets
+** support this attribute. Unfortunately, gcc does not offer a way to
+** check whether the target offers that support, and those without
+** support give a warning about it. To avoid these warnings, change to
+** the default definition.
+*/
+#if !defined(LUAI_FUNC)
+
+#if defined(__GNUC__) && ((__GNUC__*100 + __GNUC_MINOR__) >= 302) && \
+    defined(__ELF__)		/* { */
+#define LUAI_FUNC	__attribute__((visibility("internal"))) extern
+#else				/* }{ */
+#define LUAI_FUNC	extern
+#endif				/* } */
+
+#define LUAI_DDEC(dec)	LUAI_FUNC dec
+#define LUAI_DDEF	/* empty */
+
+#endif
+
+
+/* Give these macros simpler names for internal use */
+#define l_likely(x)	luai_likely(x)
+#define l_unlikely(x)	luai_unlikely(x)
 
 /*
 ** {==================================================================
