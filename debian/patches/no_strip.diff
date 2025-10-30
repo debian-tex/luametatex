@@ -1,11 +1,22 @@
 Description: Do not strip binary after build.
 Author: Hilmar Preusse <hille42@web.de>
-Last-Update: 2025-06-30
+Last-Update: 2025-10-26
 Forwarded: not-needed
 
---- luametatex.orig/cmake/luametatex.cmake
-+++ luametatex/cmake/luametatex.cmake
-@@ -77,14 +77,3 @@
+--- luametatex-2.11.08.orig/CMakeLists.txt
++++ luametatex-2.11.08/CMakeLists.txt
+@@ -36,7 +36,7 @@
+ # nice (the smaller as runner the better). After all, we don't load external (Lua) libraries 
+ # anyway. 
+ 
+-set(LMT_STRIP 1)
++# set(LMT_STRIP 1)
+ 
+ # When one wants to use Lua libraries, this is needed. But keep in mind that it's not supported, 
+ # so we won't look into issues that could result from that. Getting a matching library is upto 
+--- luametatex-2.11.08.orig/cmake/luametatex.cmake
++++ luametatex-2.11.08/cmake/luametatex.cmake
+@@ -79,14 +79,3 @@
          resolv
  )
  endif()
@@ -20,14 +31,3 @@ Forwarded: not-needed
 -    # -X       : remove any compiler-generated symbols
 -    add_custom_command(TARGET luametatex POST_BUILD COMMAND ${CMAKE_STRIP} -g -S -d -x luametatex${CMAKE_EXECUTABLE_SUFFIX})
 -endif()
---- luametatex.orig/CMakeLists.txt
-+++ luametatex/CMakeLists.txt
-@@ -35,7 +35,7 @@
- # nice (the smaller as runner the better). After all, we don't load external (Lua) libraries 
- # anyway. 
- 
--set(LMT_STRIP 1)
-+# set(LMT_STRIP 1)
- 
- # When one wants to use Lua libraries, this is needed. But keep in mind that it's not supported, 
- # so we won't look into issues that could result from that. Getting a matching library is upto 
