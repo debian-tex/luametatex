@@ -38,30 +38,36 @@ static int math_abs (lua_State *L) {
   return 1;
 }
 
+
 static int math_sin (lua_State *L) {
   lua_pushnumber(L, l_mathop(sin)(luaL_checknumber(L, 1)));
   return 1;
 }
+
 
 static int math_cos (lua_State *L) {
   lua_pushnumber(L, l_mathop(cos)(luaL_checknumber(L, 1)));
   return 1;
 }
 
+
 static int math_tan (lua_State *L) {
   lua_pushnumber(L, l_mathop(tan)(luaL_checknumber(L, 1)));
   return 1;
 }
+
 
 static int math_asin (lua_State *L) {
   lua_pushnumber(L, l_mathop(asin)(luaL_checknumber(L, 1)));
   return 1;
 }
 
+
 static int math_acos (lua_State *L) {
   lua_pushnumber(L, l_mathop(acos)(luaL_checknumber(L, 1)));
   return 1;
 }
+
 
 static int math_atan (lua_State *L) {
   lua_Number y = luaL_checknumber(L, 1);
@@ -167,6 +173,7 @@ static int math_ult (lua_State *L) {
   return 1;
 }
 
+
 static int math_log (lua_State *L) {
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number res;
@@ -188,18 +195,38 @@ static int math_log (lua_State *L) {
   return 1;
 }
 
+
 static int math_exp (lua_State *L) {
   lua_pushnumber(L, l_mathop(exp)(luaL_checknumber(L, 1)));
   return 1;
 }
+
 
 static int math_deg (lua_State *L) {
   lua_pushnumber(L, luaL_checknumber(L, 1) * (l_mathop(180.0) / PI));
   return 1;
 }
 
+
 static int math_rad (lua_State *L) {
   lua_pushnumber(L, luaL_checknumber(L, 1) * (PI / l_mathop(180.0)));
+  return 1;
+}
+
+
+static int math_frexp (lua_State *L) {
+  lua_Number x = luaL_checknumber(L, 1);
+  int ep;
+  lua_pushnumber(L, l_mathop(frexp)(x, &ep));
+  lua_pushinteger(L, ep);
+  return 2;
+}
+
+
+static int math_ldexp (lua_State *L) {
+  lua_Number x = luaL_checknumber(L, 1);
+  int ep = (int)luaL_checkinteger(L, 2);
+  lua_pushnumber(L, l_mathop(ldexp)(x, ep));
   return 1;
 }
 
@@ -251,7 +278,7 @@ static int math_type (lua_State *L) {
 */
 
 /*
-** This code uses lots of shifts. ANSI C does not allow shifts greater
+** This code uses lots of shifts. ISO C does not allow shifts greater
 ** than or equal to the width of the type being shifted, so some shifts
 ** are written in convoluted ways to match that restriction. For
 ** preprocessor tests, it assumes a width of 32 bits, so the maximum
@@ -533,7 +560,7 @@ typedef struct {
 ** Project the random integer 'ran' into the interval [0, n].
 ** Because 'ran' has 2^B possible values, the projection can only be
 ** uniform when the size of the interval is a power of 2 (exact
-** division). Otherwise, to get a uniform projection into [0, n], we
+** division). So, to get a uniform projection into [0, n], we
 ** first compute 'lim', the smallest Mersenne number not smaller than
 ** 'n'. We then project 'ran' into the interval [0, lim].  If the result
 ** is inside [0, n], we are done. Otherwise, we try with another 'ran',
@@ -541,26 +568,14 @@ typedef struct {
 */
 static lua_Unsigned project (lua_Unsigned ran, lua_Unsigned n,
                              RanState *state) {
-  if ((n & (n + 1)) == 0)  /* is 'n + 1' a power of 2? */
-    return ran & n;  /* no bias */
-  else {
-    lua_Unsigned lim = n;
-    /* compute the smallest (2^b - 1) not smaller than 'n' */
-    lim |= (lim >> 1);
-    lim |= (lim >> 2);
-    lim |= (lim >> 4);
-    lim |= (lim >> 8);
-    lim |= (lim >> 16);
-#if (LUA_MAXUNSIGNED >> 31) >= 3
-    lim |= (lim >> 32);  /* integer type has more than 32 bits */
-#endif
-    lua_assert((lim & (lim + 1)) == 0  /* 'lim + 1' is a power of 2, */
-      && lim >= n  /* not smaller than 'n', */
-      && (lim >> 1) < n);  /* and it is the smallest one */
-    while ((ran &= lim) > n)  /* project 'ran' into [0..lim] */
-      ran = I2UInt(nextrand(state->s));  /* not inside [0..n]? try again */
-    return ran;
-  }
+  lua_Unsigned lim = n;  /* to compute the Mersenne number */
+  int sh;  /* how much to spread bits to the right in 'lim' */
+  /* spread '1' bits in 'lim' until it becomes a Mersenne number */
+  for (sh = 1; (lim & (lim + 1)) != 0; sh *= 2)
+    lim |= (lim >> sh);  /* spread '1's to the right */
+  while ((ran &= lim) > n)  /* project 'ran' into [0..lim] and test */
+    ran = I2UInt(nextrand(state->s));  /* not inside [0..n]? try again */
+  return ran;
 }
 
 
@@ -593,8 +608,8 @@ static int math_random (lua_State *L) {
   /* random integer in the interval [low, up] */
   luaL_argcheck(L, low <= up, 1, "interval is empty");
   /* project random integer into the interval [0, up - low] */
-  p = project(I2UInt(rv), (lua_Unsigned)up - (lua_Unsigned)low, state);
-  lua_pushinteger(L, l_castU2S(p) + low);
+  p = project(I2UInt(rv), l_castS2U(up) - l_castS2U(low), state);
+  lua_pushinteger(L, l_castU2S(p + l_castS2U(low)));
   return 1;
 }
 
@@ -678,20 +693,6 @@ static int math_pow (lua_State *L) {
   return 1;
 }
 
-static int math_frexp (lua_State *L) {
-  int e;
-  lua_pushnumber(L, l_mathop(frexp)(luaL_checknumber(L, 1), &e));
-  lua_pushinteger(L, e);
-  return 2;
-}
-
-static int math_ldexp (lua_State *L) {
-  lua_Number x = luaL_checknumber(L, 1);
-  int ep = (int)luaL_checkinteger(L, 2);
-  lua_pushnumber(L, l_mathop(ldexp)(x, ep));
-  return 1;
-}
-
 static int math_log10 (lua_State *L) {
   lua_pushnumber(L, l_mathop(log10)(luaL_checknumber(L, 1)));
   return 1;
@@ -714,7 +715,9 @@ static const luaL_Reg mathlib[] = {
   {"tointeger", math_toint},
   {"floor", math_floor},
   {"fmod",   math_fmod},
+  {"frexp", math_frexp},
   {"ult",   math_ult},
+  {"ldexp", math_ldexp},
   {"log",   math_log},
   {"max",   math_max},
   {"min",   math_min},
@@ -730,8 +733,6 @@ static const luaL_Reg mathlib[] = {
   {"sinh",   math_sinh},
   {"tanh",   math_tanh},
   {"pow",   math_pow},
-  {"frexp", math_frexp},
-  {"ldexp", math_ldexp},
   {"log10", math_log10},
 #endif
   /* placeholders */
