@@ -1,3 +1,10 @@
+luametatex (2.11.08+ds-1) UNRELEASED; urgency=medium
+
+  * New upstream version, suitable for new ConTeXt.
+    - Refresh patches.
+
+ -- Hilmar Preuße <hille42@debian.org>  Sun, 26 Oct 2025 17:27:22 +0100
+
 luametatex (2.11.07+ds-2) unstable; urgency=medium
 
   * Upload to unstable.
