@@ -1,9 +1,10 @@
-luametatex (2.11.08+ds-1) UNRELEASED; urgency=medium
+luametatex (2.11.08+ds-1) unstable; urgency=medium
 
   * New upstream version, suitable for new ConTeXt.
     - Refresh patches.
+  * Bump Standards version, no changes needed.
 
- -- Hilmar Preuße <hille42@debian.org>  Sun, 26 Oct 2025 17:27:22 +0100
+ -- Hilmar Preuße <hille42@debian.org>  Thu, 30 Oct 2025 21:56:16 +0100
 
 luametatex (2.11.07+ds-2) unstable; urgency=medium
 

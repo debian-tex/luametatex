@@ -8,14 +8,14 @@ Build-Depends:
  debhelper-compat (= 13),
  cmake,
  libmimalloc-dev
-Standards-Version: 4.6.2
+Standards-Version: 4.7.2
 Homepage: https://github.com/contextgarden/luametatex
 Vcs-Browser: https://github.com/debian-tex/luametatex
 Vcs-Git: https://github.com/debian-tex/luametatex.git
 
 Package: luametatex
 Architecture: any
-Breaks: context (<< 2025)
+Breaks: context (<< 2025.09.21)
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
